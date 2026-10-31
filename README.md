@@ -15,9 +15,9 @@ Pomona ist der Nachfolger von [Contrib](https://github.com/pbrandl/contrib) (Flu
 
 ![Runde aus Sicht einer Bieterin](docs/bidder.png)
 
-| Organisator rechnet ab | Belege (dunkel) | Beleg als QR |
+| Organisator rechnet ab | Ratenliste | Beleg als QR |
 |---|---|---|
-| ![](docs/organizer-invoice.png) | ![](docs/receipts-dark.png) | ![](docs/receipt.png) |
+| ![](docs/organizer-invoice.png) | ![](docs/receipts.png) | ![](docs/receipt.png) |
 
 ## Technik
 

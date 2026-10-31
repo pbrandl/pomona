@@ -1,32 +1,99 @@
 /**
- * Receipt QR for bidders and the verification result for organizers.
+ * Receipts and their verification.
+ *
+ *  receiptSheet  Bidder taps a paid installment: a receipt with QR code. The
+ *                app verifies it against the contract right away.
+ *  invoiceSheet  Organizer taps a paid invoice: amount, date, and the way to
+ *                check bidders' receipts.
+ *  scanSheet     Organizer checks a receipt: camera (QR) or pasted code.
+ *
  * @module ui/views/receipt
  */
-import { esc, fmt, date, short } from '../format.js'
-import { sheet } from './parts.js'
+import { esc, fmt, date, dayTime, short, per } from '../format.js'
+import { btn, field, sheet, spinner } from './parts.js'
+
+/** The verification line under a receipt. */
+function verdict (v) {
+  if (!v) return `<p class="verify pending">${spinner} Wird am Contract geprüft…</p>`
+  if (!v.valid) return `<p class="verify bad">✕ ${esc(v.reason || 'Ungültig')}</p>`
+  return '<p class="verify ok">✓ Am Contract bestätigt</p>'
+}
 
 export function receiptSheet (ui) {
+  const r = ui.status.round
   const rc = ui.receipt
-  return sheet(`Beleg · Rate ${rc.index + 1}`, `
-    <p class="muted">Dieser Code beweist, dass du Rate ${rc.index + 1} bezahlt hast. Jeder kann ihn mit Pomona gegen die Blockchain prüfen.</p>
-    <div class="qr" style="width:220px;height:220px;margin:0 auto">${rc.qr}</div>
-    <div class="linkbox">${esc(rc.code)}</div>
+  const inv = r.invoices[rc.index]
+  const p = per(r.intervalName)
+  return sheet('Beleg', `
+    <div class="receipt">
+      <div class="receipt-head">
+        <span class="small muted">Zahlungsbeleg</span>
+        <strong>${esc(r.title)}</strong>
+      </div>
+      <dl>
+        <dt>Rate</dt><dd>${rc.index + 1} von ${r.installments} · ${esc(p.adj)}</dd>
+        <dt>Betrag</dt><dd><strong>${fmt(inv.amount)} ${esc(r.symbol)}</strong></dd>
+        <dt>Bezahlt am</dt><dd>${esc(dayTime(inv.paidAt))}</dd>
+        <dt>Von</dt><dd class="mono">${esc(short(ui.status.wallet.address))}</dd>
+        <dt>Contract</dt><dd class="mono">${esc(short(r.address))}</dd>
+      </dl>
+      <div class="qr receipt-qr">${rc.qr || ''}</div>
+      ${verdict(rc.verified)}
+    </div>
+    <p class="small muted">Zeig diesen QR-Code beim Anbieter vor. Er prüft ihn in Pomona unter „Beleg prüfen“ direkt an der Blockchain, ohne dir vertrauen zu müssen.</p>
     <button class="btn ghost small" data-action="copy-receipt">Code kopieren</button>`)
 }
 
-export function verifySheet (ui) {
-  const v = ui.verified
-  if (!v.valid) {
-    return sheet('Beleg prüfen', `<span class="badge warn">Ungültig</span><p>${esc(v.reason || 'Dieser Beleg ist nicht gültig.')}</p>`)
-  }
-  return sheet('Beleg prüfen', `
-    <span class="badge">Gültig</span>
-    <div class="stack">
-      ${v.title ? `<p><strong>${esc(v.title)}</strong></p>` : ''}
-      <div class="mine"><span class="muted">Rate</span><strong>${v.installment} von ${v.installments}</strong></div>
-      <div class="mine"><span class="muted">Betrag</span><strong>${fmt(v.amount)} ${esc(v.symbol)}</strong></div>
-      <div class="mine"><span class="muted">Bezahlt am</span><span>${esc(date(v.paidAt))}</span></div>
-      <div class="mine"><span class="muted">Von</span><span class="mono">${esc(short(v.bidder))}</span></div>
+export function invoiceSheet (ui) {
+  const r = ui.status.round
+  const inv = r.invoices[ui.invoiceIndex]
+  return sheet(`Rechnung ${ui.invoiceIndex + 1}`, `
+    <div class="receipt">
+      <dl>
+        <dt>Status</dt><dd><span class="pill-s ok">Bezahlt</span></dd>
+        <dt>Betrag</dt><dd><strong>${fmt(inv.amount)} ${esc(r.symbol)}</strong></dd>
+        <dt>Fällig ab</dt><dd>${esc(date(inv.dueAt))}</dd>
+        <dt>Abgerechnet am</dt><dd>${esc(dayTime(inv.paidAt))}</dd>
+        <dt>Bietende</dt><dd>${r.bidders}</dd>
+      </dl>
     </div>
-    <p class="small muted">Geprüft direkt am Contract <span class="mono">${esc(short(v.round))}</span>.</p>`)
+    <p class="small muted">Jede bietende Person hat für diese Rate einen Beleg mit ihrem Anteil. Du kannst ihn per QR-Code prüfen.</p>
+    <button class="btn accent block" data-action="open-scan">Beleg prüfen</button>`)
+}
+
+export function scanSheet (ui) {
+  const v = ui.verified
+  let result = ''
+  if (v) {
+    result = v.valid
+      ? `<div class="receipt ok-border">
+          <p class="verify ok" style="margin:0 0 12px">✓ Gültiger Beleg</p>
+          <dl>
+            ${v.title ? `<dt>Runde</dt><dd>${esc(v.title)}</dd>` : ''}
+            <dt>Rate</dt><dd>${v.installment} von ${v.installments}</dd>
+            <dt>Betrag</dt><dd><strong>${fmt(v.amount)} ${esc(v.symbol)}</strong></dd>
+            <dt>Bezahlt am</dt><dd>${esc(dayTime(v.paidAt))}</dd>
+            <dt>Von</dt><dd class="mono">${esc(short(v.bidder))}</dd>
+          </dl>
+        </div>`
+      : `<div class="receipt bad-border"><p class="verify bad" style="margin:0">✕ ${esc(v.reason || 'Dieser Beleg ist nicht gültig.')}</p></div>`
+    result += '<button class="btn ghost block" data-action="scan-again">Nächsten Beleg prüfen</button>'
+  }
+
+  const camera = v
+    ? ''
+    : ui.scanError
+      ? `<p class="small muted">${esc(ui.scanError)}</p>`
+      : `<div class="scanner"><div id="scanner-slot"></div><div class="scanner-frame"></div></div>
+         <p class="small muted" style="text-align:center">Halte den QR-Code des Belegs vor die Kamera.</p>`
+
+  return sheet('Beleg prüfen', `
+    ${result}
+    ${camera}
+    ${v
+? ''
+: `<div class="stack">
+      ${field(ui, 'verify', 'Oder Code einfügen', { mono: true, placeholder: 'pomona-beleg://…' })}
+      ${btn(ui, 'verify-receipt', 'Prüfen', 'ghost block', { busy: 'Wird geprüft…' })}
+    </div>`}`)
 }

@@ -14,13 +14,14 @@
  *
  * @module ui/app
  */
-import { esc, short, fmt } from './format.js'
+import { esc, short, fmt, isoDay, endOfDay } from './format.js'
 import { PEAR } from './views/parts.js'
 import { onboarding, locked, createWalletSheet, restoreSheet, revealSheet, seedSheet } from './views/onboarding.js'
 import { start } from './views/start.js'
 import { round } from './views/round.js'
 import { walletSheet } from './views/wallet.js'
-import { receiptSheet, verifySheet } from './views/receipt.js'
+import { receiptSheet, invoiceSheet, scanSheet } from './views/receipt.js'
+import { Scanner } from './scanner.js'
 
 const $app = document.getElementById('app')
 
@@ -28,12 +29,15 @@ const $app = document.getElementById('app')
 const ui = {
   status: null,
   tab: 'create', // start screen: 'create' | 'join'
-  sheet: null, // 'wallet' | 'create-wallet' | 'restore' | 'reveal' | 'seed' | 'receipt' | 'verify'
+  sheet: null, // 'wallet' | 'create-wallet' | 'restore' | 'reveal' | 'seed' | 'receipt' | 'invoice' | 'scan'
   seed: null, // shown once after creating, or after re-entering the password
   invite: null, // { link, qr }
   addressQr: null,
-  receipt: null, // { index, code, qr }
-  verified: null, // result of verifyReceipt
+  receipt: null, // { index, code, qr, verified }
+  invoiceIndex: null, // organizer: which paid invoice is open
+  verified: null, // result of verifyReceipt in the scan sheet
+  scanError: null, // camera unavailable → paste only
+  showAllInvoices: false,
   toast: null,
   pending: null, // action currently running in the UI
   draft: {
@@ -42,7 +46,7 @@ const ui = {
     target: '',
     installments: '12',
     interval: 'month',
-    days: '14',
+    endDate: isoDay(Math.floor(Date.now() / 1000) + 14 * 86400), // last day of bidding
     minBid: '',
     inviteOnly: true,
     network: '',
@@ -54,7 +58,8 @@ const ui = {
     password: '',
     password2: '',
     sendTo: '',
-    sendAmount: ''
+    sendAmount: '',
+    sendPassword: ''
   }
 }
 
@@ -67,8 +72,9 @@ const SHEETS = {
   restore: restoreSheet,
   reveal: revealSheet,
   seed: seedSheet,
-  receipt: (u) => (u.receipt ? receiptSheet(u) : ''),
-  verify: (u) => (u.verified ? verifySheet(u) : ''),
+  receipt: (u) => (u.receipt && u.status?.round ? receiptSheet(u) : ''),
+  invoice: (u) => (u.invoiceIndex !== null && u.status?.round ? invoiceSheet(u) : ''),
+  scan: scanSheet,
   wallet: (u) => (u.status?.wallet.state === 'unlocked' ? walletSheet(u) : '')
 }
 
@@ -107,6 +113,34 @@ function render () {
     }
   }
   if (scroll) { const sh = document.querySelector('.sheet'); if (sh) sh.scrollTop = scroll }
+  scanner?.attach() // the camera <video> survives re-renders
+}
+
+/** Camera scanner, alive only while the scan sheet is open. */
+let scanner = null
+function stopScanner () {
+  scanner?.stop()
+  scanner = null
+}
+async function startScanner () {
+  stopScanner()
+  ui.scanError = null
+  scanner = new Scanner(async (code) => {
+    scanner = null
+    ui.draft.verify = code
+    try {
+      ui.verified = await call('verifyReceipt', { code })
+    } catch (e) {
+      ui.verified = { valid: false, reason: e.message }
+    }
+    render()
+  })
+  try {
+    await scanner.start()
+  } catch (e) {
+    scanner = null
+    ui.scanError = e.message
+  }
 }
 
 let toastTimer = null
@@ -146,7 +180,8 @@ const actions = {
   tab: (el) => { ui.tab = el.dataset.tab },
   interval: (el) => { ui.draft.interval = el.dataset.interval },
   'open-sheet': (el) => { ui.sheet = el.dataset.sheet },
-  'close-sheet': () => { ui.sheet = null; clearPasswords() },
+  'close-sheet': () => { ui.sheet = null; clearPasswords(); stopScanner() },
+  'show-all-invoices': () => { ui.showAllInvoices = true },
 
   // wallet
   async 'create-wallet' () {
@@ -201,7 +236,7 @@ const actions = {
       minBid: d.minBid || '0',
       interval: d.interval,
       installments: Number(d.installments),
-      biddingDays: Number(d.days),
+      biddingEnd: endOfDay(d.endDate),
       inviteOnly: d.inviteOnly,
       network: d.network || ui.status.network.id
     })
@@ -247,14 +282,38 @@ const actions = {
   },
 
   // receipts
+  /** Bidder taps a paid installment: show the receipt and verify it on-chain. */
   async 'show-receipt' (el) {
     const index = Number(el.dataset.index)
-    ui.receipt = { index, ...(await call('receipt', { index })) }
+    ui.receipt = { index, ...(await call('receipt', { index })), verified: null }
     ui.sheet = 'receipt'
+    render()
+    const rc = ui.receipt
+    call('verifyReceipt', { code: rc.code })
+      .then((v) => { rc.verified = v }, (e) => { rc.verified = { valid: false, reason: e.message } })
+      .finally(render)
+  },
+  /** Organizer taps a paid invoice. */
+  'show-invoice' (el) {
+    ui.invoiceIndex = Number(el.dataset.index)
+    ui.sheet = 'invoice'
+  },
+  async 'open-scan' () {
+    ui.verified = null
+    ui.draft.verify = ''
+    ui.sheet = 'scan'
+    render()
+    await startScanner()
+  },
+  async 'scan-again' () {
+    ui.verified = null
+    ui.draft.verify = ''
+    render()
+    await startScanner()
   },
   async 'verify-receipt' () {
+    stopScanner()
     ui.verified = await call('verifyReceipt', { code: ui.draft.verify.trim() })
-    ui.sheet = 'verify'
   },
 
   // clipboard
@@ -293,11 +352,20 @@ $app.addEventListener('input', (e) => {
   // Live previews (deposit hint, summary) without losing focus.
   if (['amount', 'target', 'installments'].includes(e.target.id)) render()
 })
-$app.addEventListener('change', syncDraft)
+$app.addEventListener('change', (e) => {
+  syncDraft(e)
+  if (e.target.id === 'endDate') render()
+})
 
 /** Enter submits the obvious action of a field. */
 const ENTER = { amount: 'bid', news: 'post-news', password: null, verify: 'verify-receipt', link: 'join' }
 $app.addEventListener('keydown', (e) => {
+  // Clickable rows (role="button") react to Enter and Space like buttons.
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.getAttribute?.('role') === 'button') {
+    e.preventDefault()
+    e.target.click()
+    return
+  }
   if (e.key !== 'Enter' || e.shiftKey || !Object.hasOwn(ENTER, e.target.id)) return
   let action = ENTER[e.target.id]
   if (e.target.id === 'password') {

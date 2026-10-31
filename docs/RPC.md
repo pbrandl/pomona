@@ -23,7 +23,7 @@ Events: `ready`, `change` (der Status kann sich geändert haben) und `error` (Fe
 | `revealSeed` | `password` | Seed als String |
 | `sendUsdt` | `to`, `amount`, `password` | `{ hash }` |
 | `faucet` | – | Nur auf der lokalen Chain: 5.000 Test-USDT |
-| `createRound` | `title`, `description?`, `network?`, `target`, `minBid?`, `interval` (`week`/`month`), `installments`, `biddingDays`, `inviteOnly?` | `{ link }` |
+| `createRound` | `title`, `description?`, `network?`, `target`, `minBid?`, `interval` (`week`/`month`), `installments`, `biddingEnd` (Unix-Sekunden) oder `biddingDays`, `inviteOnly?` | `{ link }` |
 | `join` | `link` | Status |
 | `bid` | `amount` (pro Rate) | – |
 | `withdraw` | `amount` oder `"all"` | – |
@@ -71,7 +71,8 @@ Beträge sind Strings in deutscher oder englischer Schreibweise, also `"1.234,56
     myPledge: '100',                      // pro Rate
     myDeposit: '1200',                    // myPledge × installments
     refundable: '0',
-    receipts: [{ index: 0, amount: '100', paidAt: 1793… }],
+    invoices: [{ index, dueAt, paidAt, amount, status: "paid"|"due"|"scheduled"|"void", mine }],
+    biddingStart,                         // aus dem Manifest (nur Anzeige)
     news: [{ text, at }]                  // neueste zuerst
   }
 }

@@ -99,13 +99,18 @@ test('monthly round: bid via Pears link, invoice per month, receipts, terminate,
   s = await farm.status()
   assert.equal(s.round.phase, 'running')
   assert.equal(s.round.canInvoice, true)
+  assert.equal(s.round.invoices[0].status, 'due')
   await farm.invoice() // installment 1
   assert.equal((await farm.status()).wallet.usdt, '5150')
   await assert.rejects(farm.invoice(), /noch nicht fällig/)
 
   // Alice's receipt for installment 1 checks out on-chain, also from Bob's app.
   s = await alice.status()
-  assert.deepEqual(s.round.receipts.map((r) => r.amount), ['100'])
+  assert.deepEqual(s.round.invoices.map((i) => i.status), ['paid', 'scheduled', 'scheduled'])
+  assert.equal(s.round.invoices[0].amount, '100') // Alice's share
+  assert.ok(s.round.invoices[0].paidAt >= s.round.biddingEnd)
+  assert.equal(s.round.invoices[1].dueAt, s.round.biddingEnd + MONTH)
+  assert.equal((await farm.status()).round.invoices[0].amount, '150') // organizer sees the total
   const { code } = await alice.receipt({ index: 0 })
   const v = await bob.verifyReceipt({ code })
   assert.equal(v.valid, true)
@@ -121,6 +126,7 @@ test('monthly round: bid via Pears link, invoice per month, receipts, terminate,
   await farm.terminate() // the farm stops early
   s = await alice.status()
   assert.equal(s.round.phase, 'completed')
+  assert.deepEqual(s.round.invoices.map((i) => i.status), ['paid', 'paid', 'void'])
   assert.equal(s.round.refundable, '100')
   await alice.refund()
   assert.equal((await alice.status()).wallet.usdt, '4800') // paid 2 × 100
@@ -181,9 +187,31 @@ test('send USDT out of the wallet', async () => {
 test('the dev chain is unavailable outside developer mode', async () => {
   const a = await env.make({ allowDev: false })
   const s = await a.status()
-  assert.equal(s.network.id, 'sepolia')
+  assert.equal(s.network.id, 'arbitrum-sepolia')
   assert.equal(s.networks.some((n) => n.id === 'local'), false)
   await a.createWallet({ password: PASSWORD })
   const link = encodeInvite({ manifest: 'a'.repeat(64), network: 'local', round: '0x' + '1'.repeat(40) })
   await assert.rejects(a.join({ link }), /Entwicklermodus/)
+})
+
+test('live: other participants learn about a new bid from the contract event', async () => {
+  const farm = await env.funded()
+  const alice = await env.funded()
+  const bob = await env.funded()
+  const biddingEnd = (await farm.provider.getBlock('latest')).timestamp + 10 * DAY // chain time (tests warp it)
+  const { link } = await farm.createRound({ title: 'Live', target: '100', interval: 'week', installments: 2, biddingEnd, inviteOnly: false })
+  await alice.join({ link })
+  await bob.join({ link })
+  assert.equal((await alice.status()).round.biddingEnd, biddingEnd)
+
+  // Alice does nothing; her app must notice Bob's bid by itself (pollMs is 60 s in tests).
+  const noticed = new Promise((resolve) => {
+    const check = async () => { if ((await alice.status()).round.total === '42') { alice.off('change', check); resolve(Date.now()) } }
+    alice.on('change', check)
+  })
+  const sent = Date.now()
+  await bob.bid({ amount: '42' })
+  const at = await Promise.race([noticed, new Promise((resolve) => setTimeout(() => resolve(null), 5000))])
+  assert.ok(at, 'Alice did not see the bid within 5 s')
+  assert.ok(at - sent < 5000)
 })

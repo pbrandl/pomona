@@ -39,6 +39,7 @@ export const METHODS = {
       interval: ['string', 8],
       installments: 'number',
       biddingDays: 'number',
+      biddingEnd: 'number',
       inviteOnly: 'boolean'
     },
     run: (app, p) => app.createRound(p)

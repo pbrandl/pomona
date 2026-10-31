@@ -18,7 +18,8 @@ export async function setup () {
   const testnet = await createTestnet(3)
   const dirs = []
   const apps = []
-  const local = { rpc: chain.url, ...addresses }
+  // Many app instances share one Hardhat node in tests: poll for events less eagerly.
+  const local = { rpc: chain.url, pollMs: 400, ...addresses }
 
   /** @returns {Promise<Pomona>} */
   const make = async (opts = {}) => {

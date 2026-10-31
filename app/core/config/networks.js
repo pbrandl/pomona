@@ -33,10 +33,13 @@ import deployments from './deployments.js'
  * @property {string} rpc
  * @property {string|null} explorer
  * @property {boolean} dev - local chain: dev account + faucet, only in `pear run --dev`
+ * @property {number} pollMs - how often to look for new contract events (live updates)
  * @property {AccountAbstraction|null} aa
  * @property {string|null} factory - PomonaFactory address
  * @property {string|null} token   - USDT address
  */
+
+const AA_TODO = { bundlerUrl: null, paymasterUrl: null, paymasterAddress: null, safeModulesVersion: '0.3.0' }
 
 const NETWORKS = {
   local: {
@@ -45,15 +48,39 @@ const NETWORKS = {
     rpc: 'http://127.0.0.1:8545',
     explorer: null,
     dev: true,
+    pollMs: 100,
     aa: null
   },
+  // Arbitrum: blocks every ~0.25 s and fees in cents. Recommended.
+  'arbitrum-sepolia': {
+    name: 'Arbitrum Sepolia (Test)',
+    chainId: 421614,
+    rpc: 'https://sepolia-rollup.arbitrum.io/rpc',
+    explorer: 'https://sepolia.arbiscan.io',
+    dev: false,
+    pollMs: 1000,
+    aa: AA_TODO
+  },
+  arbitrum: {
+    name: 'Arbitrum One',
+    chainId: 42161,
+    rpc: 'https://arb1.arbitrum.io/rpc',
+    explorer: 'https://arbiscan.io',
+    dev: false,
+    pollMs: 1000,
+    // USD₮0 on Arbitrum One. Verify against Tether's official list before mainnet use.
+    token: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9',
+    aa: AA_TODO
+  },
+  // Ethereum: blocks every 12 s, higher fees.
   sepolia: {
     name: 'Ethereum Sepolia (Test)',
     chainId: 11155111,
     rpc: 'https://ethereum-sepolia-rpc.publicnode.com',
     explorer: 'https://sepolia.etherscan.io',
     dev: false,
-    aa: { bundlerUrl: null, paymasterUrl: null, paymasterAddress: null, safeModulesVersion: '0.3.0' }
+    pollMs: 4000,
+    aa: AA_TODO
   },
   ethereum: {
     name: 'Ethereum',
@@ -61,10 +88,14 @@ const NETWORKS = {
     rpc: 'https://ethereum-rpc.publicnode.com',
     explorer: 'https://etherscan.io',
     dev: false,
+    pollMs: 4000,
     token: '0xdAC17F958D2ee523a2206206994597C13D831ec7', // USDT
-    aa: { bundlerUrl: null, paymasterUrl: null, paymasterAddress: null, safeModulesVersion: '0.3.0' }
+    aa: AA_TODO
   }
 }
+
+/** Network used outside developer mode before a round exists. */
+export const DEFAULT_NETWORK = 'arbitrum-sepolia'
 
 /** @returns {string[]} */
 export function networkIds () {

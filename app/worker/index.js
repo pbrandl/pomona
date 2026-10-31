@@ -14,7 +14,7 @@ const pomona = new Pomona({
   storage: app.storage,
   // The local Hardhat chain (with its public dev key) exists only in `pear run --dev`.
   allowDev: dev,
-  defaultNetwork: dev ? 'local' : 'sepolia'
+  defaultNetwork: dev ? 'local' : 'arbitrum-sepolia'
 })
 
 await pomona.ready()

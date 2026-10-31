@@ -68,7 +68,8 @@
       "core/chain/abi.js",
       "core/config/deployments.js",
       "core/bare.js",
-      "test/bare-smoke.js"
+      "test/bare-smoke.js",
+      "ui/vendor/"
     ]
   }
 }

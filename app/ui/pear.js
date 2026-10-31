@@ -1,10 +1,11 @@
 /**
  * Backend bridge inside Pear: starts the Bare worker with pear-run and speaks
  * newline-delimited JSON-RPC over its pipe (see core/rpc/server.js).
- * Exposes `window.pomona = { call, on, copy }`.
+ * Exposes `window.pomona = { call, on, copy, cameraAccess }`.
  * @module ui/pear
  */
 import run from 'pear-run'
+import ui from 'pear-electron'
 
 const pipe = run(Pear.config.applink + '/worker/index.js')
 const pending = new Map()
@@ -46,6 +47,14 @@ window.pomona = {
   },
   copy (text) {
     return navigator.clipboard.writeText(text)
+  },
+  /** Asks the OS for camera access (needed on macOS) before getUserMedia. */
+  async cameraAccess () {
+    try {
+      return await ui.media.access.camera()
+    } catch {
+      return true // platforms without a permission prompt
+    }
   }
 }
 window.dispatchEvent(new Event('pomona:backend'))

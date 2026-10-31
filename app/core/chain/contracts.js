@@ -84,6 +84,25 @@ export class RoundContract {
     return { amount, paidAt: Number(paidAt) }
   }
 
+  /** @param {number} index @returns {Promise<number>} unix seconds, 0 if not invoiced */
+  async invoicedAt (index) {
+    return Number(await this.contract.invoicedAt(index))
+  }
+
+  /**
+   * Live updates: calls `fn` for every event of this round (Bid, Withdrawn,
+   * Invoiced, Refunded, Cancelled, Terminated) as soon as the provider sees
+   * it. Polls logs every `net.pollMs`.
+   * @param {(log: import('ethers').Log) => void} fn
+   * @returns {() => void} unsubscribe
+   */
+  watch (fn) {
+    const provider = this.contract.runner
+    const filter = { address: this.address }
+    provider.on(filter, fn)
+    return () => { provider.off(filter, fn).catch?.(() => {}) }
+  }
+
   /** @param {bigint} amount @param {string} invite @returns {Call} */
   bid (amount, invite) { return { to: this.address, data: roundIface.encodeFunctionData('bid', [amount, invite]) } }
   /** @param {bigint} amount @returns {Call} */

@@ -1,117 +1,213 @@
 /**
- * The round: progress, bidding, invoice schedule, receipts, organizer tools.
+ * The round, top to bottom:
+ *   hero      phase badge, title, ring (funding while bidding, installments afterwards)
+ *   timeline  ① Bieten (date range, countdown)  →  ② Raten (first … last due date)
+ *   bid       only while bidding
+ *   plan      every installment: paid (tap → receipt/invoice), due, scheduled, void
+ *   refund    when something comes back
+ *   organizer share link, invoice button, check receipts, news, cancel/terminate
+ *   news
  * @module ui/views/round
  */
-import { esc, fmt, num, per, date, shortDate, dateTime, short, left } from '../format.js'
-import { btn, link, field } from './parts.js'
+import { esc, fmt, num, per, date, dateTime, short, left, dayTime } from '../format.js'
+import { btn, link } from './parts.js'
 
 export function round (ui) {
   const r = ui.status.round
   const p = per(r.intervalName)
   return `<div class="stack-lg">
-    <div class="hero stack">
-      ${badge(r)}
-      <h1>${esc(r.title)}</h1>
-      ${r.description ? `<p class="lead">${esc(r.description)}</p>` : ''}
-      ${!r.verified ? '<span class="badge warn">Angaben passen nicht zum Contract</span>' : ''}
-      ${ring(r, p)}
-    </div>
-    ${stats(r, p)}
+    ${hero(r, p)}
+    ${timeline(r, p)}
     ${bidCard(ui, r, p)}
-    ${scheduleCard(ui, r, p)}
-    ${receiptsCard(ui, r, p)}
+    ${planCard(ui, r, p)}
     ${refundCard(ui, r)}
-    ${organizerCard(ui, r, p)}
+    ${organizerCard(ui, r)}
     ${newsCard(r)}
-    <p class="small muted" style="text-align:center">Contract <span class="mono">${short(r.address)}</span> · ${esc(ui.status.network.name)}</p>
+    <p class="small muted" style="text-align:center">Contract <span class="mono">${short(r.address)}</span> · ${esc(ui.status.network.name)} · <span class="live"><span class="dot on"></span>live</span></p>
   </div>`
 }
 
-function badge (r) {
-  switch (r.phase) {
-    case 'bidding': return `<span class="badge">Bietphase bis ${esc(date(r.biddingEnd))}</span>`
-    case 'running': return `<span class="badge">Läuft · ${r.invoiceCount} von ${r.installments} Raten abgerechnet</span>`
-    case 'completed': return '<span class="badge neutral">Abgeschlossen</span>'
-    default: return '<span class="badge warn">Ziel verfehlt</span>'
-  }
+// --------------------------------------------------------------------- hero
+
+function hero (r, p) {
+  const badge = {
+    bidding: '<span class="badge">Bietphase läuft</span>',
+    running: '<span class="badge">Ratenzahlung läuft</span>',
+    completed: '<span class="badge neutral">Abgeschlossen</span>',
+    failed: '<span class="badge warn">Ziel nicht erreicht</span>'
+  }[r.phase]
+  return `<div class="hero stack">
+    ${badge}
+    <h1>${esc(r.title)}</h1>
+    ${r.description ? `<p class="lead">${esc(r.description)}</p>` : ''}
+    ${!r.verified ? '<span class="badge warn">Angaben passen nicht zum Contract</span>' : ''}
+    ${r.phase === 'running' || r.phase === 'completed' ? installmentRing(r, p) : fundingRing(r, p)}
+    ${stats(r, p)}
+  </div>`
 }
 
-function ring (r, p) {
+function ringSvg (value) {
   const R = 100
   const C = 2 * Math.PI * R
-  const v = Math.min(1, r.progress)
-  return `<div class="ring">
-    <svg viewBox="0 0 220 220"><circle class="track" cx="110" cy="110" r="${R}"/><circle class="value" cx="110" cy="110" r="${R}" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - v)}"/></svg>
+  const v = Math.max(0, Math.min(1, value))
+  return `<svg viewBox="0 0 220 220"><circle class="track" cx="110" cy="110" r="${R}"/><circle class="value" cx="110" cy="110" r="${R}" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - v)}"/></svg>`
+}
+
+function fundingRing (r, p) {
+  return `<div class="ring">${ringSvg(r.progress)}
     <div class="center"><div class="big">${fmt(r.progress * 100, 0)}%</div><div class="of">${fmt(r.total)} von ${fmt(r.target)} ${esc(r.symbol)}<br>${p.per}</div></div>
   </div>`
 }
 
-function stats (r, p) {
-  const middle = r.phase === 'bidding'
-    ? left(r.biddingEnd, r.now)
-    : { value: `${r.invoiceCount}/${r.installments}`, unit: 'Raten abgerechnet' }
-  const third = r.phase === 'bidding'
-    ? { value: fmt(Math.max(0, num(r.target) - num(r.total))), unit: `fehlen ${p.per}` }
-    : { value: fmt(num(r.total) * r.installments), unit: 'gesamt zugesagt' }
-  return `<div class="card stats">
-    <div><strong>${r.bidders}</strong><span>${r.bidders === 1 ? 'Bieter' : 'Bietende'}</span></div>
-    <div><strong>${esc(middle.value)}</strong><span>${esc(middle.unit)}</span></div>
-    <div><strong>${esc(third.value)}</strong><span>${esc(third.unit)}</span></div>
+function installmentRing (r, p) {
+  return `<div class="ring">${ringSvg(r.invoiceCount / r.installments)}
+    <div class="center"><div class="big">${r.invoiceCount}<span class="muted" style="font-weight:400"> / ${r.installments}</span></div><div class="of">Raten bezahlt<br>${fmt(r.total)} ${esc(r.symbol)} ${p.per}</div></div>
   </div>`
 }
+
+function stats (r, p) {
+  let cells
+  if (r.phase === 'bidding') {
+    const t = left(r.biddingEnd, r.now)
+    cells = [
+      [String(r.bidders), r.bidders === 1 ? 'Bieter' : 'Bietende'],
+      [t.value, t.unit],
+      [fmt(Math.max(0, num(r.target) - num(r.total))), `fehlen ${p.per}`]
+    ]
+  } else {
+    cells = [
+      [String(r.bidders), r.bidders === 1 ? 'Bieter' : 'Bietende'],
+      [fmt(num(r.total)), `${r.symbol} ${p.per}`],
+      [fmt(num(r.total) * r.installments), 'gesamt zugesagt']
+    ]
+  }
+  return `<div class="card stats" style="align-self:stretch">${cells.map(([v, l]) => `<div><strong>${esc(v)}</strong><span>${esc(l)}</span></div>`).join('')}</div>`
+}
+
+// ----------------------------------------------------------------- timeline
+
+/** The two phases with their dates. The current one is highlighted. */
+function timeline (r, p) {
+  const firstDue = r.biddingEnd
+  const lastDue = r.biddingEnd + r.interval * (r.installments - 1)
+  const bidding = r.phase === 'bidding'
+
+  let bidState, bidText
+  if (bidding) {
+    const t = left(r.biddingEnd, r.now)
+    const span = r.biddingStart ? Math.max(1, r.biddingEnd - r.biddingStart) : null
+    const pct = span ? Math.min(100, Math.max(0, ((r.now - r.biddingStart) / span) * 100)) : null
+    bidState = 'current'
+    bidText = `<p class="tl-when">${r.biddingStart ? `${esc(date(r.biddingStart))} – ` : 'bis '}${esc(dayTime(r.biddingEnd))}</p>
+      ${pct !== null ? `<div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>` : ''}
+      <p class="small muted">Noch ${esc(t.value)} ${esc(t.unit.replace(' übrig', ''))}. Bis dahin kannst du bieten, erhöhen und zurückziehen.</p>`
+  } else {
+    bidState = r.phase === 'failed' ? 'failed' : 'done'
+    bidText = `<p class="tl-when">${r.biddingStart ? `${esc(date(r.biddingStart))} – ` : 'bis '}${esc(date(r.biddingEnd))}</p>
+      <p class="small muted">${r.phase === 'failed' ? 'Das Ziel wurde nicht erreicht. Alle bekommen ihr Geld zurück.' : 'Beendet. Die Gebote stehen fest.'}</p>`
+  }
+
+  let payState, payText
+  const range = r.installments === 1 ? `am ${esc(date(firstDue))}` : `${esc(date(firstDue))} – ${esc(date(lastDue))}`
+  const how = `${r.installments} ${r.installments === 1 ? 'Rate' : 'Raten'}, ${p.adj}`
+  if (bidding) {
+    payState = 'next'
+    payText = `<p class="tl-when">${range}</p><p class="small muted">${how}. Startet automatisch, wenn die Bietphase endet und das Ziel erreicht ist. Pro Rate stellt der Organisator eine Rechnung.</p>`
+  } else if (r.phase === 'running') {
+    payState = 'current'
+    payText = `<p class="tl-when">${range}</p><p class="small muted">${how}. ${r.invoiceCount} von ${r.installments} bezahlt.</p>`
+  } else if (r.phase === 'completed') {
+    payState = 'done'
+    payText = `<p class="tl-when">${range}</p><p class="small muted">${r.invoiceCount} von ${r.installments} Raten bezahlt.${r.invoiceCount < r.installments ? ' Der Rest geht an die Bietenden zurück.' : ''}</p>`
+  } else {
+    payState = 'skipped'
+    payText = '<p class="small muted">Findet nicht statt.</p>'
+  }
+
+  return `<div class="card timeline">
+    <div class="tl-step ${bidState}"><div class="tl-dot">1</div><div class="tl-body"><h3>Bieten</h3>${bidText}</div></div>
+    <div class="tl-step ${payState}"><div class="tl-dot">2</div><div class="tl-body"><h3>Ratenzahlung per Rechnung</h3>${payText}</div></div>
+  </div>`
+}
+
+// ---------------------------------------------------------------------- bid
 
 function bidCard (ui, r, p) {
   if (r.phase !== 'bidding') return ''
   const has = num(r.myPledge) > 0
   const amount = num(ui.draft.amount)
   const hint = amount > 0
-    ? `${has ? 'Zusätzlich hinterlegst du' : 'Du hinterlegst'} ${r.installments} × ${fmt(amount)} = ${fmt(amount * r.installments)} ${esc(r.symbol)}. Abgerechnet wird ${p.adj}.`
-    : num(r.minBid) > 0 ? `Mindestgebot ${fmt(r.minBid)} ${esc(r.symbol)} ${p.per}.` : `Dein Betrag ${p.per}, ${r.installments} Raten.`
+    ? `${has ? 'Zusätzlich hinterlegst du' : 'Du hinterlegst'} ${r.installments} × ${fmt(amount)} = ${fmt(amount * r.installments)} ${esc(r.symbol)}.`
+    : num(r.minBid) > 0 ? `Mindestgebot ${fmt(r.minBid)} ${esc(r.symbol)} ${p.per}.` : `Dein Betrag ${p.per}.`
   return `<div class="card stack">
-    ${has
-? `<div class="mine"><span class="muted">Dein Gebot</span><strong>${fmt(r.myPledge)} ${esc(r.symbol)} <span class="muted small">${p.per}</span></strong></div>
-      <p class="small muted" style="margin-top:4px">${fmt(r.myDeposit)} ${esc(r.symbol)} liegen im Contract.</p>`
-: ''}
+    <div class="row"><h2 style="margin:0">Dein Gebot</h2><span class="small muted">möglich bis ${esc(dayTime(r.biddingEnd))}</span></div>
+    ${has ? `<div class="mine"><span class="muted">${fmt(r.myDeposit)} ${esc(r.symbol)} hinterlegt</span><strong>${fmt(r.myPledge)} ${esc(r.symbol)} <span class="muted small">${p.per}</span></strong></div>` : ''}
     <div class="amount">
-      <input id="amount" data-draft="amount" inputmode="decimal" placeholder="${has ? 'Erhöhen um' : `Dein Gebot ${p.per}`}" value="${esc(ui.draft.amount)}" autocomplete="off">
+      <input id="amount" data-draft="amount" inputmode="decimal" placeholder="${has ? 'Erhöhen um' : `Betrag ${p.per}`}" value="${esc(ui.draft.amount)}" autocomplete="off">
       <span class="unit">${esc(r.symbol)}</span>
       ${btn(ui, 'bid', has ? 'Erhöhen' : 'Bieten', 'accent', { busy: 'Wird bestätigt…' })}
     </div>
     <div class="row small">
       <span class="muted">${hint}</span>
-      ${has ? link(ui, 'withdraw', ui.pending === 'withdraw' ? 'Wird zurückgezogen…' : 'Gebot zurückziehen') : ''}
+      ${has ? link(ui, 'withdraw', ui.pending === 'withdraw' ? 'Wird zurückgezogen…' : 'Zurückziehen') : ''}
     </div>
   </div>`
 }
 
-function scheduleCard (ui, r, p) {
-  if (r.phase !== 'running' && r.phase !== 'completed') return ''
-  const pct = r.installments ? (r.invoiceCount / r.installments) * 100 : 0
-  let next = ''
-  if (r.phase === 'running') {
-    next = r.canInvoice
-      ? `Rate ${r.invoiceCount + 1} ist fällig.`
-      : `Rate ${r.invoiceCount + 1} ist ab ${esc(date(r.nextInvoiceAt))} fällig.`
-  } else if (r.invoiceCount < r.installments) {
-    next = `Die Runde endete nach ${r.invoiceCount} von ${r.installments} Raten. Der Rest geht an die Bietenden zurück.`
-  } else {
-    next = 'Alle Raten sind abgerechnet.'
-  }
-  return `<div class="card stack">
-    <div class="row"><h2 style="margin:0">Abrechnung ${esc(p.adj)}</h2><span class="small muted">${r.invoiceCount} von ${r.installments}</span></div>
-    <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
-    <p class="small muted">${next}</p>
+// --------------------------------------------------------------------- plan
+
+const STATUS = {
+  paid: (x) => `<span class="pill-s ok">Bezahlt ${esc(date(x.paidAt))}</span>`,
+  due: () => '<span class="pill-s due">Fällig</span>',
+  scheduled: () => '<span class="pill-s">Geplant</span>',
+  void: () => '<span class="pill-s void">Entfällt</span>'
+}
+
+/**
+ * All installments. Paid ones open the receipt (bidder) or the invoice
+ * (organizer). Long plans are folded around the current installment.
+ */
+function planCard (ui, r, p) {
+  if (r.phase === 'failed' || !r.invoices?.length) return ''
+  const organizer = r.role === 'organizer'
+  const mine = r.invoices.some((x) => x.mine)
+  const list = fold(r.invoices, r.invoiceCount, ui.showAllInvoices)
+
+  const rows = list.map((x) => {
+    if (x.more) return `<button class="plan-more" data-action="show-all-invoices">… ${x.more} weitere Raten anzeigen</button>`
+    const clickable = x.status === 'paid' && (organizer || x.mine)
+    const action = organizer ? 'show-invoice' : 'show-receipt'
+    const attrs = clickable ? ` data-action="${action}" data-index="${x.index}" role="button" tabindex="0"` : ''
+    return `<div class="plan-row ${x.status}${clickable ? ' clickable' : ''}"${attrs}>
+      <div class="plan-left"><strong>Rate ${x.index + 1}</strong><span class="muted small">${x.status === 'paid' ? '' : 'fällig ab ' + esc(date(x.dueAt))}</span></div>
+      <div class="plan-right"><span>${fmt(x.amount)} ${esc(r.symbol)}</span>${STATUS[x.status](x)}${clickable ? '<span class="chev" aria-hidden="true">›</span>' : ''}</div>
+    </div>`
+  }).join('')
+
+  const title = organizer ? 'Rechnungen' : mine ? 'Deine Raten' : 'Raten'
+  const sub = r.phase === 'bidding'
+    ? 'Vorschau. Die Rechnungen beginnen mit dem Ende der Bietphase.'
+    : organizer ? 'Tippe auf eine bezahlte Rechnung für Details.' : mine ? 'Tippe auf eine bezahlte Rate, um den Beleg zu sehen.' : ''
+  return `<div class="card">
+    <div class="row"><h2 style="margin:0">${title}</h2><span class="small muted">${p.adj}</span></div>
+    ${sub ? `<p class="small muted" style="margin:6px 0 14px">${sub}</p>` : ''}
+    ${rows}
   </div>`
 }
 
-function receiptsCard (ui, r, p) {
-  if (!r.receipts.length) return ''
-  const rows = r.receipts.map((x) => `<div class="list-row">
-      <div><strong>Rate ${x.index + 1}</strong><span class="muted small"> · ${esc(shortDate(x.paidAt))}</span></div>
-      <div class="row" style="gap:16px"><span>${fmt(x.amount)} ${esc(r.symbol)}</span>${link(ui, 'show-receipt', 'Beleg', '', { index: String(x.index) })}</div>
-    </div>`).join('')
-  return `<div class="card"><h2>Deine Belege</h2>${rows}</div>`
+/** Shows everything for up to 14 rows; otherwise paid tail + current + a few upcoming. */
+function fold (invoices, paid, all) {
+  if (all || invoices.length <= 14) return invoices
+  const from = Math.max(0, paid - 3)
+  const to = Math.min(invoices.length, paid + 4)
+  const out = []
+  if (from > 0) out.push({ more: from })
+  out.push(...invoices.slice(from, to))
+  if (to < invoices.length) out.push({ more: invoices.length - to })
+  return out
 }
+
+// ------------------------------------------------------------------- refund
 
 function refundCard (ui, r) {
   if (num(r.refundable) <= 0) return ''
@@ -123,7 +219,9 @@ function refundCard (ui, r) {
   </div>`
 }
 
-function organizerCard (ui, r, p) {
+// ---------------------------------------------------------------- organizer
+
+function organizerCard (ui, r) {
   if (r.role !== 'organizer') return ''
   const parts = []
 
@@ -140,11 +238,15 @@ function organizerCard (ui, r, p) {
   }
 
   if (r.phase === 'running') {
-    const label = `Rate ${r.invoiceCount + 1} abrechnen · ${fmt(r.total)} ${r.symbol}`
+    const next = r.invoiceCount + 1
     parts.push(`<div class="stack">
-      ${btn(ui, 'invoice', label, 'accent block', { disabled: !r.canInvoice, busy: 'Wird abgerechnet…' })}
-      ${r.canInvoice ? '' : `<p class="small muted">Nächste Rechnung ab ${esc(date(r.nextInvoiceAt))}.</p>`}
+      ${btn(ui, 'invoice', `Rechnung ${next} stellen · ${fmt(r.total)} ${r.symbol}`, 'accent block', { disabled: !r.canInvoice, busy: 'Wird abgerechnet…' })}
+      ${r.canInvoice ? '' : `<p class="small muted">Rechnung ${next} ist ab ${esc(dayTime(r.nextInvoiceAt))} möglich.</p>`}
     </div>`)
+  }
+
+  if (r.phase !== 'bidding' && r.invoiceCount > 0) {
+    parts.push('<div class="row" style="margin-top:16px"><p class="small muted">Bietende zeigen ihren Beleg als QR-Code.</p><button class="btn ghost small" data-action="open-scan">Beleg prüfen</button></div>')
   }
 
   parts.push(`<div class="amount" style="margin-top:16px">
@@ -152,14 +254,9 @@ function organizerCard (ui, r, p) {
       ${btn(ui, 'post-news', 'Senden', 'ghost small')}
     </div>`)
 
-  parts.push(`<div class="stack" style="margin-top:16px">
-      ${field(ui, 'verify', 'Beleg prüfen', { mono: true, placeholder: 'pomona-beleg://…' })}
-      ${btn(ui, 'verify-receipt', 'Prüfen', 'ghost small', { busy: 'Wird geprüft…' })}
-    </div>`)
-
   const danger = r.phase === 'bidding'
     ? link(ui, 'cancel', 'Runde abbrechen', 'danger')
-    : r.phase === 'running' ? link(ui, 'terminate', 'Runde vorzeitig beenden', 'danger') : ''
+    : r.phase === 'running' ? link(ui, 'terminate', 'Ratenzahlung vorzeitig beenden', 'danger') : ''
   if (danger) parts.push(`<div class="row small" style="margin-top:12px"><span></span>${danger}</div>`)
 
   return `<div class="card"><h2>Organisation</h2>${parts.join('')}</div>`

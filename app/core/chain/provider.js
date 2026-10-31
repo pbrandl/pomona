@@ -15,6 +15,10 @@ export function providerFor (net) {
     // Never answer from cache: nonces, allowances and balances must be fresh
     // between two transactions.
     cacheTimeout: -1,
-    pollingInterval: net.dev ? 50 : 2000
+    // Live updates poll eth_getLogs per new block instead of server-side
+    // filters, which load-balanced public RPC endpoints often drop.
+    polling: true,
+    // Drives how quickly contract events (new bids, invoices) are noticed.
+    pollingInterval: net.pollMs ?? 2000
   })
 }

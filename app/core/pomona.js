@@ -15,7 +15,7 @@ import WDK from '@tetherto/wdk'
 import { Wallet as KeyWallet, getBytes, isAddress, getAddress } from 'ethers'
 import qrcode from 'qrcode-generator'
 
-import { getNetwork, networkIds, isReady } from './config/networks.js'
+import { getNetwork, networkIds, isReady, DEFAULT_NETWORK } from './config/networks.js'
 import { LIMITS } from './config/limits.js'
 import { providerFor } from './chain/provider.js'
 import { RoundContract, FactoryContract, TokenContract } from './chain/contracts.js'
@@ -24,7 +24,7 @@ import { openAccount, seal, open, checkPassword } from './wallet/index.js'
 import { P2PNode } from './p2p/node.js'
 import { encodeInvite, decodeInvite, encodeReceipt, decodeReceipt } from './links.js'
 import { parseAmount, formatAmount } from './units.js'
-import { INTERVALS, intervalName, canInvoice, DAY } from './schedule.js'
+import { INTERVALS, intervalName, canInvoice, dueAt, DAY } from './schedule.js'
 import { PomonaError, fail } from './errors.js'
 
 const same = (a, b) => !!a && !!b && a.toLowerCase() === b.toLowerCase()
@@ -72,6 +72,7 @@ export class Pomona extends EventEmitter {
     this._busy = null
     this._timer = null
     this._unwatch = null
+    this._unwatchChain = null
   }
 
   // ---------------------------------------------------------------- lifecycle
@@ -89,6 +90,7 @@ export class Pomona extends EventEmitter {
   async close () {
     clearInterval(this._timer)
     this._unwatch?.()
+    this._unwatchChain?.()
     this.account?.dispose()
     this.provider?.destroy()
     await this.p2p.close()
@@ -192,7 +194,8 @@ export class Pomona extends EventEmitter {
    * @param {string} [p.minBid]      - per installment
    * @param {'week'|'month'} p.interval
    * @param {number|string} p.installments - how often the organizer may invoice
-   * @param {number|string} p.biddingDays
+   * @param {number} [p.biddingEnd]          - end of bidding, unix seconds (preferred)
+   * @param {number|string} [p.biddingDays] - alternatively: days from now
    * @param {boolean} [p.inviteOnly]
    * @returns {Promise<{ link: string }>}
    */
@@ -207,8 +210,6 @@ export class Pomona extends EventEmitter {
     if (!Number.isInteger(installments) || installments < 1 || installments > LIMITS.maxInstallments) {
       fail('BAD_INPUT', `Anzahl der Rechnungen: 1 bis ${LIMITS.maxInstallments}.`)
     }
-    const days = Number(p.biddingDays)
-    if (!(days > 0) || days > LIMITS.maxBiddingDays) fail('BAD_INPUT', `Bietphase: 1 bis ${LIMITS.maxBiddingDays} Tage.`)
 
     if (p.network && p.network !== this.net.id) this._useNetwork(p.network, { reopen: true })
     if (!isReady(this.net)) fail('NOT_READY', 'Dieses Netzwerk ist noch nicht eingerichtet.')
@@ -218,6 +219,9 @@ export class Pomona extends EventEmitter {
     if (target === 0n) fail('BAD_INPUT', 'Der Zielbetrag muss größer als 0 sein.')
     const minBid = p.minBid ? parseAmount(p.minBid, meta.decimals, 'Mindestgebot') : 0n
     const now = (await this.provider.getBlock('latest')).timestamp
+    const biddingEnd = p.biddingEnd != null ? Math.floor(Number(p.biddingEnd)) : now + Math.round(Number(p.biddingDays) * DAY)
+    if (!(biddingEnd >= now + 3600)) fail('BAD_INPUT', 'Die Bietphase muss mindestens eine Stunde dauern.')
+    if (biddingEnd > now + LIMITS.maxBiddingDays * DAY) fail('BAD_INPUT', `Die Bietphase darf höchstens ${LIMITS.maxBiddingDays} Tage dauern.`)
     const invite = p.inviteOnly !== false ? KeyWallet.createRandom() : null
     const factory = new FactoryContract(this.net.factory, this.provider)
     const me = await this.account.address()
@@ -227,7 +231,7 @@ export class Pomona extends EventEmitter {
       await this.account.execute([factory.createRound({
         target,
         minBid,
-        biddingEnd: now + Math.round(days * DAY),
+        biddingEnd,
         interval: INTERVALS[p.interval],
         installments,
         inviteSigner: invite?.address ?? null
@@ -441,11 +445,7 @@ export class Pomona extends EventEmitter {
       me ? this.round.refundable(me) : 0n,
       this.p2p.news()
     ])
-    const receipts = []
-    if (me && pledge > 0n) {
-      const list = await Promise.all(Array.from({ length: info.invoiceCount }, (_, i) => this.round.receipt(me, i)))
-      list.forEach((r, i) => receipts.push({ index: i, amount: fmt(r.amount), paidAt: r.paidAt }))
-    }
+    const invoices = await this._invoices(info, now, pledge, fmt)
     s.round = {
       role: this.saved.role,
       title: this.manifest?.title ?? '',
@@ -462,6 +462,8 @@ export class Pomona extends EventEmitter {
       intervalName: intervalName(info.interval),
       installments: info.installments,
       invoiceCount: info.invoiceCount,
+      // Start of bidding comes from the manifest (display only); the end from the contract.
+      biddingStart: this.manifest?.createdAt ? Math.floor(this.manifest.createdAt / 1000) : null,
       biddingEnd: info.biddingEnd,
       nextInvoiceAt: info.nextInvoiceAt,
       expiresAt: info.expiresAt,
@@ -473,13 +475,36 @@ export class Pomona extends EventEmitter {
       myPledge: fmt(pledge),
       myDeposit: fmt(pledge * BigInt(info.installments)),
       refundable: fmt(refundable),
-      receipts,
+      invoices,
       news
     }
     return s
   }
 
   // ------------------------------------------------------------------ helpers
+
+  /**
+   * The installment plan as the UI shows it: one entry per invoice the
+   * organizer may issue.
+   *  - status 'paid'      invoiced; `paidAt` set; bidders have a receipt
+   *  - status 'due'       the organizer can invoice it now
+   *  - status 'scheduled' planned for `dueAt`
+   *  - status 'void'      will never be invoiced (round failed, ended or expired)
+   * `amount` is the caller's share if they bid, otherwise the round total per installment.
+   * @private
+   */
+  async _invoices (info, now, pledge, fmt) {
+    const paidAt = await Promise.all(Array.from({ length: info.invoiceCount }, (_, i) => this.round.invoicedAt(i)))
+    const amount = fmt(pledge > 0n ? pledge : info.total)
+    const open = info.phase === 'bidding' || info.phase === 'running'
+    return Array.from({ length: info.installments }, (_, i) => {
+      let status = 'void'
+      if (i < info.invoiceCount) status = 'paid'
+      else if (info.phase === 'running' && i === info.invoiceCount && canInvoice(info, now)) status = 'due'
+      else if (open) status = 'scheduled'
+      return { index: i, dueAt: dueAt(info, i), paidAt: paidAt[i] ?? null, amount, status, mine: pledge > 0n }
+    })
+  }
 
   /** @private */
   _network (id) {
@@ -495,8 +520,8 @@ export class Pomona extends EventEmitter {
     try {
       net = this._network(id)
     } catch (e) {
-      if (this.net || id === 'sepolia') throw e
-      net = this._network('sepolia') // e.g. 'local' saved, but app started without --dev
+      if (this.net || id === DEFAULT_NETWORK) throw e
+      net = this._network(DEFAULT_NETWORK) // e.g. 'local' saved, but app started without --dev
     }
     this.net = net
     this.tokenMeta = null
@@ -551,6 +576,9 @@ export class Pomona extends EventEmitter {
     await this._refreshManifest()
     this._unwatch?.()
     if (this.p2p.manifest) this._unwatch = this.p2p.onChange(() => this._refreshManifest())
+    // Live updates: every contract event (new bid, invoice, …) triggers a refresh.
+    this._unwatchChain?.()
+    this._unwatchChain = this.round.watch(() => this._changed())
     this._poll()
     this._changed()
   }
@@ -640,7 +668,9 @@ export class Pomona extends EventEmitter {
   /** @private */
   _poll () {
     clearInterval(this._timer)
-    this._timer = setInterval(() => this._changed(), this.pollMs ?? (this.net.dev ? 1500 : 8000))
+    // Fallback only: events arrive through watch(). This keeps countdowns and
+    // due dates fresh even when nothing happens on-chain.
+    this._timer = setInterval(() => this._changed(), this.pollMs ?? 15000)
   }
 }
 
