@@ -1,16 +1,20 @@
-// Background worker (Bare). Owns the seed, the Hyperswarm and the chain
-// connection. The UI reaches it only through the explicit RPC methods.
+/**
+ * Background worker (Bare). Owns the encrypted seed, the Hyperswarm and the
+ * chain connection. The UI reaches it only through the whitelisted RPC methods
+ * in core/rpc/methods.js.
+ */
 import pearPipe from 'pear-pipe'
 import { Pomona, serve, METHODS } from '../core/bare.js'
 
 const pipe = pearPipe()
 const app = Pear.app ?? Pear.config
-const args = app.args || []
-const flag = args.indexOf('--network')
+const dev = !!app.dev
 
 const pomona = new Pomona({
   storage: app.storage,
-  defaultNetwork: flag !== -1 ? args[flag + 1] : 'local'
+  // The local Hardhat chain (with its public dev key) exists only in `pear run --dev`.
+  allowDev: dev,
+  defaultNetwork: dev ? 'local' : 'sepolia'
 })
 
 await pomona.ready()

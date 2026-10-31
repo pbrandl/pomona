@@ -1,20 +1,27 @@
-// Inside Pear: start the Bare worker and talk to it over its pipe.
+/**
+ * Backend bridge inside Pear: starts the Bare worker with pear-run and speaks
+ * newline-delimited JSON-RPC over its pipe (see core/rpc/server.js).
+ * Exposes `window.pomona = { call, on, copy }`.
+ * @module ui/pear
+ */
 import run from 'pear-run'
 
 const pipe = run(Pear.config.applink + '/worker/index.js')
 const pending = new Map()
 const listeners = new Map()
+const decoder = new TextDecoder()
 let nextId = 1
 let buf = ''
 
 pipe.on('data', (chunk) => {
-  buf += typeof chunk === 'string' ? chunk : new TextDecoder().decode(chunk)
+  buf += typeof chunk === 'string' ? chunk : decoder.decode(chunk, { stream: true })
   let i
   while ((i = buf.indexOf('\n')) !== -1) {
     const line = buf.slice(0, i)
     buf = buf.slice(i + 1)
     if (!line.trim()) continue
-    const msg = JSON.parse(line)
+    let msg
+    try { msg = JSON.parse(line) } catch { continue }
     if (msg.event) {
       for (const fn of listeners.get(msg.event) || []) fn(msg.data)
       continue
@@ -22,7 +29,7 @@ pipe.on('data', (chunk) => {
     const p = pending.get(msg.id)
     if (!p) continue
     pending.delete(msg.id)
-    if (msg.error) p.reject(new Error(msg.error))
+    if (msg.error) p.reject(Object.assign(new Error(msg.error.message), { code: msg.error.code }))
     else p.resolve(msg.result)
   }
 })

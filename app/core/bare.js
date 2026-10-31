@@ -1,6 +1,8 @@
-// Bare entry point (used by the Pear worker). Same code as Node, with Node
-// builtins mapped to their bare-* equivalents, the way WDK's own modules do it.
+/**
+ * Bare entry of the Pomona core (used by the Pear worker). Same code as Node,
+ * with Node builtins mapped to their bare-* modules, as WDK's own packages do.
+ * @module core/bare
+ */
 import 'bare-node-runtime/global'
 
-export * from './pomona.js' with { imports: 'bare-node-runtime/imports' }
-export * from './rpc.js' with { imports: 'bare-node-runtime/imports' }
+export * from './index.js' with { imports: 'bare-node-runtime/imports' }

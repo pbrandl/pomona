@@ -9,7 +9,9 @@
   "scripts": {
     "dev": "pear run --dev .",
     "test": "node --test test/*.test.js",
-    "preview": "node scripts/preview.js"
+    "preview": "node scripts/preview.js",
+    "lint": "standard",
+    "lint:fix": "standard --fix"
   },
   "pear": {
     "name": "pomona",
@@ -38,6 +40,7 @@
   "dependencies": {
     "@tetherto/wdk": "^1.0.0-beta.22",
     "@tetherto/wdk-wallet-evm": "^1.0.0-beta.24",
+    "@tetherto/wdk-wallet-evm-erc-4337": "^1.0.0-beta.23",
     "b4a": "^1.9.0",
     "bare-node-runtime": "^1.5.3",
     "corestore": "^7.16.1",
@@ -48,10 +51,24 @@
     "pear-electron": "^1.7.28",
     "pear-pipe": "^1.0.6",
     "pear-run": "^2.0.0",
-    "qrcode-generator": "^2.0.4"
+    "qrcode-generator": "^2.0.4",
+    "sodium-universal": "^5.0.1"
   },
   "devDependencies": {
     "bare-runtime": "^1.36.0",
-    "hyperdht": "^6.35.0"
+    "hyperdht": "^6.35.0",
+    "standard": "^17.1.2"
+  },
+  "standard": {
+    "globals": [
+      "Pear",
+      "Bare"
+    ],
+    "ignore": [
+      "core/chain/abi.js",
+      "core/config/deployments.js",
+      "core/bare.js",
+      "test/bare-smoke.js"
+    ]
   }
 }
