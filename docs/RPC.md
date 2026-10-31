@@ -23,8 +23,9 @@ Events: `ready`, `change` (der Status kann sich geändert haben) und `error` (Fe
 | `revealSeed` | `password` | Seed als String |
 | `sendUsdt` | `to`, `amount`, `password` | `{ hash }` |
 | `faucet` | – | Nur auf der lokalen Chain: 5.000 Test-USDT |
-| `createRound` | `title`, `description?`, `network?`, `target`, `minBid?`, `interval` (`week`/`month`), `installments`, `biddingEnd` (Unix-Sekunden) oder `biddingDays`, `inviteOnly?` | `{ link }` |
+| `createRound` | `title`, `description?`, `network?`, `target`, `minBid?`, `interval` (`week`/`month`), `installments`, `biddingEnd` (Unix-Sekunden) oder `biddingDays`, `guide?` (Richtwert pro Rate), `inviteOnly?` | `{ link }` |
 | `join` | `link` | Status |
+| `quoteBid` | `amount` (pro Rate) | `{ amount, pledgeAfter, installments, deposit, fee, balance, enough, missing, symbol }`. Rechnet nur, sendet nichts. `fee` ist die Netzwerkgebühr in USDT (`null` auf der lokalen Chain). |
 | `bid` | `amount` (pro Rate) | – |
 | `withdraw` | `amount` oder `"all"` | – |
 | `invoice` | – | – (Organisator) |
@@ -54,9 +55,11 @@ Beträge sind Strings in deutscher oder englischer Schreibweise, also `"1.234,56
   networks: [{ id, name, ready }],        // ready = Factory + Token (+ Bundler/Paymaster) konfiguriert
   peers: 6,                               // Hyperswarm-Verbindungen
   busy: null | 'bid' | 'invoice' | …,     // laufende Transaktion
+  busyStep: null | 'prepare' | 'sign' | 'confirm', // Fortschritt der laufenden Transaktion
   round: null | {
     role: 'organizer' | 'bidder',
     title, description,
+    guide: '100' | null,                  // Richtwert pro Rate (aus dem Manifest, nur Anzeige)
     verified: true,                       // Manifest-Organisator == Contract-Organisator
     address, organizer, symbol,
     target, total, minBid,                // pro Rate, als Strings

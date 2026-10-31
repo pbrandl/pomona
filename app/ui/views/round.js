@@ -11,11 +11,13 @@
  */
 import { esc, fmt, num, per, date, dateTime, short, left, dayTime } from '../format.js'
 import { btn, link } from './parts.js'
+import { statusLine } from './status.js'
 
 export function round (ui) {
   const r = ui.status.round
   const p = per(r.intervalName)
   return `<div class="stack-lg">
+    ${statusLine(ui)}
     ${hero(r, p)}
     ${timeline(r, p)}
     ${bidCard(ui, r, p)}
@@ -136,22 +138,45 @@ function bidCard (ui, r, p) {
   if (r.phase !== 'bidding') return ''
   const has = num(r.myPledge) > 0
   const amount = num(ui.draft.amount)
-  const hint = amount > 0
-    ? `${has ? 'Zusätzlich hinterlegst du' : 'Du hinterlegst'} ${r.installments} × ${fmt(amount)} = ${fmt(amount * r.installments)} ${esc(r.symbol)}.`
-    : num(r.minBid) > 0 ? `Mindestgebot ${fmt(r.minBid)} ${esc(r.symbol)} ${p.per}.` : `Dein Betrag ${p.per}.`
-  return `<div class="card stack">
-    <div class="row"><h2 style="margin:0">Dein Gebot</h2><span class="small muted">möglich bis ${esc(dayTime(r.biddingEnd))}</span></div>
+  const cost = amount * r.installments
+  const balance = num(ui.status.wallet.usdt)
+  let hint
+  if (amount > 0 && cost > balance) {
+    hint = `<span class="warn-text">Dafür brauchst du ${fmt(cost)} ${esc(r.symbol)}, dir fehlen ${fmt(cost - balance)}.</span> <button class="link" data-action="open-fund">Aufladen</button>`
+  } else if (amount > 0) {
+    hint = `${has ? 'Zusätzlich hinterlegst du' : 'Du hinterlegst'} ${r.installments} × ${fmt(amount)} = ${fmt(cost)} ${esc(r.symbol)}.`
+  } else {
+    hint = num(r.minBid) > 0 ? `Mindestgebot ${fmt(r.minBid)} ${esc(r.symbol)} ${p.per}.` : `Dein Betrag ${p.per}.`
+  }
+  return `<div class="card stack" id="bid-card">
+    <div class="row"><h2 style="margin:0">${has ? 'Dein Gebot' : 'Mitbieten'}</h2><span class="small muted">möglich bis ${esc(dayTime(r.biddingEnd))}</span></div>
     ${has ? `<div class="mine"><span class="muted">${fmt(r.myDeposit)} ${esc(r.symbol)} hinterlegt</span><strong>${fmt(r.myPledge)} ${esc(r.symbol)} <span class="muted small">${p.per}</span></strong></div>` : ''}
+    ${!has && r.guide ? guideChips(ui, r, p) : ''}
     <div class="amount">
       <input id="amount" data-draft="amount" inputmode="decimal" placeholder="${has ? 'Erhöhen um' : `Betrag ${p.per}`}" value="${esc(ui.draft.amount)}" autocomplete="off">
       <span class="unit">${esc(r.symbol)}</span>
-      ${btn(ui, 'bid', has ? 'Erhöhen' : 'Bieten', 'accent', { busy: 'Wird bestätigt…' })}
+      ${btn(ui, 'review-bid', has ? 'Erhöhen' : 'Weiter', 'accent', { disabled: !(amount > 0) })}
     </div>
     <div class="row small">
       <span class="muted">${hint}</span>
       ${has ? link(ui, 'withdraw', ui.pending === 'withdraw' ? 'Wird zurückgezogen…' : 'Zurückziehen') : ''}
     </div>
   </div>`
+}
+
+/**
+ * Solawi-style quick picks around the organizer's guide value ("Richtwert"):
+ * a little less, the guide, a little more. Rounded to whole amounts.
+ */
+function guideChips (ui, r, p) {
+  const g = num(r.guide)
+  const min = num(r.minBid)
+  const values = [...new Set([Math.round(g * 0.8), g, Math.round(g * 1.2)])].filter((v) => v > 0 && v >= min)
+  const chips = values.map((v) => {
+    const on = num(ui.draft.amount) === v
+    return `<button class="chip ${on ? 'on' : ''} ${v === g ? 'guide' : ''}" data-action="pick-amount" data-amount="${v}">${fmt(v)}${v === g ? ' <span>Richtwert</span>' : ''}</button>`
+  }).join('')
+  return `<div><p class="small muted" style="margin-bottom:8px">Richtwert des Hofs: ${fmt(g)} ${esc(r.symbol)} ${p.per}. Gib, was du kannst.</p><div class="chips">${chips}</div></div>`
 }
 
 // --------------------------------------------------------------------- plan

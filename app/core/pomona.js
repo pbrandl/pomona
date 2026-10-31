@@ -12,7 +12,7 @@
  */
 import { EventEmitter } from 'events'
 import WDK from '@tetherto/wdk'
-import { Wallet as KeyWallet, getBytes, isAddress, getAddress } from 'ethers'
+import { Wallet as KeyWallet, getBytes, isAddress, getAddress, id as topicOf, zeroPadValue } from 'ethers'
 import qrcode from 'qrcode-generator'
 
 import { getNetwork, networkIds, isReady, DEFAULT_NETWORK } from './config/networks.js'
@@ -28,6 +28,7 @@ import { INTERVALS, intervalName, canInvoice, dueAt, DAY } from './schedule.js'
 import { PomonaError, fail } from './errors.js'
 
 const same = (a, b) => !!a && !!b && a.toLowerCase() === b.toLowerCase()
+const TRANSFER = topicOf('Transfer(address,address,uint256)')
 
 /**
  * @typedef {Object} PomonaOptions
@@ -70,6 +71,8 @@ export class Pomona extends EventEmitter {
     this._sealed = null
     this._seedForReopen = null
     this._busy = null
+    this._busyStep = null
+    this._unwatchFunds = null
     this._timer = null
     this._unwatch = null
     this._unwatchChain = null
@@ -91,6 +94,7 @@ export class Pomona extends EventEmitter {
     clearInterval(this._timer)
     this._unwatch?.()
     this._unwatchChain?.()
+    this._unwatchFunds?.()
     this.account?.dispose()
     this.provider?.destroy()
     await this.p2p.close()
@@ -142,6 +146,8 @@ export class Pomona extends EventEmitter {
   }
 
   lock () {
+    this._unwatchFunds?.()
+    this._unwatchFunds = null
     this.account?.dispose()
     this.account = null
     this._seedForReopen = null
@@ -180,7 +186,7 @@ export class Pomona extends EventEmitter {
     const units = parseAmount(amount, meta.decimals)
     if (units === 0n) fail('BAD_AMOUNT', 'Bitte einen Betrag eingeben.')
     if (await this.account.usdtBalance() < units) fail('NO_FUNDS', 'Nicht genug USDT.')
-    return this._exclusive('send', () => this.account.sendUsdt(getAddress(to), units))
+    return this._exclusive('send', (onStep) => this.account.sendUsdt(getAddress(to), units, { onStep }))
   }
 
   // -------------------------------------------------------------------- round
@@ -192,6 +198,7 @@ export class Pomona extends EventEmitter {
    * @param {string} [p.network]
    * @param {string} p.target        - per installment, e.g. "4.000"
    * @param {string} [p.minBid]      - per installment
+   * @param {string} [p.guide]       - suggested bid per installment ("Richtwert"), shown to bidders
    * @param {'week'|'month'} p.interval
    * @param {number|string} p.installments - how often the organizer may invoice
    * @param {number} [p.biddingEnd]          - end of bidding, unix seconds (preferred)
@@ -218,6 +225,8 @@ export class Pomona extends EventEmitter {
     const target = parseAmount(p.target, meta.decimals, 'Zielbetrag')
     if (target === 0n) fail('BAD_INPUT', 'Der Zielbetrag muss größer als 0 sein.')
     const minBid = p.minBid ? parseAmount(p.minBid, meta.decimals, 'Mindestgebot') : 0n
+    const guide = p.guide ? parseAmount(p.guide, meta.decimals, 'Richtwert') : 0n
+    if (guide > 0n && guide < minBid) fail('BAD_INPUT', 'Der Richtwert darf nicht unter dem Mindestgebot liegen.')
     const now = (await this.provider.getBlock('latest')).timestamp
     const biddingEnd = p.biddingEnd != null ? Math.floor(Number(p.biddingEnd)) : now + Math.round(Number(p.biddingDays) * DAY)
     if (!(biddingEnd >= now + 3600)) fail('BAD_INPUT', 'Die Bietphase muss mindestens eine Stunde dauern.')
@@ -226,7 +235,7 @@ export class Pomona extends EventEmitter {
     const factory = new FactoryContract(this.net.factory, this.provider)
     const me = await this.account.address()
 
-    const address = await this._exclusive('create', async () => {
+    const address = await this._exclusive('create', async (onStep) => {
       const before = await factory.roundsOf(me)
       await this.account.execute([factory.createRound({
         target,
@@ -235,7 +244,7 @@ export class Pomona extends EventEmitter {
         interval: INTERVALS[p.interval],
         installments,
         inviteSigner: invite?.address ?? null
-      })])
+      })], { onStep })
       const after = await factory.roundsOf(me)
       if (after.length !== before.length + 1) fail('TX_FAILED', 'Runde wurde nicht erstellt.')
       return after.at(-1)
@@ -243,7 +252,15 @@ export class Pomona extends EventEmitter {
 
     const manifest = await this.p2p.openOwnManifest()
     await this.p2p.putRound({
-      v: 1, title, description, network: this.net.id, chainId: this.net.chainId, round: address, organizer: me, createdAt: Date.now()
+      v: 1,
+      title,
+      description,
+      network: this.net.id,
+      chainId: this.net.chainId,
+      round: address,
+      organizer: me,
+      guide: guide > 0n ? formatAmount(guide, meta.decimals) : null,
+      createdAt: Date.now()
     })
     const saved = { role: 'organizer', network: this.net.id, manifest, round: address, inviteKey: invite?.privateKey ?? null }
     await this.p2p.setSetting('round', saved)
@@ -278,10 +295,48 @@ export class Pomona extends EventEmitter {
   }
 
   /**
+   * What a bid would mean, before the user commits: deposit, fee in USDT,
+   * whether the balance suffices. Used by the confirmation step in the UI.
+   * @param {{ amount: string }} p
+   * @returns {Promise<{ amount: string, pledgeAfter: string, installments: number, deposit: string,
+   *   fee: string|null, balance: string, enough: boolean, missing: string, symbol: string }>}
+   */
+  async quoteBid ({ amount }) {
+    const b = await this._prepareBid(amount)
+    const fee = b.enough ? await this.account.quoteFee(b.calls).catch(() => null) : null
+    const fmt = (v) => formatAmount(v, b.meta.decimals)
+    return {
+      amount: fmt(b.units),
+      pledgeAfter: fmt(b.previous + b.units),
+      installments: b.info.installments,
+      deposit: fmt(b.cost),
+      fee: fee === null ? null : fmt(fee),
+      balance: fmt(b.balance),
+      enough: b.enough,
+      missing: fmt(b.enough ? 0n : b.cost - b.balance),
+      symbol: b.meta.symbol
+    }
+  }
+
+  /**
    * Bid (or raise) `amount` per installment. Deposits amount × installments.
+   * Approve and bid go out as one user operation on smart accounts.
    * @param {{ amount: string }} p
    */
   async bid ({ amount }) {
+    const b = await this._prepareBid(amount)
+    if (!b.enough) {
+      fail('NO_FUNDS', `Dafür brauchst du ${formatAmount(b.cost, b.meta.decimals)} ${b.meta.symbol}. Dir fehlen ${formatAmount(b.cost - b.balance, b.meta.decimals)} ${b.meta.symbol}.`)
+    }
+    await this._exclusive('bid', (onStep) => this.account.execute(b.calls, { onStep }))
+  }
+
+  /**
+   * Validates a bid and builds its calls (approve + bid). Throws for rule
+   * violations; reports a missing balance via `enough` instead.
+   * @private
+   */
+  async _prepareBid (amount) {
     const { info, me } = await this._roundContext('bidding')
     const meta = await this._token()
     const units = parseAmount(amount, meta.decimals)
@@ -289,9 +344,7 @@ export class Pomona extends EventEmitter {
     const previous = await this.round.pledgeOf(me)
     if (previous + units < info.minBid) fail('BELOW_MIN', `Das Mindestgebot ist ${formatAmount(info.minBid, meta.decimals)} ${meta.symbol} pro Rate.`)
     const cost = units * BigInt(info.installments)
-    if (await this.account.usdtBalance() < cost) {
-      fail('NO_FUNDS', `Dafür brauchst du ${formatAmount(cost, meta.decimals)} ${meta.symbol} in deiner Wallet.`)
-    }
+    const balance = await this.account.usdtBalance()
 
     let invite = '0x'
     if (previous === 0n && info.inviteSigner) {
@@ -310,7 +363,7 @@ export class Pomona extends EventEmitter {
       calls.push(token.approve(this.round.address, cost))
     }
     calls.push(this.round.bid(units, invite))
-    await this._exclusive('bid', () => this.account.execute(calls))
+    return { info, meta, units, previous, cost, balance, enough: balance >= cost, calls }
   }
 
   /**
@@ -426,6 +479,7 @@ export class Pomona extends EventEmitter {
         .map((id) => { const n = this._network(id); return { id, name: n.name, ready: isReady(n) } }),
       peers: this.p2p.peers,
       busy: this._busy,
+      busyStep: this._busyStep, // 'prepare' | 'sign' | 'confirm' while a transaction runs
       round: null
     }
     const meta = this.tokenMeta ?? (this.net.token ? await this._token().catch(() => null) : null)
@@ -450,6 +504,7 @@ export class Pomona extends EventEmitter {
       role: this.saved.role,
       title: this.manifest?.title ?? '',
       description: this.manifest?.description ?? '',
+      guide: this.manifest?.guide ?? null,
       verified: !!this.manifest && same(this.manifest.organizer, info.organizer),
       address: info.address,
       organizer: info.organizer,
@@ -551,6 +606,27 @@ export class Pomona extends EventEmitter {
         round: () => this.round?.address ?? null
       }
     })
+    this._watchFunds()
+  }
+
+  /**
+   * Live detection of incoming USDT: watches Transfer events to our address,
+   * so "Guthaben aufladen" can confirm a deposit within seconds.
+   * @private
+   */
+  _watchFunds () {
+    this._unwatchFunds?.()
+    this._unwatchFunds = null
+    const account = this.account
+    const provider = this.provider
+    if (!account || !this.net.token) return
+    account.address().then((me) => {
+      if (this.account !== account) return // locked or replaced meanwhile
+      const filter = { address: this.net.token, topics: [TRANSFER, null, zeroPadValue(me, 32)] }
+      const fn = () => { this.emit('funds'); this._changed() }
+      provider.on(filter, fn)
+      this._unwatchFunds = () => { provider.off(filter, fn).catch?.(() => {}) }
+    }, () => {})
   }
 
   /** @private */
@@ -642,20 +718,29 @@ export class Pomona extends EventEmitter {
     } catch (e) {
       throw explain(e)
     }
-    await this._exclusive(what, () => this.account.execute([call]))
+    await this._exclusive(what, (onStep) => this.account.execute([call], { onStep }))
   }
 
-  /** One transaction at a time; the UI shows `busy`. @private */
+  /**
+   * One transaction at a time. The UI shows `busy` and the progress
+   * `busyStep`: 'prepare' → 'sign' → 'confirm'.
+   * @private
+   * @param {string} what
+   * @param {(onStep: (step: string) => void) => Promise<any>} fn
+   */
   async _exclusive (what, fn) {
     if (this._busy) fail('BUSY', 'Bitte warten, eine Transaktion läuft noch.')
     this._busy = what
+    this._busyStep = 'prepare'
     this._changed()
+    const onStep = (step) => { this._busyStep = step; this._changed() }
     try {
-      return await fn()
+      return await fn(onStep)
     } catch (e) {
       throw e instanceof PomonaError ? e : explain(e)
     } finally {
       this._busy = null
+      this._busyStep = null
       this._changed()
     }
   }

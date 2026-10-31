@@ -21,6 +21,7 @@ import { LIMITS } from '../config/limits.js'
  * @property {number} chainId
  * @property {string} round     - contract address
  * @property {string} organizer - must equal the contract's organizer
+ * @property {string|null} guide - suggested bid per installment ("Richtwert"), display only
  * @property {number} createdAt - ms
  */
 
@@ -42,6 +43,7 @@ export function sanitizeManifest (m) {
     chainId: m.chainId,
     round: m.round,
     organizer: m.organizer,
+    guide: typeof m.guide === 'string' && /^\d{1,15}(\.\d{1,6})?$/.test(m.guide) ? m.guide : null,
     createdAt: Number.isFinite(m.createdAt) ? m.createdAt : 0
   }
 }

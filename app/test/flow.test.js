@@ -215,3 +215,38 @@ test('live: other participants learn about a new bid from the contract event', a
   assert.ok(at, 'Alice did not see the bid within 5 s')
   assert.ok(at - sent < 5000)
 })
+
+test('bidding UX: guide, quote before committing, progress steps, deposit detection', async () => {
+  const farm = await env.funded()
+  const dana = await env.funded()
+  const { link } = await farm.createRound({ title: 'UX', target: '400', guide: '100', minBid: '50', interval: 'month', installments: 12, biddingDays: 5, inviteOnly: true })
+  await dana.join({ link })
+  assert.equal((await dana.status()).round.guide, '100')
+
+  // Quote: shows what will happen, without sending anything.
+  const q = await dana.quoteBid({ amount: '100' })
+  assert.equal(q.deposit, '1200')
+  assert.equal(q.enough, true)
+  assert.equal(q.fee, null) // dev chain: fees are invisible
+  const tooMuch = await dana.quoteBid({ amount: '1000' })
+  assert.equal(tooMuch.enough, false)
+  assert.equal(tooMuch.missing, '7000') // 12,000 needed, 5,000 available
+  await assert.rejects(dana.quoteBid({ amount: '10' }), /Mindestgebot/)
+  assert.equal((await dana.status()).wallet.usdt, '5000') // nothing moved
+
+  // Progress: prepare → sign → confirm while the bid runs.
+  const steps = []
+  const track = () => { if (dana._busyStep && steps.at(-1) !== dana._busyStep) steps.push(dana._busyStep) }
+  dana.on('change', track)
+  await dana.bid({ amount: '100' })
+  dana.off('change', track)
+  assert.deepEqual(steps.slice(0, 3), ['prepare', 'sign', 'confirm'])
+  assert.equal((await dana.status()).busyStep, null)
+
+  // Incoming USDT is noticed by itself (no polling of status needed).
+  const noticed = new Promise((resolve) => dana.once('funds', resolve))
+  await farm.sendUsdt({ to: (await dana.status()).wallet.address, amount: '25', password: PASSWORD })
+  const ok = await Promise.race([noticed.then(() => true), new Promise((resolve) => setTimeout(() => resolve(false), 5000))])
+  assert.ok(ok, 'deposit not detected within 5 s')
+  assert.equal((await dana.status()).wallet.usdt, '3825')
+})

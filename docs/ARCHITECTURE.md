@@ -120,3 +120,10 @@ Beim ersten echten Start mit `pear run --dev .` sollte das gegen die aktuelle Do
 ## Belege prüfen
 
 Der Organisator öffnet „Beleg prüfen“: Kamera (getUserMedia + jsQR, `ui/scanner.js`, `ui/vendor/jsqr.js`) oder Code einfügen. Geprüft wird immer am Contract (`verifyReceipt`).
+
+## Bedienung: Aufladen, Bieten, Status, Benachrichtigungen
+
+- **Aufladen** (`ui/views/fund.js`): Adresse mit QR-Code, Warnungen (nur USDT, richtiges Netzwerk, nie an eine Runde senden). Der Kern beobachtet `Transfer`-Events an die eigene Adresse (`Pomona._watchFunds`, Event `funds`), damit ein Eingang in Sekunden angezeigt wird. Nach dem Erstellen einer leeren Wallet öffnet sich das Aufladen automatisch.
+- **Bieten in zwei Schritten** (`ui/views/bid.js`): Richtwert-Schnellwahl (80 % / Richtwert / 120 %), dann `quoteBid`: Hinterlegung, Gebühr in USDT, Guthaben. Danach `bid`. Der Fortschritt kommt als `busyStep` (`prepare` → `sign` → `confirm`) aus `Account.execute(calls, { onStep })`.
+- **Statuszeile** (`ui/views/status.js`): ein Satz plus passende Aktion je Rolle und Phase („Du bietest 100 USDT pro Monat“, „Rechnung 4 ist fällig – Jetzt stellen“, „900 USDT warten auf dich – Zurückholen“).
+- **Benachrichtigungen** (`ui/notify.js`): `changes(prev, next)` vergleicht zwei Status-Schnappschüsse (Eingang, Ziel erreicht/verfehlt, neue Rate mit Beleg, Rechnung fällig, neues Gebot, Bietphase endet in 24 h, Neuigkeit). Bei aktivem Fenster als Toast, sonst als System-Benachrichtigung. Eigene Aktionen lösen keine Meldung aus. Getestet in `test/notify.test.js`.

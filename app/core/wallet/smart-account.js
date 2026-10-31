@@ -57,14 +57,16 @@ export class SmartAccount {
     return BigInt(await (await this._acc()).getTokenBalance(this.net.token))
   }
 
-  async execute (calls) {
+  async execute (calls, { onStep } = {}) {
     const acc = await this._acc()
     let hash
+    onStep?.('sign')
     try {
       ;({ hash } = await acc.sendTransaction(calls.map((c) => ({ to: c.to, value: 0n, data: c.data }))))
     } catch (e) {
       throw translate(e)
     }
+    onStep?.('confirm')
     const r = await acc.waitForTransaction(hash)
     if (r?.userOperationReceipt && r.userOperationReceipt.success === false) {
       throw new PomonaError('TX_FAILED', 'Die Transaktion ist fehlgeschlagen.')
@@ -78,14 +80,16 @@ export class SmartAccount {
     return BigInt(fee)
   }
 
-  async sendUsdt (to, amount) {
+  async sendUsdt (to, amount, { onStep } = {}) {
     const acc = await this._acc()
     let hash
+    onStep?.('sign')
     try {
       ;({ hash } = await acc.transfer({ token: this.net.token, recipient: to, amount }))
     } catch (e) {
       throw translate(e)
     }
+    onStep?.('confirm')
     await acc.waitForTransaction(hash)
     return { hash }
   }

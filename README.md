@@ -77,7 +77,7 @@ Szenarien: `onboarding`, `locked`, `start`, `bidder`, `organizer`, `invoice`, `r
 ## Qualität
 
 - `npm test` in `contracts/` umfasst 14 Tests: Zeitplan, nachgeholte Rechnungen, Belege, Erstattung bei Abbruch, Ablauf und verfehltem Ziel, Einladungen (auch Wiederverwendung in einer anderen Runde), Fee-Tokens, Factory-Register und Parameterprüfung.
-- `npm test` in `app/` umfasst 16 Tests:
+- `npm test` in `app/` umfasst 21 Tests:
   - Unit-Tests: Beträge, Links, Zeitplan, Policy, Tresor, Manifest-Bereinigung, RPC-Validierung
   - End-to-End mit echter Chain, WDK und Hyperswarm: Raten-Runde inklusive Beitritt bei offline Organisator, Belege, gefälschte Runden, Policy-Blockade, Senden und Sperren
   - ein Test, der den Kern **in Bare** ausführt

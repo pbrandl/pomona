@@ -22,12 +22,14 @@
  * @property {() => Promise<string>} address
  *   The address that holds USDT and appears as msg.sender in the contracts.
  * @property {() => Promise<bigint>} usdtBalance
- * @property {(calls: Call[]) => Promise<{ hash: string }>} execute
+ * @property {(calls: Call[], opts?: { onStep?: (step: 'sign'|'confirm') => void }) => Promise<{ hash: string }>} execute
  *   Executes the calls in order (atomically on smart accounts) and resolves once
- *   they are included. Rejects if anything reverts.
+ *   they are included. Rejects if anything reverts. `onStep` reports progress:
+ *   'sign' (signing and handing over to the network), 'confirm' (waiting for
+ *   the block).
  * @property {(calls: Call[]) => Promise<bigint|null>} quoteFee
  *   Expected fee in USDT base units, or null if fees are not paid in USDT.
- * @property {(to: string, amount: bigint) => Promise<{ hash: string }>} sendUsdt
+ * @property {(to: string, amount: bigint, opts?: { onStep?: Function }) => Promise<{ hash: string }>} sendUsdt
  * @property {() => void} dispose
  */
 

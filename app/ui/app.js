@@ -22,6 +22,9 @@ import { round } from './views/round.js'
 import { walletSheet } from './views/wallet.js'
 import { receiptSheet, invoiceSheet, scanSheet } from './views/receipt.js'
 import { Scanner } from './scanner.js'
+import { fundSheet } from './views/fund.js'
+import { bidSheet } from './views/bid.js'
+import { changes, deliver } from './notify.js'
 
 const $app = document.getElementById('app')
 
@@ -38,6 +41,11 @@ const ui = {
   verified: null, // result of verifyReceipt in the scan sheet
   scanError: null, // camera unavailable → paste only
   showAllInvoices: false,
+  quote: null, // quoteBid result while the bid confirmation is open
+  bidDone: null, // { pledgeAfter, deposit } after a successful bid
+  fundBaseline: null, // balance when "Aufladen" was opened, to show what arrived
+  showSend: false,
+  justCreated: false,
   toast: null,
   pending: null, // action currently running in the UI
   draft: {
@@ -59,7 +67,8 @@ const ui = {
     password2: '',
     sendTo: '',
     sendAmount: '',
-    sendPassword: ''
+    sendPassword: '',
+    guide: ''
   }
 }
 
@@ -75,6 +84,8 @@ const SHEETS = {
   receipt: (u) => (u.receipt && u.status?.round ? receiptSheet(u) : ''),
   invoice: (u) => (u.invoiceIndex !== null && u.status?.round ? invoiceSheet(u) : ''),
   scan: scanSheet,
+  fund: (u) => (u.status?.wallet.state === 'unlocked' ? fundSheet(u) : ''),
+  bid: (u) => (u.status?.round ? bidSheet(u) : ''),
   wallet: (u) => (u.status?.wallet.state === 'unlocked' ? walletSheet(u) : '')
 }
 
@@ -153,8 +164,10 @@ function toast (text, error = false) {
 
 async function refresh () {
   try {
+    const prev = ui.status
     ui.status = await call('status')
     const s = ui.status
+    deliver(changes(prev, s, { own: ui.pending }), (text) => toast(text))
     if (s.round?.role === 'organizer' && !ui.invite) ui.invite = await call('invite')
     if (s.wallet.address && !ui.addressQr) ui.addressQr = await call('qr', { text: s.wallet.address })
     if (s.wallet.state !== 'unlocked') ui.addressQr = null
@@ -180,7 +193,16 @@ const actions = {
   tab: (el) => { ui.tab = el.dataset.tab },
   interval: (el) => { ui.draft.interval = el.dataset.interval },
   'open-sheet': (el) => { ui.sheet = el.dataset.sheet },
-  'close-sheet': () => { ui.sheet = null; clearPasswords(); stopScanner() },
+  'close-sheet': () => { ui.sheet = null; ui.quote = null; ui.bidDone = null; clearPasswords(); stopScanner() },
+  'open-fund': () => { ui.fundBaseline = ui.status.wallet.usdt; ui.sheet = 'fund' },
+  'toggle-send': () => { ui.showSend = !ui.showSend },
+  'pick-amount': (el) => { ui.draft.amount = el.dataset.amount },
+  'focus-bid': () => {
+    setTimeout(() => {
+      document.getElementById('bid-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      document.getElementById('amount')?.focus()
+    })
+  },
   'show-all-invoices': () => { ui.showAllInvoices = true },
 
   // wallet
@@ -190,6 +212,7 @@ const actions = {
     clearPasswords()
     ui.seed = seed
     ui.sheet = 'seed'
+    ui.justCreated = true
   },
   async restore () {
     await run('restoreWallet', { seed: ui.draft.restore, password: ui.draft.password })
@@ -211,7 +234,16 @@ const actions = {
     clearPasswords()
     ui.sheet = 'seed'
   },
-  'seed-done': () => { ui.seed = null; ui.sheet = null },
+  'seed-done': () => {
+    ui.seed = null
+    ui.sheet = null
+    // A new, empty wallet: the next step is always topping it up.
+    if (ui.justCreated && Number(ui.status?.wallet.usdt || 0) === 0) {
+      ui.fundBaseline = ui.status.wallet.usdt
+      ui.sheet = 'fund'
+    }
+    ui.justCreated = false
+  },
   async faucet () {
     await run('faucet')
     toast('Testguthaben ist da')
@@ -237,6 +269,7 @@ const actions = {
       interval: d.interval,
       installments: Number(d.installments),
       biddingEnd: endOfDay(d.endDate),
+      guide: d.guide || undefined,
       inviteOnly: d.inviteOnly,
       network: d.network || ui.status.network.id
     })
@@ -247,11 +280,24 @@ const actions = {
     await run('join', { link: ui.draft.link.trim() })
     ui.draft.link = ''
   },
-  async bid () {
-    const r = ui.status.round
+  /** Opens the confirmation with deposit, fee and balance check. */
+  async 'review-bid' () {
+    ui.quote = null
+    ui.bidDone = null
+    ui.sheet = 'bid'
+    render()
+    try {
+      ui.quote = await call('quoteBid', { amount: ui.draft.amount })
+    } catch (e) {
+      ui.sheet = null
+      throw e
+    }
+  },
+  async 'confirm-bid' () {
+    const q = ui.quote
     await run('bid', { amount: ui.draft.amount })
+    ui.bidDone = { pledgeAfter: q.pledgeAfter, deposit: q.deposit }
     ui.draft.amount = ''
-    toast(`Gebot ist im Contract (${r.installments} Raten hinterlegt)`)
   },
   async withdraw () {
     if (!window.confirm('Dein ganzes Gebot zurückziehen? Der hinterlegte Betrag geht zurück in deine Wallet.')) return
@@ -358,7 +404,7 @@ $app.addEventListener('change', (e) => {
 })
 
 /** Enter submits the obvious action of a field. */
-const ENTER = { amount: 'bid', news: 'post-news', password: null, verify: 'verify-receipt', link: 'join' }
+const ENTER = { amount: 'review-bid', news: 'post-news', password: null, verify: 'verify-receipt', link: 'join' }
 $app.addEventListener('keydown', (e) => {
   // Clickable rows (role="button") react to Enter and Space like buttons.
   if ((e.key === 'Enter' || e.key === ' ') && e.target.getAttribute?.('role') === 'button') {

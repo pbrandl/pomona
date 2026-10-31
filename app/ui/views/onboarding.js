@@ -60,5 +60,6 @@ export function seedSheet (ui) {
     <div class="stack"><h1 style="font-size:24px">Deine Wiederherstellungsphrase</h1>
     <p class="muted">Schreib diese Wörter auf Papier und bewahre sie sicher auf. Wer sie kennt, hat Zugriff auf dein Geld. Pomona zeigt sie nur mit deinem Passwort wieder an.</p></div>
     <div class="seed">${words}</div>
+    <p class="small muted">Gut zu wissen: Pomona nutzt ein Smart-Konto. Importierst du diese Wörter in eine andere Wallet (z. B. MetaMask), siehst du dort eine andere Adresse und nicht dein Pomona-Guthaben. Wiederherstellen solltest du sie in Pomona.</p>
     <button class="btn accent block" data-action="seed-done">Ich habe sie notiert</button>`, { dismiss: false, close: false })
 }

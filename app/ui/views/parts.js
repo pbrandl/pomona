@@ -20,9 +20,10 @@ export const spinner = '<span class="spinner"></span>'
  */
 export function btn (ui, action, label, cls = '', o = {}) {
   const busy = ui.pending === action
+  const step = { sign: 'Wird gesendet…', confirm: 'Wird bestätigt…' }[ui.status?.busyStep]
   const off = o.disabled || !!ui.pending || !!ui.status?.busy
   const data = Object.entries(o.data || {}).map(([k, v]) => ` data-${k}="${esc(v)}"`).join('')
-  return `<button class="btn ${cls}" data-action="${action}"${data} ${off ? 'disabled' : ''}>${busy ? spinner + ' ' + esc(o.busy || 'Bitte warten…') : esc(label)}</button>`
+  return `<button class="btn ${cls}" data-action="${action}"${data} ${off ? 'disabled' : ''}>${busy ? spinner + ' ' + esc(step || o.busy || 'Bitte warten…') : esc(label)}</button>`
 }
 
 /** A text-style button. */

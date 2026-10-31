@@ -45,6 +45,8 @@ function createForm (ui) {
       ${field(ui, 'endDate', 'Bieten möglich bis einschließlich', { type: 'date' })}
       ${field(ui, 'minBid', `Mindestgebot ${p.per} (optional)`, { mode: 'decimal', placeholder: '0' })}
     </div>
+    ${field(ui, 'guide', `Richtwert ${p.per} (optional)`, { mode: 'decimal', placeholder: target > 0 ? `z. B. ${fmt(Math.round(target / 40))} bei 40 Haushalten` : '100' })}
+    <p class="small muted" style="margin-top:-8px">Wird beim Bieten als Orientierung vorgeschlagen.</p>
 
     <h3 class="form-step"><span>2</span>Ratenzahlung per Rechnung</h3>
     <div>

@@ -51,10 +51,11 @@ export class DevAccount {
     return BigInt(await (await this._acc()).getTokenBalance(this.net.token))
   }
 
-  async execute (calls) {
+  async execute (calls, { onStep } = {}) {
     const acc = await this._acc()
     await this._ensureGas()
     let last = null
+    onStep?.('sign')
     for (const c of calls) {
       let hash
       try {
@@ -62,6 +63,7 @@ export class DevAccount {
       } catch (e) {
         throw translate(e)
       }
+      onStep?.('confirm')
       const r = await this.provider.waitForTransaction(hash)
       if (!r || r.status !== 1) throw new PomonaError('TX_FAILED', 'Die Transaktion ist fehlgeschlagen.')
       last = hash
@@ -73,15 +75,17 @@ export class DevAccount {
     return null // gas is invisible on the dev chain
   }
 
-  async sendUsdt (to, amount) {
+  async sendUsdt (to, amount, { onStep } = {}) {
     const acc = await this._acc()
     await this._ensureGas()
     let hash
+    onStep?.('sign')
     try {
       ;({ hash } = await acc.transfer({ token: this.net.token, recipient: to, amount }))
     } catch (e) {
       throw translate(e)
     }
+    onStep?.('confirm')
     await this.provider.waitForTransaction(hash)
     return { hash }
   }

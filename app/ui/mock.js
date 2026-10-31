@@ -2,7 +2,7 @@
  * In-browser stand-in for the Bare worker, for design previews only
  * (`npm run preview`). Same method names and status shape as the real core
  * (see docs/RPC.md).
- * Scenario via ?s=onboarding|locked|start|bidder|organizer|invoice|receipts|completed|failed
+ * Scenario via ?s=onboarding|locked|start|fund|newbidder|bidder|organizer|invoice|receipts|completed|failed
  */
 ;(function () {
   const scenario = new URLSearchParams(window.location.search).get('s') || 'bidder'
@@ -38,6 +38,7 @@
       target: '4000',
       total: '3250',
       minBid: '25',
+      guide: '100',
       progress: 3250 / 4000,
       interval: MONTH,
       intervalName: 'month',
@@ -86,6 +87,8 @@
     onboarding: () => ({ ...base, wallet: { state: 'none', symbol: 'USDT' }, round: null }),
     locked: () => ({ ...base, wallet: { state: 'locked', symbol: 'USDT' }, round: null }),
     start: () => ({ ...base, wallet, round: null }),
+    fund: () => ({ ...base, wallet: { ...wallet, usdt: '0' }, round: round() }),
+    newbidder: () => ({ ...base, wallet, round: round() }),
     bidder: () => ({ ...base, wallet, round: round(mine) }),
     organizer: () => ({ ...base, wallet, round: round({ role: 'organizer' }) }),
     invoice: () => ({ ...base, wallet, round: round({ role: 'organizer', ...running }) }),
@@ -94,6 +97,11 @@
     failed: () => ({ ...base, wallet, round: round({ phase: 'failed', total: '2230', progress: 2230 / 4000, biddingEnd: now - DAY, myPledge: '80', myDeposit: '960', refundable: '960' }) })
   }
   const state = (scenarios[scenario] || scenarios.bidder)()
+  state.busyStep = null
+  const listeners = []
+  const changed = () => { for (const fn of listeners) fn() }
+  // For screenshots: simulate an incoming transfer.
+  window.__mockDeposit = (amount) => { state.wallet.usdt = String(Number(state.wallet.usdt) + amount); changed() }
   const seed = 'apfel birne wiese ernte korb sonne regen erde samen blüte frucht garten'
   const receiptCode = (i) => 'pomona-beleg://eyJ2IjoxLCJuIjoiYXJiaXRydW0tc2Vwb2xpYSIsInIiOiIweDdhNEI5ZjAyY0UxZDhBNmYzMEU1OWM3RDFiOEUyRjZhMzBDOTRFN2IiLCJiIjoiMHg1QzNlOUEwYkQ0MWY3RTI4YzZCOWEzRjFkMDJFOGM3QjRhNkQ5ZTEwIiwiaSI6' + i + 'fQ'
 
@@ -114,20 +122,47 @@
           if (!String(params.code).startsWith('pomona-beleg://')) return { valid: false, reason: 'Das ist kein Beleg.' }
           return { valid: true, title: state.round?.title, round: state.round?.address, bidder: wallet.address, installment: 2, installments: 12, amount: '100', symbol: 'USDT', paidAt: now - MONTH }
         }
+        case 'quoteBid': {
+          const r = state.round
+          const n = Number(String(params.amount).replace(/\./g, '').replace(',', '.'))
+          const deposit = n * r.installments
+          const balance = Number(state.wallet.usdt)
+          return {
+            amount: String(n),
+            pledgeAfter: String(Number(r.myPledge) + n),
+            installments: r.installments,
+            deposit: String(deposit),
+            fee: '0.0312',
+            balance: String(balance),
+            enough: balance >= deposit,
+            missing: String(Math.max(0, deposit - balance)),
+            symbol: 'USDT'
+          }
+        }
         case 'bid': {
           const r = state.round
-          const n = Number(String(params.amount).replace(',', '.'))
+          const n = Number(String(params.amount).replace(/\./g, '').replace(',', '.'))
+          for (const step of ['prepare', 'sign', 'confirm']) {
+            state.busy = 'bid'
+            state.busyStep = step
+            changed()
+            await new Promise((resolve) => setTimeout(resolve, 900))
+          }
+          state.busy = null
+          state.busyStep = null
           r.myPledge = String(Number(r.myPledge) + n)
           r.myDeposit = String(Number(r.myPledge) * r.installments)
           r.total = String(Number(r.total) + n)
           r.progress = Number(r.total) / Number(r.target)
+          r.bidders += 1
+          state.wallet.usdt = String(Number(state.wallet.usdt) - n * r.installments)
           r.invoices = plan(r)
           return null
         }
         default: return null
       }
     },
-    on () {},
+    on (event, fn) { if (event === 'change') listeners.push(fn) },
     copy () { return Promise.resolve() },
     cameraAccess () { return Promise.resolve(true) }
   }

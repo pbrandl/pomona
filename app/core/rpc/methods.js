@@ -36,6 +36,7 @@ export const METHODS = {
       network: ['string', 32],
       target: 'amount',
       minBid: 'amount',
+      guide: 'amount',
       interval: ['string', 8],
       installments: 'number',
       biddingDays: 'number',
@@ -45,6 +46,7 @@ export const METHODS = {
     run: (app, p) => app.createRound(p)
   },
   join: { params: { link: ['string', LIMITS.link] }, run: (app, p) => app.join(p) },
+  quoteBid: { params: { amount: 'amount' }, run: (app, p) => app.quoteBid(p) },
   bid: { params: { amount: 'amount' }, run: (app, p) => app.bid(p) },
   withdraw: { params: { amount: 'amount' }, run: (app, p) => app.withdraw(p) },
   invoice: { run: (app) => app.invoice() },
