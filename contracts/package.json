@@ -1,0 +1,16 @@
+{
+  "name": "pomona-contracts",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.js",
+    "test": "node scripts/build.js && node --test test/*.test.js",
+    "chain": "node scripts/build.js && node scripts/devchain.js"
+  },
+  "devDependencies": {
+    "@openzeppelin/contracts": "^5.0.2",
+    "ethers": "^6.17.0",
+    "hardhat": "^2.29.1",
+    "solc": "^0.8.28"
+  }
+}

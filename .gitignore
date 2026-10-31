@@ -1,0 +1,6 @@
+node_modules/
+contracts/artifacts/
+.hardhat-cache/
+.hardhat-artifacts/
+*.log
+.DS_Store

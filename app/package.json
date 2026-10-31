@@ -1,0 +1,57 @@
+{
+  "name": "pomona",
+  "productName": "Pomona",
+  "version": "0.1.0",
+  "description": "Dezentrale Bietrunde: Pears + WDK + Escrow-Contract",
+  "type": "module",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "dev": "pear run --dev .",
+    "test": "node --test test/*.test.js",
+    "preview": "node scripts/preview.js"
+  },
+  "pear": {
+    "name": "pomona",
+    "type": "desktop",
+    "pre": "pear-electron/pre",
+    "gui": {
+      "main": "index.html",
+      "width": 1040,
+      "height": 720,
+      "minWidth": 720,
+      "minHeight": 560,
+      "backgroundColor": "#F7F6F2"
+    },
+    "stage": {
+      "ignore": [
+        ".git",
+        "test",
+        "scripts",
+        "preview.html"
+      ],
+      "entrypoints": [
+        "/worker/index.js"
+      ]
+    }
+  },
+  "dependencies": {
+    "@tetherto/wdk": "^1.0.0-beta.22",
+    "@tetherto/wdk-wallet-evm": "^1.0.0-beta.24",
+    "b4a": "^1.9.0",
+    "bare-node-runtime": "^1.5.3",
+    "corestore": "^7.16.1",
+    "ethers": "^6.17.0",
+    "hyperbee": "^2.27.3",
+    "hyperswarm": "^4.17.2",
+    "pear-bridge": "^1.2.5",
+    "pear-electron": "^1.7.28",
+    "pear-pipe": "^1.0.6",
+    "pear-run": "^2.0.0",
+    "qrcode-generator": "^2.0.4"
+  },
+  "devDependencies": {
+    "bare-runtime": "^1.36.0",
+    "hyperdht": "^6.35.0"
+  }
+}
