@@ -36,5 +36,5 @@ export function walletSheet (ui) {
         ${link(ui, 'lock', 'Sperren')}
       </div>
     </div>
-    <p class="small muted">${s.peers} ${s.peers === 1 ? 'Peer' : 'Peers'} verbunden · ${esc(s.network.name)}</p>`)
+    <p class="small muted">${s.peers} ${s.peers === 1 ? 'Peer' : 'Peers'} verbunden · ${esc(s.network.name)} · Version ${esc(s.version)}</p>`)
 }

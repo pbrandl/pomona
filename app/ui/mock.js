@@ -98,6 +98,8 @@
   }
   const state = (scenarios[scenario] || scenarios.bidder)()
   state.busyStep = null
+  state.version = '0.3.0'
+  const update = new URLSearchParams(window.location.search).get('update')
   const listeners = []
   const changed = () => { for (const fn of listeners) fn() }
   // For screenshots: simulate an incoming transfer.
@@ -162,7 +164,11 @@
         default: return null
       }
     },
-    on (event, fn) { if (event === 'change') listeners.push(fn) },
+    on (event, fn) {
+      if (event === 'change') listeners.push(fn)
+      if (event === 'update' && update) setTimeout(() => fn({ version: update }), 300)
+    },
+    restart () { window.location.reload(); return Promise.resolve() },
     copy () { return Promise.resolve() },
     cameraAccess () { return Promise.resolve(true) }
   }

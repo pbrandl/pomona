@@ -26,6 +26,7 @@ import { encodeInvite, decodeInvite, encodeReceipt, decodeReceipt } from './link
 import { parseAmount, formatAmount } from './units.js'
 import { INTERVALS, intervalName, canInvoice, dueAt, DAY } from './schedule.js'
 import { PomonaError, fail } from './errors.js'
+import { VERSION } from './version.js'
 
 const same = (a, b) => !!a && !!b && a.toLowerCase() === b.toLowerCase()
 const TRANSFER = topicOf('Transfer(address,address,uint256)')
@@ -478,6 +479,7 @@ export class Pomona extends EventEmitter {
         .filter((id) => this.allowDev || !getNetwork(id).dev)
         .map((id) => { const n = this._network(id); return { id, name: n.name, ready: isReady(n) } }),
       peers: this.p2p.peers,
+      version: VERSION,
       busy: this._busy,
       busyStep: this._busyStep, // 'prepare' | 'sign' | 'confirm' while a transaction runs
       round: null

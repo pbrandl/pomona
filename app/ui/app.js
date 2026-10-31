@@ -45,6 +45,7 @@ const ui = {
   bidDone: null, // { pledgeAfter, deposit } after a successful bid
   fundBaseline: null, // balance when "Aufladen" was opened, to show what arrived
   showSend: false,
+  update: null, // { version } when a new app version is ready
   onboarding: false, // first start: Passwort → Notfall-Wörter → Aufladen
   createStep: 0, // "Runde starten": 0 Runde, 1 Bietphase, 2 Raten, 3 Prüfen
   bidStep: 'amount', // "Bieten": amount → review → done
@@ -98,7 +99,10 @@ function topbar () {
   const right = w?.state === 'unlocked'
     ? `<button class="pill" data-action="open-sheet" data-sheet="wallet"><span class="dot ${ui.status.peers > 0 ? 'on' : ''}" title="${ui.status.peers} Peers"></span>${fmt(w.usdt)} ${esc(w.symbol)}<span class="muted mono">${short(w.address)}</span></button>`
     : ''
-  return `<header class="bar"><div class="brand">${PEAR}Pomona</div>${right}</header>`
+  const update = ui.update
+    ? `<div class="update-bar" role="status"><span>Neue Version von Pomona ist bereit.</span><button class="btn accent small" data-action="restart" ${ui.status?.busy ? 'disabled title="Nach der laufenden Transaktion"' : ''}>Neu starten</button></div>`
+    : ''
+  return `${update}<header class="bar"><div class="brand">${PEAR}Pomona</div>${right}</header>`
 }
 
 function body () {
@@ -208,6 +212,10 @@ const actions = {
     ui.onboarding = false
     clearPasswords()
     stopScanner()
+  },
+  async restart () {
+    if (ui.status?.busy) throw new Error('Bitte warten, bis die Transaktion bestätigt ist.')
+    await window.pomona.restart()
   },
   'open-create': () => { ui.createStep = 0; ui.sheet = 'create' },
   'create-next': () => {
@@ -452,6 +460,7 @@ $app.addEventListener('keydown', (e) => {
 function boot () {
   window.pomona.on('change', refresh)
   window.pomona.on('error', (m) => toast(m, true))
+  window.pomona.on('update', (u) => { ui.update = u; render() })
   refresh()
 }
 

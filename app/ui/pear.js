@@ -6,6 +6,8 @@
  */
 import run from 'pear-run'
 import ui from 'pear-electron'
+import updates from 'pear-updates'
+import restart from 'pear-restart'
 
 const pipe = run(Pear.config.applink + '/worker/index.js')
 const pending = new Map()
@@ -57,4 +59,12 @@ window.pomona = {
     }
   }
 }
+// App updates arrive peer-to-peer from the release key. Once one is fully
+// downloaded (`updated`), the UI offers a restart.
+updates({ app: true }, (u) => {
+  if (!u.updated) return
+  for (const fn of listeners.get('update') || []) fn({ version: u.version })
+})
+window.pomona.restart = () => restart()
+
 window.dispatchEvent(new Event('pomona:backend'))

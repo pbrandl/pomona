@@ -553,3 +553,9 @@ h3 { font-weight: 600; }
 .amount.big { height: 72px; padding: 0 20px; border-radius: 18px; }
 .amount.big input { font-size: 32px; font-weight: 600; letter-spacing: -0.02em; }
 .amount.big .unit { font-size: 14px; white-space: nowrap; }
+
+.update-bar {
+  display: flex; align-items: center; justify-content: center; gap: 16px;
+  padding: 8px 16px; background: var(--accent-soft); color: var(--ink); font-size: 14px;
+  border-bottom: 1px solid var(--line);
+}

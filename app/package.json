@@ -1,7 +1,7 @@
 {
   "name": "pomona",
   "productName": "Pomona",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "description": "Dezentrale Bietrunde: Pears + WDK + Escrow-Contract",
   "type": "module",
   "main": "index.js",
@@ -50,7 +50,9 @@
     "pear-bridge": "^1.2.5",
     "pear-electron": "^1.7.28",
     "pear-pipe": "^1.0.6",
+    "pear-restart": "^1.0.0",
     "pear-run": "^2.0.0",
+    "pear-updates": "^1.1.0",
     "qrcode-generator": "^2.0.4",
     "sodium-universal": "^5.0.1"
   },

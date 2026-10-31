@@ -97,3 +97,17 @@ Szenarien: `onboarding`, `locked`, `start`, `bidder`, `organizer`, `invoice`, `r
 ## Lizenz
 
 MIT. Die Schrift Inter steht unter der SIL Open Font License.
+
+## Updates verteilen
+
+Pear verteilt neue Versionen peer-to-peer unter demselben `pear://`-Link:
+
+```bash
+cd app
+# vorher: Version in package.json und core/version.js erhöhen
+pear stage production      # gleicher Link, neue Version
+pear release production    # ab jetzt bekommen alle diese Version
+pear seed production       # mindestens ein Rechner hält die App verfügbar
+```
+
+Laufende Apps laden das Update im Hintergrund und zeigen oben „Neue Version von Pomona ist bereit · Neu starten“ (`pear-updates`, `pear-restart`). Während einer laufenden Transaktion ist der Neustart gesperrt. Wallet, Runde und Belege bleiben erhalten, Contracts sind von App-Updates nie betroffen. Die Version steht im Konto-Bereich. Den Release-Schlüssel (im Pear-Verzeichnis) sicher verwahren: Wer ihn hat, kann allen Updates einspielen. Die Befehle bitte einmal gegen die aktuelle Pear-Doku prüfen.
