@@ -51,7 +51,7 @@ export function statusLine (ui) {
     } else {
       tone = 'act'
       text = `Du hast noch nicht geboten · noch ${esc(t.value)} ${esc(t.unit.replace(' übrig', ''))}`
-      action = '<button class="btn accent small" data-action="focus-bid">Jetzt bieten</button>'
+      action = '<button class="btn accent small" data-action="start-bid">Jetzt bieten</button>'
     }
   } else if (r.phase === 'running' && pledge > 0) {
     tone = 'ok'

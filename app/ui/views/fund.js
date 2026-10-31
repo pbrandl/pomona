@@ -4,7 +4,8 @@
  * @module ui/views/fund
  */
 import { esc, fmt, num } from '../format.js'
-import { btn, sheet, spinner } from './parts.js'
+import { btn, page, spinner } from './parts.js'
+import { WALLET_STEPS } from './onboarding.js'
 
 export function fundSheet (ui) {
   const s = ui.status
@@ -14,7 +15,7 @@ export function fundSheet (ui) {
     ? `<p class="verify ok">✓ ${fmt(received)} ${esc(w.symbol)} sind angekommen. Guthaben jetzt ${fmt(w.usdt)} ${esc(w.symbol)}.</p>`
     : `<p class="verify pending">${spinner} Warte auf Eingang… Das dauert meist nur Sekunden.</p>`
 
-  return sheet('Konto aufladen', `
+  return page('Konto aufladen', `
     <ol class="steps">
       <li><strong>USDT besorgen</strong><span>z. B. bei einer Börse oder von einer anderen Wallet, auf dem Netzwerk <strong>${esc(s.network.name)}</strong>.</span></li>
       <li><strong>An diese Adresse senden</strong><span>Das ist dein persönliches Pomona-Konto.</span></li>
@@ -33,5 +34,7 @@ export function fundSheet (ui) {
         <li>Netzwerkgebühren bezahlst du ebenfalls in USDT. Du brauchst keinen anderen Token.</li>
       </ul>
     </div>
-    ${s.network.dev ? `<div class="stack"><p class="small muted">Lokale Test-Chain: Testguthaben per Klick.</p>${btn(ui, 'faucet', '5.000 Test-USDT holen', 'ghost block', { busy: 'Wird überwiesen…' })}</div>` : ''}`)
+    ${s.network.dev ? `<div class="stack"><p class="small muted">Lokale Test-Chain: Testguthaben per Klick.</p>${btn(ui, 'faucet', '5.000 Test-USDT holen', 'ghost block', { busy: 'Wird überwiesen…' })}</div>` : ''}
+    <div class="actions sticky"><button class="btn ${received > 0 ? 'accent' : 'ghost'} block" data-action="close-sheet">${received > 0 ? 'Fertig' : ui.onboarding ? 'Später aufladen' : 'Schließen'}</button></div>`,
+  ui.onboarding ? { steps: WALLET_STEPS, at: 2, back: false } : {})
 }

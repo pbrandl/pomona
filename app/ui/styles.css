@@ -511,3 +511,45 @@ h3 { font-weight: 600; }
 /* Lists and status lines inside stacks keep the stack's top spacing. */
 .stack-lg > .facts, .stack-lg > .stepper, .stack-lg > .steps { margin-top: 24px; }
 .receipt + .facts { margin-top: 16px; }
+
+/* ----------------------------------------------- pages (one step, one page) */
+
+.page { max-width: 560px; margin: 0 auto; }
+.page-top { display: flex; align-items: center; justify-content: space-between; min-height: 28px; margin-bottom: 8px; }
+.page-top .back { text-decoration: none; color: var(--muted); font-size: 14px; }
+.page-top .back:hover { color: var(--ink); }
+.page-title { font-size: 28px; margin: 8px 0 24px; }
+
+.stepbar {
+  list-style: none; margin: 8px 0 24px; padding: 0;
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px;
+}
+.stepbar li {
+  display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--faint);
+  padding-top: 10px; border-top: 3px solid var(--line); min-width: 0;
+}
+.stepbar li span { display: none; }
+.stepbar li.done { color: var(--muted); border-top-color: var(--accent); }
+.stepbar li.now { color: var(--ink); font-weight: 600; border-top-color: var(--accent); }
+
+.choice {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%;
+  text-align: left; cursor: pointer; padding: 22px 24px;
+}
+.choice:hover { border-color: var(--accent); }
+.choice strong { display: block; font-size: 17px; margin-bottom: 4px; }
+.choice .chev { font-size: 24px; }
+
+.actions { display: flex; flex-direction: column; gap: 10px; }
+
+@media (max-width: 520px) {
+  .page-title { font-size: 24px; }
+  /* The primary action stays reachable with the thumb. */
+  .actions.sticky {
+    position: sticky; bottom: 0; padding: 12px 0 16px; margin-bottom: -16px;
+    background: linear-gradient(to bottom, transparent, var(--bg) 24%);
+  }
+}
+.amount.big { height: 72px; padding: 0 20px; border-radius: 18px; }
+.amount.big input { font-size: 32px; font-weight: 600; letter-spacing: -0.02em; }
+.amount.big .unit { font-size: 14px; white-space: nowrap; }

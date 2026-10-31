@@ -40,10 +40,34 @@ export function field (ui, key, label, { type = 'text', placeholder = '', mode =
   return `<div><label for="${key}">${esc(label)}</label>${input}</div>`
 }
 
-/** Sheet (side panel) wrapper. `dismiss` = clicking the backdrop closes it. */
-export function sheet (title, body, { dismiss = true, close = true } = {}) {
-  return `<div class="sheet-backdrop" ${dismiss ? 'data-action="close-sheet"' : ''}><aside class="sheet stack-lg" data-stop>
-    ${title ? `<div class="row"><h2 style="margin:0">${esc(title)}</h2>${close ? '<button class="link" data-action="close-sheet">Schließen</button>' : ''}</div>` : ''}
-    ${body}
-  </aside></div>`
+/**
+ * A full page for one step of a flow ("one step, one page"). Replaces the
+ * main view while open; works the same on desktop and mobile.
+ *
+ * @param {string|null} title
+ * @param {string} body
+ * @param {Object} [o]
+ * @param {string[]} [o.steps] - labels of all steps of the flow, shown on top
+ * @param {number} [o.at]      - index of the current step
+ * @param {string|false} [o.back] - action of the back button, false hides it
+ * @param {string} [o.backLabel]
+ */
+export function page (title, body, { steps = null, at = 0, back = 'close-sheet', backLabel = 'Zurück' } = {}) {
+  const bar = steps
+    ? `<ol class="stepbar" aria-label="Schritt ${at + 1} von ${steps.length}">${steps.map((label, i) =>
+        `<li class="${i < at ? 'done' : i === at ? 'now' : 'todo'}" ${i === at ? 'aria-current="step"' : ''}><span>${i < at ? '✓' : i + 1}</span>${esc(label)}</li>`).join('')}</ol>`
+    : ''
+  return `<section class="page">
+    <div class="page-top">
+      ${back ? `<button class="link back" data-action="${back}">← ${esc(backLabel)}</button>` : '<span></span>'}
+    </div>
+    ${bar}
+    ${title ? `<h1 class="page-title">${esc(title)}</h1>` : ''}
+    <div class="stack-lg">${body}</div>
+  </section>`
+}
+
+/** @deprecated name kept for older views: every former side panel is now a page. */
+export function sheet (title, body, { close = true, steps, at, back } = {}) {
+  return page(title, body, { steps, at, back: back ?? (close ? 'close-sheet' : false) })
 }

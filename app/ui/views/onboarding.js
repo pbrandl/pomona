@@ -3,7 +3,10 @@
  * @module ui/views/onboarding
  */
 import { esc } from '../format.js'
-import { btn, field, sheet } from './parts.js'
+import { btn, field, sheet, page } from './parts.js'
+
+/** First start: three pages. */
+export const WALLET_STEPS = ['Passwort', 'Notfall-Wörter', 'Aufladen']
 
 export function onboarding (ui) {
   return `<div class="center-screen stack-lg">
@@ -12,7 +15,7 @@ export function onboarding (ui) {
       <p class="lead">Pomona ist eine Bietrunde, die auf euren Rechnern läuft. Alle bieten in USDT, das Geld liegt in einem Smart Contract und wird Rate für Rate abgerechnet. Wird das Ziel verfehlt, geht alles zurück.</p>
     </div>
     <div class="row" style="justify-content:flex-start">
-      <button class="btn accent" data-action="open-sheet" data-sheet="create-wallet">Wallet erstellen</button>
+      <button class="btn accent" data-action="create-wallet-start">Konto anlegen</button>
       <button class="btn ghost" data-action="open-sheet" data-sheet="restore">Wiederherstellen</button>
     </div>
   </div>`
@@ -29,13 +32,12 @@ export function locked (ui) {
 }
 
 export function createWalletSheet (ui) {
-  return sheet('Neue Wallet', `
-    <p class="muted">Die Wallet läuft nur auf diesem Gerät. Das Passwort verschlüsselt deine Wiederherstellungsphrase.</p>
-    <div class="stack">
-      ${field(ui, 'password', 'Passwort (mind. 8 Zeichen)', { type: 'password' })}
-      ${field(ui, 'password2', 'Passwort wiederholen', { type: 'password' })}
-    </div>
-    ${btn(ui, 'create-wallet', 'Wallet erstellen', 'accent block', { busy: 'Wird erstellt…' })}`)
+  return page('Konto anlegen', `
+    <p class="lead">Dein Konto läuft nur auf diesem Gerät. Das Passwort schützt es.</p>
+    ${field(ui, 'password', 'Passwort (mind. 8 Zeichen)', { type: 'password' })}
+    ${field(ui, 'password2', 'Passwort wiederholen', { type: 'password' })}
+    <div class="actions sticky">${btn(ui, 'create-wallet', 'Weiter', 'accent block', { busy: 'Wird erstellt…' })}</div>`,
+  { steps: WALLET_STEPS, at: 0 })
 }
 
 export function restoreSheet (ui) {
@@ -48,7 +50,7 @@ export function restoreSheet (ui) {
 }
 
 export function revealSheet (ui) {
-  return sheet('Wiederherstellungsphrase', `
+  return sheet('Notfall-Wörter anzeigen', `
     <p class="muted">Zum Anzeigen brauchst du dein Passwort.</p>
     ${field(ui, 'password', 'Passwort', { type: 'password' })}
     ${btn(ui, 'reveal-seed', 'Anzeigen', 'accent block', { busy: 'Wird entschlüsselt…' })}`)
@@ -56,10 +58,11 @@ export function revealSheet (ui) {
 
 export function seedSheet (ui) {
   const words = (ui.seed || '').split(' ').map((w) => `<span>${esc(w)}</span>`).join('')
-  return sheet(null, `
-    <div class="stack"><h1 style="font-size:24px">Deine Wiederherstellungsphrase</h1>
-    <p class="muted">Schreib diese Wörter auf Papier und bewahre sie sicher auf. Wer sie kennt, hat Zugriff auf dein Geld. Pomona zeigt sie nur mit deinem Passwort wieder an.</p></div>
+  const onboarding = ui.onboarding
+  return page('Deine Notfall-Wörter', `
+    <p class="lead">Schreib diese Wörter auf Papier und bewahre sie sicher auf. Wer sie kennt, hat Zugriff auf dein Geld.</p>
     <div class="seed">${words}</div>
-    <p class="small muted">Gut zu wissen: Pomona nutzt ein Smart-Konto. Importierst du diese Wörter in eine andere Wallet (z. B. MetaMask), siehst du dort eine andere Adresse und nicht dein Pomona-Guthaben. Wiederherstellen solltest du sie in Pomona.</p>
-    <button class="btn accent block" data-action="seed-done">Ich habe sie notiert</button>`, { dismiss: false, close: false })
+    <p class="small muted">Pomona zeigt sie nur mit deinem Passwort wieder an. Gut zu wissen: In anderen Wallets (z. B. MetaMask) zeigen dieselben Wörter eine andere Adresse und nicht dein Pomona-Guthaben. Wiederherstellen solltest du sie in Pomona.</p>
+    <div class="actions sticky"><button class="btn accent block" data-action="seed-done">${onboarding ? 'Notiert, weiter' : 'Ich habe sie notiert'}</button></div>`,
+  onboarding ? { steps: WALLET_STEPS, at: 1, back: false } : { back: false })
 }

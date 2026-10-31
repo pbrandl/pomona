@@ -127,3 +127,16 @@ Der Organisator öffnet „Beleg prüfen“: Kamera (getUserMedia + jsQR, `ui/sc
 - **Bieten in zwei Schritten** (`ui/views/bid.js`): Richtwert-Schnellwahl (80 % / Richtwert / 120 %), dann `quoteBid`: Hinterlegung, Gebühr in USDT, Guthaben. Danach `bid`. Der Fortschritt kommt als `busyStep` (`prepare` → `sign` → `confirm`) aus `Account.execute(calls, { onStep })`.
 - **Statuszeile** (`ui/views/status.js`): ein Satz plus passende Aktion je Rolle und Phase („Du bietest 100 USDT pro Monat“, „Rechnung 4 ist fällig – Jetzt stellen“, „900 USDT warten auf dich – Zurückholen“).
 - **Benachrichtigungen** (`ui/notify.js`): `changes(prev, next)` vergleicht zwei Status-Schnappschüsse (Eingang, Ziel erreicht/verfehlt, neue Rate mit Beleg, Rechnung fällig, neues Gebot, Bietphase endet in 24 h, Neuigkeit). Bei aktivem Fenster als Toast, sonst als System-Benachrichtigung. Eigene Aktionen lösen keine Meldung aus. Getestet in `test/notify.test.js`.
+
+## Seiten statt Seitenleisten (one step, one page)
+
+Jeder Ablauf ist eine Folge ganzer Seiten mit Schrittleiste oben (`page()` in `ui/views/parts.js`):
+
+| Ablauf | Schritte |
+|---|---|
+| Konto anlegen | Passwort → Notfall-Wörter → Aufladen |
+| Runde starten | Runde → Bietphase → Raten → Prüfen |
+| Bieten | Betrag → Prüfen → Fertig |
+| Einzelseiten | Beitreten, Aufladen, Konto, Beleg, Rechnung, Beleg prüfen |
+
+Eine offene Seite ersetzt die Rundenansicht (`ui.sheet`). Der Hauptknopf bleibt auf dem Handy unten erreichbar (`.actions.sticky`). Bildschirmfotos in `docs/mobile/`.

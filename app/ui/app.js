@@ -17,13 +17,13 @@
 import { esc, short, fmt, isoDay, endOfDay } from './format.js'
 import { PEAR } from './views/parts.js'
 import { onboarding, locked, createWalletSheet, restoreSheet, revealSheet, seedSheet } from './views/onboarding.js'
-import { start } from './views/start.js'
+import { start, createPage, joinPage, createStepError } from './views/start.js'
 import { round } from './views/round.js'
 import { walletSheet } from './views/wallet.js'
 import { receiptSheet, invoiceSheet, scanSheet } from './views/receipt.js'
 import { Scanner } from './scanner.js'
 import { fundSheet } from './views/fund.js'
-import { bidSheet } from './views/bid.js'
+import { bidPage } from './views/bid.js'
 import { changes, deliver } from './notify.js'
 
 const $app = document.getElementById('app')
@@ -45,7 +45,9 @@ const ui = {
   bidDone: null, // { pledgeAfter, deposit } after a successful bid
   fundBaseline: null, // balance when "Aufladen" was opened, to show what arrived
   showSend: false,
-  justCreated: false,
+  onboarding: false, // first start: Passwort → Notfall-Wörter → Aufladen
+  createStep: 0, // "Runde starten": 0 Runde, 1 Bietphase, 2 Raten, 3 Prüfen
+  bidStep: 'amount', // "Bieten": amount → review → done
   toast: null,
   pending: null, // action currently running in the UI
   draft: {
@@ -85,7 +87,9 @@ const SHEETS = {
   invoice: (u) => (u.invoiceIndex !== null && u.status?.round ? invoiceSheet(u) : ''),
   scan: scanSheet,
   fund: (u) => (u.status?.wallet.state === 'unlocked' ? fundSheet(u) : ''),
-  bid: (u) => (u.status?.round ? bidSheet(u) : ''),
+  bid: (u) => (u.status?.round ? bidPage(u) : ''),
+  create: (u) => (u.status?.wallet.state === 'unlocked' ? createPage(u) : ''),
+  join: (u) => (u.status?.wallet.state === 'unlocked' ? joinPage(u) : ''),
   wallet: (u) => (u.status?.wallet.state === 'unlocked' ? walletSheet(u) : '')
 }
 
@@ -110,11 +114,13 @@ function render () {
   const active = document.activeElement
   const focusId = active?.id
   const sel = focusId && 'selectionStart' in active ? [active.selectionStart, active.selectionEnd] : null
-  const scroll = document.querySelector('.sheet')?.scrollTop
 
-  const sheet = ui.sheet && SHEETS[ui.sheet] ? SHEETS[ui.sheet](ui) : ''
+  // One step, one page: an open flow replaces the main view entirely.
+  const flow = ui.sheet && SHEETS[ui.sheet] ? SHEETS[ui.sheet](ui) : ''
   const toast = ui.toast ? `<div class="toast ${ui.toast.error ? 'error' : ''}" role="status">${esc(ui.toast.text)}</div>` : ''
-  $app.innerHTML = topbar() + `<main>${body()}</main>` + sheet + toast
+  $app.innerHTML = topbar() + `<main>${flow || body()}</main>` + toast
+  const where = ui.sheet + ':' + ui.createStep + ':' + ui.bidStep
+  if (where !== lastPage) { lastPage = where; window.scrollTo(0, 0) }
 
   if (focusId) {
     const el = document.getElementById(focusId)
@@ -123,11 +129,12 @@ function render () {
       if (sel && el.setSelectionRange) try { el.setSelectionRange(sel[0], sel[1]) } catch {}
     }
   }
-  if (scroll) { const sh = document.querySelector('.sheet'); if (sh) sh.scrollTop = scroll }
   scanner?.attach() // the camera <video> survives re-renders
 }
 
-/** Camera scanner, alive only while the scan sheet is open. */
+let lastPage = ''
+
+/** Camera scanner, alive only while the scan page is open. */
 let scanner = null
 function stopScanner () {
   scanner?.stop()
@@ -193,16 +200,29 @@ const actions = {
   tab: (el) => { ui.tab = el.dataset.tab },
   interval: (el) => { ui.draft.interval = el.dataset.interval },
   'open-sheet': (el) => { ui.sheet = el.dataset.sheet },
-  'close-sheet': () => { ui.sheet = null; ui.quote = null; ui.bidDone = null; clearPasswords(); stopScanner() },
+  'close-sheet': () => {
+    ui.sheet = null
+    ui.quote = null
+    ui.bidDone = null
+    ui.bidStep = 'amount'
+    ui.onboarding = false
+    clearPasswords()
+    stopScanner()
+  },
+  'open-create': () => { ui.createStep = 0; ui.sheet = 'create' },
+  'create-next': () => {
+    const error = createStepError(ui)
+    if (error) throw new Error(error)
+    ui.createStep = Math.min(3, ui.createStep + 1)
+  },
+  'create-back': () => { ui.createStep = Math.max(0, ui.createStep - 1) },
+  'start-bid': () => { ui.bidStep = 'amount'; ui.quote = null; ui.bidDone = null; ui.sheet = 'bid' },
+  'bid-back': () => { ui.bidStep = 'amount'; ui.quote = null },
   'open-fund': () => { ui.fundBaseline = ui.status.wallet.usdt; ui.sheet = 'fund' },
+  'create-wallet-start': () => { ui.onboarding = true; ui.sheet = 'create-wallet' },
   'toggle-send': () => { ui.showSend = !ui.showSend },
   'pick-amount': (el) => { ui.draft.amount = el.dataset.amount },
-  'focus-bid': () => {
-    setTimeout(() => {
-      document.getElementById('bid-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      document.getElementById('amount')?.focus()
-    })
-  },
+
   'show-all-invoices': () => { ui.showAllInvoices = true },
 
   // wallet
@@ -212,7 +232,7 @@ const actions = {
     clearPasswords()
     ui.seed = seed
     ui.sheet = 'seed'
-    ui.justCreated = true
+    ui.onboarding = true
   },
   async restore () {
     await run('restoreWallet', { seed: ui.draft.restore, password: ui.draft.password })
@@ -238,11 +258,12 @@ const actions = {
     ui.seed = null
     ui.sheet = null
     // A new, empty wallet: the next step is always topping it up.
-    if (ui.justCreated && Number(ui.status?.wallet.usdt || 0) === 0) {
+    if (ui.onboarding && Number(ui.status?.wallet.usdt || 0) === 0) {
       ui.fundBaseline = ui.status.wallet.usdt
       ui.sheet = 'fund'
+    } else {
+      ui.onboarding = false
     }
-    ui.justCreated = false
   },
   async faucet () {
     await run('faucet')
@@ -274,22 +295,25 @@ const actions = {
       network: d.network || ui.status.network.id
     })
     ui.invite = await call('invite')
+    ui.sheet = null
+    ui.createStep = 0
     toast('Runde gestartet. Teile jetzt den Link.')
   },
   async join () {
     await run('join', { link: ui.draft.link.trim() })
     ui.draft.link = ''
+    ui.sheet = null
   },
   /** Opens the confirmation with deposit, fee and balance check. */
   async 'review-bid' () {
     ui.quote = null
     ui.bidDone = null
-    ui.sheet = 'bid'
+    ui.bidStep = 'review'
     render()
     try {
       ui.quote = await call('quoteBid', { amount: ui.draft.amount })
     } catch (e) {
-      ui.sheet = null
+      ui.bidStep = 'amount'
       throw e
     }
   },
@@ -297,6 +321,7 @@ const actions = {
     const q = ui.quote
     await run('bid', { amount: ui.draft.amount })
     ui.bidDone = { pledgeAfter: q.pledgeAfter, deposit: q.deposit }
+    ui.bidStep = 'done'
     ui.draft.amount = ''
   },
   async withdraw () {
