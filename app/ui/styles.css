@@ -559,3 +559,32 @@ h3 { font-weight: 600; }
   padding: 8px 16px; background: var(--accent-soft); color: var(--ink); font-size: 14px;
   border-bottom: 1px solid var(--line);
 }
+
+/* ------------------------------------------------------------ assistant */
+
+.bar-right { display: flex; align-items: center; gap: 8px; }
+.ask-pill svg { width: 16px; height: 16px; color: var(--accent); }
+@media (max-width: 520px) {
+  .ask-pill span { display: none; }
+  .bar .pill .mono { display: none; }
+}
+
+.chat { display: flex; flex-direction: column; gap: 12px; }
+.msg { max-width: 88%; padding: 12px 16px; border-radius: 18px; line-height: 1.5; }
+.msg p { margin: 0; }
+.msg p + p, .msg .action-cards + p { margin-top: 8px; }
+.msg.user { align-self: flex-end; background: var(--accent); color: var(--accent-ink); border-bottom-right-radius: 6px; }
+.msg.bot { align-self: flex-start; background: var(--surface); border: 1px solid var(--line); border-bottom-left-radius: 6px; }
+.msg.thinking { display: flex; align-items: center; gap: 10px; color: var(--muted); }
+.tiny { font-size: 11px; margin-top: 6px !important; }
+
+.action-cards { display: grid; gap: 8px; margin-top: 12px; }
+.action-card {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%;
+  padding: 12px 14px; border-radius: 12px; border: 1px solid var(--accent);
+  background: var(--accent-soft); color: var(--ink); font-weight: 500; cursor: pointer; text-align: left;
+}
+.action-card:hover { background: color-mix(in srgb, var(--accent) 18%, var(--surface)); }
+.amount.ask { height: 52px; background: var(--surface); }
+.amount.ask input { font-size: 15px; font-weight: 400; }
+.chip.question { height: auto; min-height: 38px; padding: 8px 14px; text-align: left; line-height: 1.35; font-weight: 400; }

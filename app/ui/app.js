@@ -24,6 +24,7 @@ import { receiptSheet, invoiceSheet, scanSheet } from './views/receipt.js'
 import { Scanner } from './scanner.js'
 import { fundSheet } from './views/fund.js'
 import { bidPage } from './views/bid.js'
+import { assistantPage, SPARK } from './views/assistant.js'
 import { changes, deliver } from './notify.js'
 
 const $app = document.getElementById('app')
@@ -49,6 +50,7 @@ const ui = {
   onboarding: false, // first start: Passwort → Notfall-Wörter → Aufladen
   createStep: 0, // "Runde starten": 0 Runde, 1 Bietphase, 2 Raten, 3 Prüfen
   bidStep: 'amount', // "Bieten": amount → review → done
+  chat: [], // "Frag Pomona": [{ role, text, actions, source }]
   toast: null,
   pending: null, // action currently running in the UI
   draft: {
@@ -71,7 +73,8 @@ const ui = {
     sendTo: '',
     sendAmount: '',
     sendPassword: '',
-    guide: ''
+    guide: '',
+    ask: ''
   }
 }
 
@@ -91,13 +94,15 @@ const SHEETS = {
   bid: (u) => (u.status?.round ? bidPage(u) : ''),
   create: (u) => (u.status?.wallet.state === 'unlocked' ? createPage(u) : ''),
   join: (u) => (u.status?.wallet.state === 'unlocked' ? joinPage(u) : ''),
+  assistant: (u) => (u.status?.wallet.state === 'unlocked' ? assistantPage(u) : ''),
   wallet: (u) => (u.status?.wallet.state === 'unlocked' ? walletSheet(u) : '')
 }
 
 function topbar () {
   const w = ui.status?.wallet
+  const ask = `<button class="pill ask-pill" data-action="open-assistant" title="Frag Pomona">${SPARK}<span>Frag Pomona</span></button>`
   const right = w?.state === 'unlocked'
-    ? `<button class="pill" data-action="open-sheet" data-sheet="wallet"><span class="dot ${ui.status.peers > 0 ? 'on' : ''}" title="${ui.status.peers} Peers"></span>${fmt(w.usdt)} ${esc(w.symbol)}<span class="muted mono">${short(w.address)}</span></button>`
+    ? `<div class="bar-right">${ask}<button class="pill" data-action="open-sheet" data-sheet="wallet"><span class="dot ${ui.status.peers > 0 ? 'on' : ''}" title="${ui.status.peers} Peers"></span>${fmt(w.usdt)} ${esc(w.symbol)}<span class="muted mono">${short(w.address)}</span></button></div>`
     : ''
   const update = ui.update
     ? `<div class="update-bar" role="status"><span>Neue Version von Pomona ist bereit.</span><button class="btn accent small" data-action="restart" ${ui.status?.busy ? 'disabled title="Nach der laufenden Transaktion"' : ''}>Neu starten</button></div>`
@@ -137,6 +142,23 @@ function render () {
 }
 
 let lastPage = ''
+
+/** Sends a question (or a suggestion topic) and appends the answer. */
+async function askAssistant (params) {
+  try {
+    const r = await call('assistantAsk', params)
+    ui.chat.push({ role: 'bot', text: r.reply, actions: r.actions, source: r.source })
+  } catch (e) {
+    ui.chat.push({ role: 'bot', text: e.message, actions: [] })
+  }
+  ui.chat = ui.chat.slice(-40)
+  render()
+  scrollChat()
+}
+
+function scrollChat () {
+  setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 30)
+}
 
 /** Camera scanner, alive only while the scan page is open. */
 let scanner = null
@@ -218,6 +240,71 @@ const actions = {
     await window.pomona.restart()
   },
   'open-create': () => { ui.createStep = 0; ui.sheet = 'create' },
+
+  // "Frag Pomona"
+  'open-assistant': () => { ui.sheet = 'assistant'; scrollChat() },
+  async 'agent-send' () {
+    const text = ui.draft.ask.trim()
+    if (!text) return
+    ui.draft.ask = ''
+    ui.chat.push({ role: 'user', text })
+    render()
+    scrollChat()
+    await askAssistant({ text })
+  },
+  async 'agent-topic' (el) {
+    const q = ui.status.assistant.suggestions.find((x) => x.topic === el.dataset.topic)
+    ui.chat.push({ role: 'user', text: q?.question ?? el.textContent })
+    render()
+    scrollChat()
+    await askAssistant({ topic: el.dataset.topic })
+  },
+  async 'agent-install' (el) {
+    await run('assistantInstall', { model: el.dataset.model || 'small' })
+  },
+  async 'agent-reset' () {
+    ui.chat = []
+    await call('assistantReset')
+  },
+  /** An action card: opens the matching page. The person confirms there. */
+  async 'agent-act' (el) {
+    const a = ui.chat[Number(el.dataset.msg)]?.actions?.[Number(el.dataset.act)]
+    if (!a) return
+    switch (a.type) {
+      case 'bid':
+        ui.draft.amount = a.amount
+        ui.bidStep = 'amount'
+        ui.sheet = 'bid'
+        return actions['review-bid']()
+      case 'open':
+        if (a.page === 'fund') return actions['open-fund']()
+        if (a.page === 'scan') return actions['open-scan']()
+        if (a.page === 'create') return actions['open-create']()
+        ui.sheet = a.page
+        return
+      case 'receipt':
+        return actions['show-receipt']({ dataset: { index: String(a.index) } })
+      case 'invoice':
+        ui.sheet = null
+        return actions.invoice()
+      case 'withdraw':
+        ui.sheet = null
+        return actions.withdraw()
+      case 'refund':
+        if (!window.confirm(`${a.label}?`)) return
+        ui.sheet = null
+        return actions.refund()
+      case 'news':
+        ui.draft.news = a.text
+        ui.sheet = null
+        render()
+        document.getElementById('news')?.scrollIntoView({ block: 'center' })
+        document.getElementById('news')?.focus()
+        return toast('Entwurf eingefügt. Prüfe ihn und tippe auf „Senden“.')
+      case 'install':
+        return run('assistantInstall', { model: 'small' })
+    }
+  },
   'create-next': () => {
     const error = createStepError(ui)
     if (error) throw new Error(error)
@@ -437,7 +524,7 @@ $app.addEventListener('change', (e) => {
 })
 
 /** Enter submits the obvious action of a field. */
-const ENTER = { amount: 'review-bid', news: 'post-news', password: null, verify: 'verify-receipt', link: 'join' }
+const ENTER = { amount: 'review-bid', news: 'post-news', password: null, verify: 'verify-receipt', link: 'join', ask: 'agent-send' }
 $app.addEventListener('keydown', (e) => {
   // Clickable rows (role="button") react to Enter and Space like buttons.
   if ((e.key === 'Enter' || e.key === ' ') && e.target.getAttribute?.('role') === 'button') {

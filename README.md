@@ -28,12 +28,14 @@ Pomona ist der Nachfolger von [Contrib](https://github.com/pbrandl/contrib) (Flu
 | Wallet | [WDK](https://docs.wdk.tether.io): `wdk`, `wdk-wallet-evm-erc-4337` | Self-custodial Smart Account (Safe). Gebühren werden in USDT über einen Paymaster bezahlt, eine WDK-Policy begrenzt die Rechte. |
 | Tresor | libsodium: Argon2id + XSalsa20-Poly1305 | Die Seed-Phrase wird nur verschlüsselt gespeichert. |
 | Geld | `PomonaRound`, `PomonaFactory` (Solidity) | Escrow, Raten-Abrechnung und Belege, ohne Admin-Keys. |
+| Assistent | [QVAC](https://qvac.tether.io) (`@qvac/inference`, llama.cpp) | „Frag Pomona“: erklärt die Runde und bereitet Schritte vor. Läuft lokal, Modell (Qwen3) wird einmalig peer-to-peer geladen. Bestätigen muss immer die Person. |
 
 Mehr dazu:
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): Module, Abläufe und wie man Pomona erweitert
 - [docs/CONTRACT.md](docs/CONTRACT.md): Phasen, Funktionen und Invarianten der Contracts
 - [docs/SECURITY.md](docs/SECURITY.md): Bedrohungsmodell, Prüfungsergebnisse und offene Risiken
 - [docs/RPC.md](docs/RPC.md): Schnittstelle zwischen UI und Worker, Format des Status
+- [docs/ASSISTANT.md](docs/ASSISTANT.md): der Assistent „Frag Pomona“ (QVAC), Werkzeuge, Grenzen, Sicherheit
 
 ## Loslegen
 
@@ -77,10 +79,11 @@ Szenarien: `onboarding`, `locked`, `start`, `bidder`, `organizer`, `invoice`, `r
 ## Qualität
 
 - `npm test` in `contracts/` umfasst 14 Tests: Zeitplan, nachgeholte Rechnungen, Belege, Erstattung bei Abbruch, Ablauf und verfehltem Ziel, Einladungen (auch Wiederverwendung in einer anderen Runde), Fee-Tokens, Factory-Register und Parameterprüfung.
-- `npm test` in `app/` umfasst 21 Tests:
-  - Unit-Tests: Beträge, Links, Zeitplan, Policy, Tresor, Manifest-Bereinigung, RPC-Validierung
+- `npm test` in `app/` umfasst 34 Tests:
+  - Unit-Tests: Beträge, Links, Zeitplan, Policy, Tresor, Manifest-Bereinigung, RPC-Validierung, Benachrichtigungen
+  - Assistent: Befehle, Wissen, Rollen- und Phasenprüfung jeder Aktion, Prompt Injection, keine Werkzeuge zum Geldbewegen
   - End-to-End mit echter Chain, WDK und Hyperswarm: Raten-Runde inklusive Beitritt bei offline Organisator, Belege, gefälschte Runden, Policy-Blockade, Senden und Sperren
-  - ein Test, der den Kern **in Bare** ausführt
+  - ein Test, der den Kern **in Bare** ausführt, inklusive QVAC
 - `npm run lint` in `app/` prüft den Code mit [standard](https://standardjs.com).
 
 ## Stand
@@ -91,6 +94,8 @@ Szenarien: `onboarding`, `locked`, `start`, `bidder`, `organizer`, `invoice`, `r
 - [ ] Erster Start in Pear auf einem Desktop und Abgleich mit der aktuellen Pear-Doku
 - [ ] Sepolia: Bundler und Paymaster eintragen und den kompletten Ablauf testen
 - [ ] Automatische Sperre bei Inaktivität, stärkere Argon2id-Parameter
+- [x] Assistent „Frag Pomona“ auf QVAC (lokal, nur vorbereitend)
+- [ ] Assistent mit echtem Modell auf einem Desktop testen (Qualität auf Deutsch, Tool-Aufrufe)
 - [ ] Telegram-Bot im Worker des Organisators
 - [ ] Externes Audit vor dem Mainnet
 

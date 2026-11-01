@@ -99,6 +99,19 @@
   const state = (scenarios[scenario] || scenarios.bidder)()
   state.busyStep = null
   state.version = '0.3.0'
+
+  // Assistant: the real knowledge/intent/action modules from core/agent run in
+  // the browser too; only the language model is simulated (?ai=ready).
+  const ai = { state: new URLSearchParams(window.location.search).get('ai') === 'ready' ? 'ready' : 'none', model: null, progress: null, error: null }
+  let agent = null
+  const loadAgent = async () => {
+    if (!agent) {
+      const [K, I, A] = await Promise.all([import('../core/agent/knowledge.js'), import('../core/agent/intents.js'), import('../core/agent/actions.js')])
+      agent = { K, I, A }
+    }
+    return agent
+  }
+  const MODELS = [{ key: 'small', label: 'Kompakt', size: '1,1 GB', note: '' }, { key: 'better', label: 'Genauer', size: '2,5 GB', note: '' }]
   const update = new URLSearchParams(window.location.search).get('update')
   const listeners = []
   const changed = () => { for (const fn of listeners) fn() }
@@ -111,7 +124,44 @@
     async call (method, params = {}) {
       await new Promise((resolve) => setTimeout(resolve, 120))
       switch (method) {
-        case 'status': return structuredClone(state)
+        case 'status': {
+          const { K } = await loadAgent()
+          state.assistant = state.wallet.state === 'unlocked' ? { ...ai, models: MODELS, suggestions: K.suggestions(state) } : null
+          return structuredClone(state)
+        }
+        case 'assistantAsk': {
+          const { K, I, A } = await loadAgent()
+          await new Promise((resolve) => setTimeout(resolve, 600))
+          const finish = (a, source) => ({ reply: a.text, actions: A.validateActions(a.actions, state), source })
+          if (params.topic) return finish(K.answerTopic(params.topic, state), 'topic')
+          const intent = I.matchIntent(params.text, state)
+          if (intent) return finish(intent, 'rules')
+          if (ai.state === 'ready') {
+            await new Promise((resolve) => setTimeout(resolve, 900))
+            const r = state.round
+            return finish({
+              text: `Gern! Der Richtwert liegt bei ${r?.guide ?? 100} USDT pro Monat. Wenn du etwas mehr geben kannst, hilft das anderen, die weniger können. Ich habe dir 120 USDT vorbereitet; prüfen und bestätigen musst du selbst.`,
+              actions: r?.phase === 'bidding' ? [{ type: 'bid', amount: '120' }] : []
+            }, 'model')
+          }
+          const topic = K.matchTopic(params.text)
+          if (topic) return finish(K.answerTopic(topic, state), 'faq')
+          return finish({ text: 'Diese Frage kann ich ohne Sprachmodell noch nicht beantworten. Richte den Assistenten einmalig ein (läuft dann offline auf deinem Gerät) oder tippe auf einen Vorschlag.', actions: [{ type: 'install' }] }, 'none')
+        }
+        case 'assistantInstall': {
+          ai.model = params.model || 'small'
+          ai.state = 'downloading'
+          ai.progress = 0
+          const tick = () => {
+            ai.progress = Math.min(1, ai.progress + 0.17)
+            if (ai.progress >= 1) ai.state = 'ready'
+            changed()
+            if (ai.state !== 'ready') setTimeout(tick, 400)
+          }
+          setTimeout(tick, 300)
+          return { started: true }
+        }
+        case 'assistantReset': return null
         case 'invite': return { link, qr: qr(link) }
         case 'qr': return qr(params.text)
         case 'createWallet': state.wallet = wallet; return { seed, address: wallet.address }

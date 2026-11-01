@@ -140,3 +140,7 @@ Jeder Ablauf ist eine Folge ganzer Seiten mit Schrittleiste oben (`page()` in `u
 | Einzelseiten | Beitreten, Aufladen, Konto, Beleg, Rechnung, Beleg prüfen |
 
 Eine offene Seite ersetzt die Rundenansicht (`ui.sheet`). Der Hauptknopf bleibt auf dem Handy unten erreichbar (`.actions.sticky`). Bildschirmfotos in `docs/mobile/`.
+
+## Assistent „Frag Pomona“ (QVAC)
+
+Details in [ASSISTANT.md](ASSISTANT.md). Kurz: `core/agent/` ist eine Schicht über dem Anwendungsdienst. Sie liest `status()`, rechnet mit `quoteBid()` und liefert Text plus *vorgeschlagene* Aktionen. Die UI setzt jede Aktion auf eine bestehende Seite um (Prüfseite beim Bieten, Bestätigung bei Rechnung und Zurückziehen). Das Sprachmodell läuft über `@qvac/inference` direkt im Bare-Worker.

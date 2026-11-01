@@ -27,6 +27,8 @@ import { parseAmount, formatAmount } from './units.js'
 import { INTERVALS, intervalName, canInvoice, dueAt, DAY } from './schedule.js'
 import { PomonaError, fail } from './errors.js'
 import { VERSION } from './version.js'
+import { Assistant } from './agent/agent.js'
+import { QvacEngine } from './agent/qvac.js'
 
 const same = (a, b) => !!a && !!b && a.toLowerCase() === b.toLowerCase()
 const TRANSFER = topicOf('Transfer(address,address,uint256)')
@@ -40,6 +42,7 @@ const TRANSFER = topicOf('Transfer(address,address,uint256)')
  * @property {Array<{host: string, port: number}>} [bootstrap] - HyperDHT bootstrap (tests)
  * @property {object} [dht] - custom HyperDHT instance (tests)
  * @property {number} [pollMs] - how often to emit 'change' for chain updates
+ * @property {() => import('./agent/qvac.js').Engine} [assistantEngine] - language model engine (tests inject a fake)
  */
 
 /**
@@ -53,7 +56,7 @@ const TRANSFER = topicOf('Transfer(address,address,uint256)')
 
 export class Pomona extends EventEmitter {
   /** @param {PomonaOptions} opts */
-  constructor ({ storage, defaultNetwork = 'local', networkOverrides = {}, allowDev = false, bootstrap, dht, pollMs } = {}) {
+  constructor ({ storage, defaultNetwork = 'local', networkOverrides = {}, allowDev = false, bootstrap, dht, pollMs, assistantEngine } = {}) {
     super()
     this.p2p = new P2PNode(storage, { bootstrap, dht })
     this.defaultNetwork = defaultNetwork
@@ -74,6 +77,15 @@ export class Pomona extends EventEmitter {
     this._busy = null
     this._busyStep = null
     this._unwatchFunds = null
+
+    // "Frag Pomona": explains and prepares, never signs (see core/agent).
+    this.assistant = new Assistant({
+      getStatus: () => this.status(),
+      quoteBid: (p) => this.quoteBid(p),
+      settings: { get: (k) => this.p2p.getSetting(k), set: (k, v) => this.p2p.setSetting(k, v) },
+      engine: assistantEngine ?? (() => new QvacEngine({ cacheDir: storage + '/models' })),
+      onChange: () => this._changed()
+    })
     this._timer = null
     this._unwatch = null
     this._unwatchChain = null
@@ -85,6 +97,7 @@ export class Pomona extends EventEmitter {
     await this.p2p.ready()
     this._sealed = await this.p2p.getSetting('vault')
     this.saved = await this.p2p.getSetting('round')
+    await this.assistant.ready()
     this._useNetwork(this.saved?.network ?? this.defaultNetwork)
     // Restoring the round needs no password: reads and seeding work while locked.
     if (this.saved) await this._restore(this.saved, { wait: false }).catch((e) => this.emit('error', e))
@@ -96,6 +109,7 @@ export class Pomona extends EventEmitter {
     this._unwatch?.()
     this._unwatchChain?.()
     this._unwatchFunds?.()
+    await this.assistant.close()
     this.account?.dispose()
     this.provider?.destroy()
     await this.p2p.close()
@@ -147,6 +161,7 @@ export class Pomona extends EventEmitter {
   }
 
   lock () {
+    this.assistant.reset() // the conversation may contain personal details
     this._unwatchFunds?.()
     this._unwatchFunds = null
     this.account?.dispose()
@@ -484,6 +499,7 @@ export class Pomona extends EventEmitter {
       busyStep: this._busyStep, // 'prepare' | 'sign' | 'confirm' while a transaction runs
       round: null
     }
+    s.assistant = null // filled at the end (needs the round)
     const meta = this.tokenMeta ?? (this.net.token ? await this._token().catch(() => null) : null)
     const fmt = (v) => formatAmount(v, meta?.decimals ?? 6)
     const me = this.account ? await this.account.address() : null
@@ -492,7 +508,10 @@ export class Pomona extends EventEmitter {
       s.wallet.usdt = await this.account.usdtBalance().then(fmt, () => null)
       s.wallet.symbol = meta?.symbol ?? 'USDT'
     }
-    if (!this.round) return s
+    if (!this.round) {
+      s.assistant = this.assistant.info(s)
+      return s
+    }
 
     const info = await this.round.info()
     const now = (await this.provider.getBlock('latest')).timestamp
@@ -535,8 +554,19 @@ export class Pomona extends EventEmitter {
       invoices,
       news
     }
+    s.assistant = this.assistant.info(s)
     return s
   }
+
+  // ---------------------------------------------------------------- assistant
+
+  /** @param {{ text?: string, topic?: string }} p */
+  assistantAsk (p) { return this.assistant.ask(p) }
+
+  /** @param {{ model?: 'small'|'better' }} p */
+  assistantInstall (p) { return this.assistant.install(p) }
+
+  assistantReset () { this.assistant.reset() }
 
   // ------------------------------------------------------------------ helpers
 

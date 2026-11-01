@@ -32,15 +32,16 @@ export async function setup () {
       defaultNetwork: 'local',
       allowDev: opts.allowDev ?? true,
       networkOverrides: { local },
-      pollMs: 60000
+      pollMs: 60000,
+      assistantEngine: opts.assistantEngine
     })
     apps.push(app)
     return app.ready()
   }
 
   /** A wallet with 5,000 test USDT. */
-  const funded = async () => {
-    const app = await make()
+  const funded = async (opts = {}) => {
+    const app = await make(opts)
     await app.createWallet({ password: PASSWORD })
     await app.faucet()
     return app

@@ -1,5 +1,5 @@
 // Runs under Bare (spawned by bare.test.js): the same core the Pear worker uses.
-import { Pomona } from '../core/bare.js'
+import { Pomona, QvacEngine } from '../core/bare.js'
 import { SmartAccount } from '../core/wallet/smart-account.js' with { imports: 'bare-node-runtime/imports' }
 import { pomonaPolicy } from '../core/wallet/policy.js' with { imports: 'bare-node-runtime/imports' }
 
@@ -26,7 +26,14 @@ try {
   const smartAddress = await smart.address()
   smart.dispose()
 
-  console.log('RESULT ' + JSON.stringify({ title: s.round.title, pledge: s.round.myPledge, deposit: s.round.myDeposit, usdt: s.wallet.usdt, smartAddress }))
+  // QVAC (Tether's local AI) loads in Bare: config, plugin, model registry.
+  const engine = new QvacEngine({ cacheDir: env.storage + '/models' })
+  const qvac = await engine._api()
+  const qvacReady = typeof qvac.completion === 'function' && !!qvac.models.QWEN3_1_7B_INST_Q4
+  await engine.close()
+  const answer = await app.assistantAsk({ topic: 'howmuch' })
+
+  console.log('RESULT ' + JSON.stringify({ title: s.round.title, pledge: s.round.myPledge, deposit: s.round.myDeposit, usdt: s.wallet.usdt, smartAddress, qvacReady, answer: answer.reply.slice(0, 40) }))
 } catch (e) {
   console.log('ERROR ' + (e.stack || e))
 } finally {

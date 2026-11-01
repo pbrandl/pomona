@@ -37,6 +37,9 @@ Events: `ready`, `change` (der Status kann sich geändert haben) und `error` (Fe
 | `receipt` | `index` (0-basiert) | `{ code, qr }` |
 | `verifyReceipt` | `code` | `{ valid, reason? , title?, installment, installments, amount, symbol, paidAt, bidder, round }` |
 | `qr` | `text` | SVG-Markup |
+| `assistantAsk` | `text` (max. 500) oder `topic` (Vorschlag) | `{ reply, actions, source }`. `actions` sind nur Vorschläge (`bid`, `open`, `receipt`, `invoice`, `withdraw`, `refund`, `news`, `install`), geprüft gegen Rolle und Phase. `source`: `topic`, `rules`, `model`, `faq`, `none`. |
+| `assistantInstall` | `model` (`small`/`better`) | Startet Download und Laden im Hintergrund, Fortschritt über `status().assistant` |
+| `assistantReset` | – | Vergisst das Gespräch (passiert auch beim Sperren) |
 
 Beträge sind Strings in deutscher oder englischer Schreibweise, also `"1.234,56"`, `"12,5"` oder `"12.5"`.
 
@@ -54,6 +57,13 @@ Beträge sind Strings in deutscher oder englischer Schreibweise, also `"1.234,56
   network: { id: 'sepolia', name: 'Ethereum Sepolia (Test)', dev: false, explorer: 'https://…' },
   networks: [{ id, name, ready }],        // ready = Factory + Token (+ Bundler/Paymaster) konfiguriert
   peers: 6,                               // Hyperswarm-Verbindungen
+  version: '0.3.0',
+  assistant: {                            // „Frag Pomona“
+    state: 'none' | 'installed' | 'downloading' | 'loading' | 'ready' | 'error',
+    model: 'small' | 'better' | null, progress: 0.34 | null, error: null,
+    models: [{ key, label, size, note }],
+    suggestions: [{ topic, question }]    // passend zu Rolle und Phase
+  },
   busy: null | 'bid' | 'invoice' | …,     // laufende Transaktion
   busyStep: null | 'prepare' | 'sign' | 'confirm', // Fortschritt der laufenden Transaktion
   round: null | {

@@ -10,3 +10,4 @@ export { encodeInvite, decodeInvite, encodeReceipt, decodeReceipt } from './link
 export { parseAmount, formatAmount } from './units.js'
 export { INTERVALS } from './schedule.js'
 export { VERSION } from './version.js'
+export { QvacEngine, MODELS } from './agent/qvac.js'

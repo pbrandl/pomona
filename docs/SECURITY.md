@@ -62,6 +62,18 @@ Stand: Version 0.2. Dieses Dokument enthält das Bedrohungsmodell, die Ergebniss
 | **Offline-Brute-Force auf den Tresor:** Mit Zugriff auf die Festplatte lassen sich Passwörter raten. | Mindestens 8 Zeichen, Argon2id mit Parametern für interaktive Nutzung. Für Mainnet die Parameter erhöhen (sie werden im Tresor mitgespeichert, eine Migration ist also möglich) und eine automatische Sperre bei Inaktivität einbauen. |
 | **Seed im Arbeitsspeicher**, solange die Wallet entsperrt ist. | JavaScript-Strings lassen sich nicht zuverlässig löschen. `lock()` entfernt alle Referenzen. |
 
+## Assistent „Frag Pomona“ (QVAC)
+
+| Risiko | Gegenmaßnahme |
+|---|---|
+| Das Sprachmodell bewegt Geld | Es gibt kein Werkzeug dafür. Die Werkzeuge lesen (`calculate_bid`) oder schlagen eine Aktion vor. Eine Aktion öffnet nur eine Seite der App, signiert wird dort durch die Person. Der Assistent hat keinen Zugriff auf Wallet, Passwort oder Notfall-Wörter. |
+| Prompt Injection über Titel, Beschreibung oder Neuigkeiten (kommen von anderen Peers) | Die Texte werden bereinigt (Chat-Template-Tokens, Tags, Begrenzer entfernt), gekürzt und als Daten eingezäunt. Der Systemprompt verbietet, Anweisungen daraus zu befolgen. Selbst wenn ein Modell gehorcht, entsteht höchstens ein Vorschlag, den die Person auf der Prüfseite sieht. Getestet in `test/assistant.test.js`. |
+| Unpassende Vorschläge (falsche Rolle, Phase, Rate) | Jede Aktion wird gegen den aktuellen Status geprüft (`core/agent/actions.js`). Gebote werden vorher mit `quoteBid` gegen die Regeln des Contracts gerechnet. |
+| Falsche Antworten (Halluzination) | Knopf-Vorschläge und Befehle laufen ohne Modell über geprüfte Texte. Antworten des Modells sind sichtbar gekennzeichnet („Lokale KI · kann sich irren“). Zahlen kommen aus dem Status, nicht aus dem Modell. |
+| Privatsphäre | Das Modell läuft lokal (QVAC, llama.cpp). Fragen verlassen das Gerät nicht. Das Gespräch wird nicht gespeichert und beim Sperren gelöscht. |
+| Manipuliertes Modell | QVAC prüft heruntergeladene Modelle gegen die SHA-256-Prüfsumme aus seinem Katalog. Der Katalog kommt mit dem npm-Paket, dessen Version über den Lockfile fixiert ist. |
+| Download | Das Modell wird peer-to-peer aus der QVAC-Registry geladen. Dabei sind wie bei Hyperswarm IP-Adressen für die Gegenstellen sichtbar. |
+
 ## Vor einem Mainnet-Einsatz
 
 1. Externes Audit von `PomonaRound` und `PomonaFactory`.

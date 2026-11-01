@@ -250,3 +250,53 @@ test('bidding UX: guide, quote before committing, progress steps, deposit detect
   assert.ok(ok, 'deposit not detected within 5 s')
   assert.equal((await dana.status()).wallet.usdt, '3825')
 })
+
+test('assistant on a real round: answers, prepares, never moves money', async () => {
+  const farm = await env.funded()
+  // A scripted "model": first it calculates, then it prepares a bid.
+  const script = [
+    { toolCalls: [{ id: 'a', name: 'calculate_bid', arguments: { amount: '120' } }] },
+    { toolCalls: [{ id: 'b', name: 'prepare_bid', arguments: { amount: '120' } }] },
+    { text: 'Ich habe 120 USDT pro Monat vorbereitet. Hinterlegt würden 1.440 USDT.' }
+  ]
+  const seen = []
+  const engine = {
+    async load (key, onProgress) { onProgress(1) },
+    async chat ({ messages }) { seen.push(messages); return script[seen.length - 1] ?? { text: '' } },
+    async close () {}
+  }
+  const erik = await env.funded({ assistantEngine: () => engine })
+  const { link } = await farm.createRound({ title: 'KI-Runde', target: '500', guide: '100', interval: 'month', installments: 12, biddingDays: 5, inviteOnly: true })
+  await erik.join({ link })
+
+  let s = await erik.status()
+  assert.equal(s.assistant.state, 'none')
+  assert.ok(s.assistant.suggestions.some((x) => x.topic === 'howmuch'))
+
+  const topic = await erik.assistantAsk({ topic: 'howmuch' })
+  assert.match(topic.reply, /Richtwert liegt bei 100 USDT pro Monat/)
+  assert.deepEqual(topic.actions.map((a) => a.type), ['bid'])
+
+  const rule = await erik.assistantAsk({ text: 'Ich möchte 80 im Monat bieten' })
+  assert.equal(rule.source, 'rules')
+  assert.equal(rule.actions[0].amount, '80')
+
+  await erik.assistantInstall({ model: 'small' })
+  await erik.assistant._loading
+  assert.equal((await erik.status()).assistant.state, 'ready')
+
+  const before = (await erik.status()).wallet.usdt
+  const model = await erik.assistantAsk({ text: 'Kannst du mir ein Gebot vorbereiten, etwas über dem Richtwert?' })
+  assert.equal(model.source, 'model')
+  assert.equal(model.actions[0].amount, '120')
+  const calc = JSON.parse(seen[1].find((m) => m.role === 'tool').content)
+  assert.equal(calc.deposit, '1440') // real quote from the core
+  assert.equal(calc.enough, true)
+  assert.match(seen[0][0].content, /Richtwert: 100 USDT pro Monat/) // the model saw the live numbers
+
+  s = await erik.status()
+  assert.equal(s.wallet.usdt, before) // nothing moved
+  assert.equal(s.round.myPledge, '0') // nothing bid
+  erik.lock()
+  assert.equal(erik.assistant.turns.length, 0) // conversation forgotten on lock
+})

@@ -12,7 +12,7 @@ import { deploy } from '../../contracts/scripts/deploy.js'
 const require = createRequire(import.meta.url)
 const bare = join(require.resolve('bare-runtime/package'), '..', 'bin', 'bare')
 
-test('core runs in Bare (Pear runtime): vault, WDK, Pears, contracts, ERC-4337', async () => {
+test('core runs in Bare (Pear runtime): vault, WDK, Pears, contracts, ERC-4337, QVAC', async () => {
   const chain = await startChain()
   const storage = mkdtempSync(join(tmpdir(), 'pomona-bare-'))
   try {
@@ -32,6 +32,8 @@ test('core runs in Bare (Pear runtime): vault, WDK, Pears, contracts, ERC-4337',
     assert.equal(r.deposit, '168')
     assert.equal(r.usdt, '4832')
     assert.match(r.smartAddress, /^0x[0-9a-fA-F]{40}$/)
+    assert.equal(r.qvacReady, true)
+    assert.match(r.answer, /^Das Ziel sind 100 USDT pro Woche/)
   } finally {
     await chain.stop()
     rmSync(storage, { recursive: true, force: true })
