@@ -21,11 +21,31 @@ import { LIMITS } from '../config/limits.js'
  * @property {number} chainId
  * @property {string} round     - contract address
  * @property {string} organizer - must equal the contract's organizer
+ * @property {string|null} website - project website (http/https only)
  * @property {string|null} guide - suggested bid per installment ("Richtwert"), display only
  * @property {number} createdAt - ms
  */
 
 const clip = (s, n) => String(s ?? '').slice(0, n)
+
+/**
+ * The project's website, if it is a plain http(s) address. Peers write the
+ * manifest, so anything else (javascript:, data:, credentials in the URL,
+ * other schemes) is dropped before the UI could ever link to it.
+ * @param {unknown} url
+ * @returns {string|null}
+ */
+export function cleanWebsite (url) {
+  if (typeof url !== 'string') return null
+  let s = url.trim()
+  if (!s || s.length > LIMITS.website) return null
+  if (!/^[a-z][a-z0-9+.-]*:/i.test(s)) s = 'https://' + s // lindenhof.de → https://lindenhof.de/
+  let u
+  try { u = new URL(s) } catch { return null }
+  if (u.protocol !== 'https:' && u.protocol !== 'http:') return null
+  if (u.username || u.password || !u.hostname.includes('.')) return null
+  return u.href
+}
 
 /**
  * @param {unknown} m
@@ -43,6 +63,7 @@ export function sanitizeManifest (m) {
     chainId: m.chainId,
     round: m.round,
     organizer: m.organizer,
+    website: cleanWebsite(m.website),
     guide: typeof m.guide === 'string' && /^\d{1,15}(\.\d{1,6})?$/.test(m.guide) ? m.guide : null,
     createdAt: Number.isFinite(m.createdAt) ? m.createdAt : 0
   }

@@ -22,6 +22,7 @@ import { RoundContract, FactoryContract, TokenContract } from './chain/contracts
 import { explain } from './chain/reverts.js'
 import { openAccount, seal, open, checkPassword } from './wallet/index.js'
 import { P2PNode } from './p2p/node.js'
+import { cleanWebsite } from './p2p/manifest.js'
 import { encodeInvite, decodeInvite, encodeReceipt, decodeReceipt, receiptMessage, RECEIPT_TTL } from './links.js'
 import { parseAmount, formatAmount } from './units.js'
 import { INTERVALS, MODES, intervalName, canInvoice, dueAt, DAY } from './schedule.js'
@@ -216,6 +217,7 @@ export class Pomona extends EventEmitter {
    * @param {Object} p
    * @param {string} p.title
    * @param {string} [p.description]
+   * @param {string} [p.website] - the project's website, e.g. lindenhof.de
    * @param {string} [p.network]
    * @param {string} p.target        - per installment, e.g. "4.000"
    * @param {string} [p.minBid]      - per installment
@@ -234,6 +236,8 @@ export class Pomona extends EventEmitter {
     if (this.round) fail('HAS_ROUND', 'Diese App hat bereits eine Runde.')
     const title = String(p.title ?? '').trim().slice(0, LIMITS.title)
     const description = String(p.description ?? '').trim().slice(0, LIMITS.description)
+    const website = p.website ? cleanWebsite(p.website) : null
+    if (p.website && !website) fail('BAD_INPUT', 'Bitte eine gültige Website angeben, z. B. lindenhof.de.')
     if (!title) fail('BAD_INPUT', 'Bitte gib der Runde einen Namen.')
     if (!Object.hasOwn(INTERVALS, p.interval)) fail('BAD_INPUT', 'Bitte Woche oder Monat als Intervall wählen.')
     const mode = p.mode ?? 'deposit'
@@ -281,6 +285,7 @@ export class Pomona extends EventEmitter {
       v: 1,
       title,
       description,
+      website,
       network: this.net.id,
       chainId: this.net.chainId,
       round: address,
@@ -678,6 +683,7 @@ export class Pomona extends EventEmitter {
       role: this.saved.role,
       title: this.manifest?.title ?? '',
       description: this.manifest?.description ?? '',
+      website: this.manifest?.website ?? null,
       guide: this.manifest?.guide ?? null,
       verified: !!this.manifest && same(this.manifest.organizer, info.organizer),
       address: info.address,

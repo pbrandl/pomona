@@ -831,3 +831,6 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; justif
 .progress.split { align-items: flex-start; }
 .progress.split .ring { width: 175px; height: 175px; align-self: flex-start; aspect-ratio: auto; max-width: 48%; }
 .progress.split .ring { max-width: none; flex: none; }
+.head-actions { gap: 6px; }
+.icon-btn { width: 36px; height: 36px; }
+.icon-btn .ic { width: 18px; height: 18px; }

@@ -41,7 +41,7 @@ export function createPage (ui) {
 
   if (at === 0) {
     body = `${field(ui, 'title', 'Name der Runde', { placeholder: 'Solawi Lindenhof 2027' })}
-      ${field(ui, 'description', 'Worum geht es? (optional)', { area: true, placeholder: 'Gemüse für 40 Haushalte, April bis März.' })}`
+      ${field(ui, 'website', 'Website des Projekts (optional)', { type: 'url', mode: 'url', placeholder: 'lindenhof.de', hint: 'Bietende erreichen sie über ein Icon neben dem Titel.' })}`
   } else if (at === 1) {
     body = `<p class="lead">Bis wann darf geboten werden? Bis dahin können alle bieten, erhöhen und zurückziehen.</p>
       ${field(ui, 'endDate', 'Bieten möglich bis einschließlich', { type: 'date' })}
@@ -94,7 +94,7 @@ function review (ui) {
   const networks = s.networks.map((x) =>
     `<option value="${esc(x.id)}" ${x.id === net ? 'selected' : ''} ${x.ready ? '' : 'disabled'}>${esc(x.name)}${x.ready ? '' : ' (nicht eingerichtet)'}</option>`).join('')
   return `<div class="receipt">
-      <div class="receipt-head"><span class="small muted">Runde</span><strong>${esc(d.title)}</strong>${d.description ? `<span class="small muted">${esc(d.description)}</span>` : ''}</div>
+      <div class="receipt-head"><span class="small muted">Runde</span><strong>${esc(d.title)}</strong>${d.website ? `<span class="small muted">${esc(d.website)}</span>` : ''}</div>
       <dl>
         <dt>Bezahlung</dt><dd>${d.mode === 'deposit' ? 'Vorab hinterlegen' : 'Per Rechnung'}</dd>
         <dt>Bieten bis</dt><dd>${esc(dayTime(end))}</dd>

@@ -48,7 +48,8 @@
     const r = Object.assign({
       role: 'bidder',
       title: 'Solawi Lindenhof 2027',
-      description: 'Gemüse für 40 Haushalte, April bis März. Jeder gibt, was er kann.',
+      description: '',
+      website: 'https://lindenhof.example/',
       verified: true,
       address: '0x7a4B9f02cE1d8A6f30E59c7D1b8E2F6a30C94E7b',
       organizer: '0x1111111111111111111111111111111111111111',

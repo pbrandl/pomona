@@ -64,6 +64,7 @@ const ui = {
   draft: {
     title: '',
     description: '',
+    website: '',
     target: '',
     installments: '12',
     interval: 'month',
@@ -442,7 +443,7 @@ const actions = {
     const d = ui.draft
     await run('createRound', {
       title: d.title,
-      description: d.description,
+      website: d.website || undefined,
       mode: d.mode,
       target: d.target,
       minBid: d.minBid || '0',

@@ -34,6 +34,7 @@ export const METHODS = {
       title: ['string', LIMITS.title],
       mode: ['string', 8],
       description: ['string', LIMITS.description],
+      website: ['string', LIMITS.website],
       network: ['string', 32],
       target: 'amount',
       minBid: 'amount',

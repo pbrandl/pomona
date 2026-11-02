@@ -23,7 +23,7 @@ Events: `ready`, `change` (der Status kann sich geändert haben) und `error` (Fe
 | `revealSeed` | `password` | Seed als String |
 | `sendUsdt` | `to`, `amount`, `password` | `{ hash }` |
 | `faucet` | – | Nur auf der lokalen Chain: 5.000 Test-USDT |
-| `createRound` | `title`, `description?`, `mode?` (`invoice` = per Rechnung, `deposit` = vorab hinterlegen, Standard `deposit`), `network?`, `target`, `minBid?`, `interval` (`week`/`month`), `installments`, `biddingEnd` (Unix-Sekunden) oder `biddingDays`, `guide?` (Richtwert pro Rate), `inviteOnly?` | `{ link }` |
+| `createRound` | `title`, `website?` (nur http/https, z. B. `lindenhof.de`), `description?`, `mode?` (`invoice` = per Rechnung, `deposit` = vorab hinterlegen, Standard `deposit`), `network?`, `target`, `minBid?`, `interval` (`week`/`month`), `installments`, `biddingEnd` (Unix-Sekunden) oder `biddingDays`, `guide?` (Richtwert pro Rate), `inviteOnly?` | `{ link }` |
 | `join` | `link` | Status |
 | `quoteBid` | `amount` (pro Rate) | `{ amount, pledgeAfter, installments, deposit, fee, balance, enough, missing, symbol }`. Rechnet nur, sendet nichts. `fee` ist die Netzwerkgebühr in USDT (`null` auf der lokalen Chain). |
 | `bid` | `amount` (pro Rate) | – |
@@ -74,7 +74,7 @@ Beträge sind Strings in deutscher oder englischer Schreibweise, also `"1.234,56
   round: null | {
     mode: 'invoice' | 'deposit',          // per Rechnung oder vorab hinterlegt
     role: 'organizer' | 'bidder',
-    title, description,
+    title, description, website,          // website: http(s) oder null, als Icon neben dem Titel
     guide: '100' | null,                  // Richtwert pro Rate (aus dem Manifest, nur Anzeige)
     verified: true,                       // Manifest-Organisator == Contract-Organisator
     address, organizer, symbol,

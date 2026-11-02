@@ -151,3 +151,12 @@ test('bid statistics: average and median per installment', async () => {
   assert.deepEqual(bidStats([100n, 50n, 300n], f), { average: '150', median: '100' })
   assert.deepEqual(bidStats([40n, 10n, 20n, 30n], f), { average: '25', median: '25' })
 })
+
+test('project website: only plain http(s) addresses survive', async () => {
+  const { cleanWebsite } = await import('../core/p2p/manifest.js')
+  assert.equal(cleanWebsite('lindenhof.de'), 'https://lindenhof.de/')
+  assert.equal(cleanWebsite('https://solawi.example/runde?x=1'), 'https://solawi.example/runde?x=1')
+  for (const bad of ['javascript:alert(1)', 'data:text/html,hi', 'https://user:pw@evil.example', 'ftp://x.example', 'localhost', '', null, 'x'.repeat(400) + '.de']) {
+    assert.equal(cleanWebsite(bad), null, String(bad).slice(0, 40))
+  }
+})
