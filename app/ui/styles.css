@@ -868,3 +868,7 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; justif
   .progress.split .ring { width: 150px; height: 150px; }
   .progress.split .stats { grid-template-columns: repeat(3, auto); justify-content: space-around; }
 }
+/* KPI figures and labels never wrap */
+.progress.split .stats .stat strong, .progress.split .stats .stat span { white-space: nowrap; }
+@media (max-width: 520px) { .progress.split .stats .stat strong small { display: inline; } }
+.round-head .pledged { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
