@@ -234,6 +234,34 @@ function focusTrack () {
   }
   paint()
   el.addEventListener('scroll', () => { trackLeft = el.scrollLeft; paint() }, { passive: true })
+  // The whole card scrolls the timeline: sideways wheel/trackpad (or Shift +
+  // wheel) and dragging with finger or mouse. Vertical scrolling stays the page's.
+  const card = el.closest('.tk-card')
+  card?.addEventListener('wheel', (e) => {
+    if (el.contains(e.target)) return // the timeline scrolls natively
+    const dx = e.shiftKey ? e.deltaY || e.deltaX : e.deltaX
+    if (!dx || (!e.shiftKey && Math.abs(e.deltaX) < Math.abs(e.deltaY))) return
+    el.style.scrollBehavior = 'auto'
+    el.scrollLeft += dx
+    e.preventDefault()
+  }, { passive: false })
+  card?.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0 || bar?.contains(e.target) || e.target.closest('button, a, [data-action]')) return
+    const x0 = e.clientX
+    const left0 = el.scrollLeft
+    let dragging = false
+    const move = (ev) => {
+      const dx = ev.clientX - x0
+      if (!dragging && Math.abs(dx) < 6) return // a tap stays a tap
+      dragging = true
+      el.style.scrollBehavior = 'auto'
+      el.scrollLeft = left0 - dx
+    }
+    const up = () => { card.removeEventListener('pointermove', move); el.style.scrollBehavior = '' }
+    card.addEventListener('pointermove', move)
+    card.addEventListener('pointerup', up, { once: true })
+    card.addEventListener('pointercancel', up, { once: true })
+  })
   // Drag or tap the indicator (mouse users have no swipe).
   bar?.addEventListener('pointerdown', (e) => {
     const move = (ev) => {

@@ -853,3 +853,8 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; justif
   .progress.split .stats .stat strong small { display: block; font-size: 11px; }
 }
 @media (max-width: 520px) { .progress.split .stats { align-items: end; } } /* labels on one baseline */
+
+/* Horizontal gestures anywhere on the card move the timeline; vertical ones scroll the page */
+.tk-card { touch-action: pan-y; cursor: grab; user-select: none; -webkit-user-select: none; }
+.tk-card:active { cursor: grabbing; }
+.tk-card .clickable, .tk-card button, .tk-card a { cursor: pointer; }
