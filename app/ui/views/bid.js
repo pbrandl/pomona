@@ -61,10 +61,10 @@ function amountPage (ui) {
         ${unit}
       </label>`
   return page(null, `
+    <div class="bid-progress-box">${progressBar(r, amount)}</div>
     ${has ? `<p class="lead">Du bietest bisher ${fmt(r.myPledge)} ${esc(r.symbol)} ${p.per}.</p>` : ''}
     ${display}
     ${!has && r.guide ? guideChips(ui, r, p) : ''}
-    <div class="bid-progress-box">${progressBar(r, amount)}</div>
     <p class="small muted bid-hint">${hint}</p>
     ${touch ? keypad() : ''}
     <div class="actions sticky"><button class="btn accent block" data-action="review-bid" ${amount > 0 ? '' : 'disabled'}>Weiter</button></div>`,
@@ -80,7 +80,7 @@ export function progressBar (r, amount) {
   const w = (v) => Math.max(0, Math.min(100, (v / target) * 100))
   const text = amount > 0
     ? `Mit deinem Gebot: <strong>${fmt(after, 0)}</strong> von ${fmt(target, 0)} ${esc(r.symbol)} · ${fmt((after / target) * 100, 0)} %`
-    : `Stand: ${fmt(before, 0)} von ${fmt(target, 0)} ${esc(r.symbol)} · ${fmt((before / target) * 100, 0)} %`
+    : `<strong>${fmt(before, 0)}</strong> von ${fmt(target, 0)} ${esc(r.symbol)} · ${fmt((before / target) * 100, 0)} %`
   return `<div class="bid-progress">
     <div class="bp-track" role="img" aria-label="${amount > 0 ? 'Fortschritt mit deinem Gebot' : 'Fortschritt der Runde'}">
       <i class="bp-now" style="width:${w(before)}%"></i>

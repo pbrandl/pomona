@@ -1004,3 +1004,4 @@ main:has(.page.fit) { padding-bottom: 0; }
 /* The progress bar sits in a light, highlighted box */
 .bid-progress-box { background: var(--accent-soft); border-radius: 14px; padding: 14px 16px; }
 .bid-progress-box .bp-track { background: var(--surface); }
+.bp-mine { background: var(--faint); } /* your bid: plain grey segment */
