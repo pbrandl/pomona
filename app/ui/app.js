@@ -710,6 +710,11 @@ const syncDraft = (e) => {
   if (key && Object.hasOwn(ui.draft, key)) ui.draft[key] = e.target.type === 'checkbox' ? e.target.checked : e.target.value
 }
 $app.addEventListener('input', (e) => {
+  // The bid field takes only digits and one decimal separator (letters are dropped).
+  if (e.target.id === 'amount') {
+    const clean = e.target.value.replace(/[^\d.,]/g, '')
+    if (clean !== e.target.value) e.target.value = clean
+  }
   syncDraft(e)
   // Live previews (deposit hint, summary) without losing focus.
   if (['amount', 'target', 'installments'].includes(e.target.id)) render()
