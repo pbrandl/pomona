@@ -30,6 +30,9 @@ export function bidPage (ui) {
   return amountPage(ui)
 }
 
+/** Touch screens get a keypad instead of the system keyboard (see Contrib). */
+export const isTouch = () => typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches
+
 function amountPage (ui) {
   const r = ui.status.round
   const p = per(r.intervalName)
@@ -38,26 +41,61 @@ function amountPage (ui) {
   const payg = r.mode === 'invoice'
   const cost = payg ? 0 : amount * r.installments
   const balance = num(ui.status.wallet.usdt)
+  const touch = isTouch()
   let hint
   if (payg && amount > 0) {
-    hint = `Jetzt wird nichts abgebucht. Ab ${esc(date(r.biddingEnd))} kommt ${esc(p.adj)} eine Rechnung über ${fmt(amount + num(r.myPledge))} ${esc(r.symbol)}, ${r.installments}-mal.`
+    hint = `Jetzt wird nichts abgebucht. Ab ${esc(date(r.biddingEnd))} kommt ${esc(p.adj)} eine Rechnung über ${fmt(amount + num(r.myPledge))} ${esc(r.symbol)}.`
   } else if (amount > 0 && cost > balance) {
     hint = `<span class="warn-text">Dafür brauchst du ${fmt(cost)} ${esc(r.symbol)}, dir fehlen ${fmt(cost - balance)}.</span> <button class="link" data-action="open-fund">Aufladen</button>`
   } else if (amount > 0) {
     hint = `${has ? 'Zusätzlich hinterlegst du' : 'Du hinterlegst'} ${r.installments} × ${fmt(amount)} = ${fmt(cost)} ${esc(r.symbol)}.`
   } else {
-    hint = num(r.minBid) > 0 ? `Mindestgebot ${fmt(r.minBid)} ${esc(r.symbol)} ${p.per}.` : `Dein Guthaben: ${fmt(balance)} ${esc(r.symbol)}.`
+    hint = num(r.minBid) > 0 ? `Mindestgebot ${fmt(r.minBid)} ${esc(r.symbol)} ${p.per}.` : `${r.installments} Raten, ${esc(p.adj)}.`
   }
-  return page(has ? 'Um wie viel erhöhen?' : `Wie viel ${p.per}?`, `
-    ${has ? `<p class="lead">Du bietest bisher ${fmt(r.myPledge)} ${esc(r.symbol)} ${p.per}.</p>` : `<p class="lead">${esc(r.title)} · ${r.installments} Raten, ${esc(p.adj)}.</p>`}
-    ${!has && r.guide ? guideChips(ui, r, p) : ''}
-    <div class="amount big">
+  // Touch: the figure is shown, the keypad below types into it (no system keyboard).
+  const display = touch
+    ? `<div class="amount-display ${amount > 0 ? '' : 'empty'}" aria-live="polite"><strong>${amount > 0 ? fmt(amount) : '0'}</strong><span>${esc(r.symbol)} ${p.per}</span></div>`
+    : `<div class="amount big">
       <input id="amount" data-draft="amount" inputmode="decimal" placeholder="0" value="${esc(ui.draft.amount)}" autocomplete="off" autofocus>
       <span class="unit">${esc(r.symbol)} ${p.per}</span>
-    </div>
-    <p class="small muted">${hint}</p>
+    </div>`
+  return page(has ? 'Um wie viel erhöhen?' : `Wie viel ${p.per}?`, `
+    ${has ? `<p class="lead">Du bietest bisher ${fmt(r.myPledge)} ${esc(r.symbol)} ${p.per}.</p>` : ''}
+    ${display}
+    ${!has && r.guide ? guideChips(ui, r, p) : ''}
+    ${progressBar(r, amount)}
+    <p class="small muted bid-hint">${hint}</p>
+    ${touch ? keypad() : ''}
     <div class="actions sticky"><button class="btn accent block" data-action="review-bid" ${amount > 0 ? '' : 'disabled'}>Weiter</button></div>`,
-  { steps: BID_STEPS, at: 0 })
+  { steps: BID_STEPS, at: 0, cls: touch ? 'fit' : '' })
+}
+
+/** Where the round stands, and how far your bid moves it toward the target. */
+function progressBar (r, amount) {
+  const target = num(r.target)
+  if (!(target > 0)) return ''
+  const before = num(r.total)
+  const after = before + amount
+  const w = (v) => Math.max(0, Math.min(100, (v / target) * 100))
+  const text = amount > 0
+    ? `Mit deinem Gebot: <strong>${fmt(after, 0)}</strong> von ${fmt(target, 0)} ${esc(r.symbol)} · ${fmt((after / target) * 100, 0)} %`
+    : `Stand: ${fmt(before, 0)} von ${fmt(target, 0)} ${esc(r.symbol)} · ${fmt((before / target) * 100, 0)} %`
+  return `<div class="bid-progress">
+    <div class="bp-track" role="img" aria-label="${amount > 0 ? 'Fortschritt mit deinem Gebot' : 'Fortschritt der Runde'}">
+      <i class="bp-now" style="width:${w(before)}%"></i>
+      <i class="bp-mine" style="left:${w(before)}%;width:${Math.max(0, w(after) - w(before))}%"></i>
+    </div>
+    <p class="small muted">${text}</p>
+  </div>`
+}
+
+/** Digits, delete; amounts are whole USDT here (decimals via the desktop field). */
+function keypad () {
+  const key = (k, label = k) => `<button class="key" data-action="key" data-key="${k}" aria-label="${k === 'del' ? 'Löschen' : k}">${label}</button>`
+  return `<div class="keypad" role="group" aria-label="Ziffernblock">
+    ${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => key(String(n))).join('')}
+    <span></span>${key('0')}${key('del', '⌫')}
+  </div>`
 }
 
 /** Quick picks around the organizer's guide value ("Richtwert"). */
@@ -69,7 +107,7 @@ function guideChips (ui, r, p) {
     const on = num(ui.draft.amount) === v
     return `<button class="chip ${on ? 'on' : ''} ${v === g ? 'guide' : ''}" data-action="pick-amount" data-amount="${v}">${fmt(v)}${v === g ? ' <span>Richtwert</span>' : ''}</button>`
   }).join('')
-  return `<div><p class="small muted" style="margin-bottom:8px">Richtwert: ${fmt(g)} ${esc(r.symbol)} ${p.per}. Gib, was du kannst.</p><div class="chips">${chips}</div></div>`
+  return `<div><p class="small muted guide-text" style="margin-bottom:8px">Richtwert: ${fmt(g)} ${esc(r.symbol)} ${p.per}. Gib, was du kannst.</p><div class="chips">${chips}</div></div>`
 }
 
 function reviewPage (ui) {

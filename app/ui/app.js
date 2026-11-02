@@ -425,6 +425,14 @@ const actions = {
   'create-wallet-start': () => { ui.onboarding = true; ui.sheet = 'create-wallet' },
   'toggle-send': () => { ui.showSend = !ui.showSend },
   'pick-amount': (el) => { ui.draft.amount = el.dataset.amount },
+  /** Keypad on touch screens: whole USDT, at most 6 digits, no leading zero. */
+  key: (el) => {
+    const k = el.dataset.key
+    let v = String(ui.draft.amount ?? '').replace(/\D/g, '')
+    if (k === 'del') v = v.slice(0, -1)
+    else if (v.length < 6 && !(v === '' && k === '0')) v += k
+    ui.draft.amount = v
+  },
 
   'show-all-invoices': () => { ui.showAllInvoices = true },
   'toggle-news': () => { ui.showAllNews = !ui.showAllNews },

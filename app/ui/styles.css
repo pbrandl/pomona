@@ -897,3 +897,65 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; justif
 /* "oder" divider between scanning and pasting */
 .or { display: flex; align-items: center; gap: 12px; color: var(--faint); font-size: 13px; }
 .or::before, .or::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+
+/* ---------------------------------------------- bid amount on touch screens */
+/* The page fills the screen height: figure on top, keypad and button at the bottom. */
+.page.fit { min-height: calc(100dvh - 76px); display: flex; flex-direction: column; }
+.page.fit > .stack-lg { flex: 1; display: flex; flex-direction: column; gap: 16px; }
+.page.fit .page-title { margin-bottom: 4px; }
+.page.fit .keypad { margin-top: auto; }
+.page.fit .actions.sticky { position: static; }
+.amount-display { display: flex; align-items: baseline; justify-content: center; gap: 8px; padding: 8px 0; }
+.amount-display strong { font-size: 52px; font-weight: 600; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+.amount-display span { color: var(--muted); font-size: 15px; }
+.amount-display.empty strong { color: var(--faint); }
+.page.fit .chips { justify-content: center; }
+.bid-hint { text-align: center; }
+.keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; justify-items: center; max-width: 320px; width: 100%; margin-inline: auto; }
+.keypad .key {
+  width: 100%; max-width: 88px; aspect-ratio: 1.45; border-radius: 999px; border: 0;
+  background: var(--accent-soft); color: var(--ink); font-size: 26px; font-weight: 500; cursor: pointer;
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+}
+.keypad .key:active { background: var(--accent); color: var(--accent-ink); }
+.keypad .key[data-key="del"] { background: none; font-size: 22px; color: var(--muted); }
+@media (max-height: 700px) { .amount-display strong { font-size: 40px; } .keypad { gap: 6px; } .keypad .key { aspect-ratio: 1.8; font-size: 22px; } }
+
+/* Progress toward the target, with your bid as its own segment */
+.bid-progress { display: grid; gap: 6px; }
+.bp-track { position: relative; height: 10px; border-radius: 10px; background: var(--ring-track); overflow: hidden; }
+.bp-track i { position: absolute; top: 0; bottom: 0; }
+.bp-now { left: 0; background: var(--accent); }
+.bp-mine { background: repeating-linear-gradient(45deg, var(--accent) 0 4px, color-mix(in srgb, var(--accent) 45%, transparent) 4px 8px); }
+.bid-progress p { margin: 0; text-align: center; }
+.bid-progress strong { color: var(--accent); }
+
+/* Fit the whole bid step into the screen height (keys and gaps scale with it) */
+.page.fit { min-height: 0; height: calc(100dvh - 76px); overflow: hidden; }
+.page.fit .page-top { margin-bottom: 4px; }
+.page.fit .stepbar { margin-bottom: 1.2dvh; }
+.page.fit .page-title { font-size: 22px; margin: 0; }
+.page.fit > .stack-lg { gap: 1.4dvh; min-height: 0; }
+.page.fit .guide-text { display: none; }
+.page.fit .amount-display { padding: 0; }
+.page.fit .amount-display strong { font-size: clamp(34px, 6.5dvh, 52px); }
+.page.fit .bid-hint { margin: 0; }
+.page.fit .keypad { gap: 1dvh 10px; }
+.page.fit .keypad .key { aspect-ratio: auto; height: clamp(38px, 6.8dvh, 58px); max-width: 96px; font-size: clamp(20px, 3.2dvh, 26px); }
+.page.fit .actions.sticky { padding-bottom: max(8px, env(safe-area-inset-bottom, 0px)); }
+main:has(.page.fit) { padding-bottom: 0; }
+.page.fit { height: calc(100dvh - 72px); }
+.page.fit .keypad { gap: 0.8dvh 10px; }
+.page.fit .keypad .key { height: clamp(36px, 6dvh, 56px); }
+.page.fit .amount-display strong { font-size: clamp(32px, 5.5dvh, 52px); }
+.page.fit > .stack-lg { gap: 1.1dvh; }
+.page.fit .chips .chip { padding-block: 6px; }
+.page.fit > .stack-lg { gap: 0.9dvh; } .page.fit .keypad .key { height: clamp(36px, 5.7dvh, 56px); }
+.page.fit > .stack-lg > * + * { margin-top: 0; } .page.fit > .stack-lg { gap: 1.6dvh; } .page.fit .keypad .key { height: clamp(40px, 6.6dvh, 60px); }
+.page.fit .page-title { margin-bottom: 1.2dvh; }
+/* Very short screens (iPhone SE): the hint goes, progress text gets smaller */
+@media (max-height: 620px) {
+  .page.fit .bid-hint { display: none; }
+  .page.fit .bid-progress p { font-size: 12px; }
+  .page.fit .stepbar { margin-bottom: 0.6dvh; }
+}
