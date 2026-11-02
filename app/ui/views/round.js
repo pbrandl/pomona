@@ -20,7 +20,7 @@ export function round (ui) {
   const r = ui.status.round
   const p = per(r.intervalName)
   return `<div class="stack-lg">
-    ${header(r)}
+    ${header(r, p)}
     ${progress(r, p)}
     ${youCard(ui)}
     ${track(ui, r, p)}
@@ -35,7 +35,7 @@ export function round (ui) {
 /** Unix seconds → "29.11.2026, 12:00" */
 const deadline = (t) => new Date(t * 1000).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 
-function header (r) {
+function header (r, p) {
   const eyebrow = {
     bidding: `Bietphase · bis ${deadline(r.biddingEnd)}`,
     running: r.mode === 'invoice' ? `Ratenzahlung · Rechnung ${r.invoiceCount} von ${r.installments}` : `Ratenzahlung · ${r.invoiceCount} von ${r.installments} abgerechnet`,
@@ -55,6 +55,7 @@ function header (r) {
   return `<div class="round-head">
     <p class="eyebrow ${r.phase}">${esc(eyebrow)}</p>
     <div class="title-row"><h1 class="one-line" title="${esc(r.title)}">${esc(r.title)}</h1>${share}</div>
+    <p class="pledged"><strong>${fmt(r.total, 0)}</strong> / ${fmt(r.target, 0)} ${esc(r.symbol)} zugesagt ${p.per}</p>
     ${!r.verified ? '<p class="warn-text small">Die Angaben des Organisators passen nicht zum Treuhandkonto. Vorsicht.</p>' : ''}
   </div>`
 }
@@ -75,7 +76,6 @@ function progress (r, p) {
   return `<div class="progress split">
     <div class="ring">${ringSvg(r.progress)}<div class="center">${center}</div></div>
     <div class="stats">
-      ${stat(`${fmt(r.total, 0)} <small>/ ${fmt(r.target, 0)} ${sym}</small>`, `zugesagt ${p.per}`, 'key')}
       ${stat(fmt(r.bidders), r.bidders === 1 ? 'Bietende Person' : 'Bietende')}
       ${stat(r.average ? `${fmt(r.average, 0)} <small>${sym}</small>` : '–', 'Durchschnitt')}
       ${stat(r.median ? `${fmt(r.median, 0)} <small>${sym}</small>` : '–', 'Median')}

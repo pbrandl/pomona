@@ -859,3 +859,12 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; justif
 .tk-card:active { cursor: grabbing; }
 .tk-card .clickable, .tk-card button, .tk-card a { cursor: pointer; }
 @media (max-width: 520px) { .progress.split { align-items: center; gap: 24px; } .progress.split .ring { align-self: center; } } /* mobile: ring centred, more room to the figures */
+
+/* Pledged total right under the title; the ring sits beside three figures */
+.round-head .pledged { margin-top: 4px; color: var(--muted); font-size: 15px; }
+.round-head .pledged strong { color: var(--accent); font-size: 18px; font-weight: 600; }
+.progress.split .ring { width: 128px; height: 128px; }
+@media (max-width: 520px) {
+  .progress.split .ring { width: 150px; height: 150px; }
+  .progress.split .stats { grid-template-columns: repeat(3, auto); justify-content: space-around; }
+}
