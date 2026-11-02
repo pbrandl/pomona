@@ -858,3 +858,4 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; justif
 .tk-card { touch-action: pan-y; cursor: grab; user-select: none; -webkit-user-select: none; }
 .tk-card:active { cursor: grabbing; }
 .tk-card .clickable, .tk-card button, .tk-card a { cursor: pointer; }
+@media (max-width: 520px) { .progress.split { align-items: center; gap: 24px; } .progress.split .ring { align-self: center; } } /* mobile: ring centred, more room to the figures */
