@@ -771,3 +771,12 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; justif
 .progress.split .stats div + div { border-left: 0; }
 .progress.split .stats .stat strong { font-size: 18px; }
 @media (max-width: 360px) { .progress.split .ring { width: 128px; height: 128px; } }
+
+/* Timeline spans the whole card and fades out at both edges; at rest the
+   first installment lines up with the headline (card padding 24px). */
+.card .tk-scroll {
+  margin-inline: -24px; padding-inline: 24px; scroll-padding-inline: 24px;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 24px, #000 calc(100% - 24px), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 24px, #000 calc(100% - 24px), transparent);
+}
+.card .tk-line { min-width: max(100%, calc(var(--n) * 56px)); }

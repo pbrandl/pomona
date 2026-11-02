@@ -134,7 +134,7 @@ function track (ui, r, p) {
   const words = organizer
     ? { top: 'erhalten', bottom: 'ausstehend' }
     : mine
-      ? { top: 'bezahlt', bottom: r.mode === 'invoice' ? 'zu zahlen' : 'hinterlegt' }
+      ? { top: 'bezahlt', bottom: r.mode === 'invoice' ? 'zu zahlen' : 'ausstehend' }
       : { top: 'erhalten', bottom: 'geplant' }
   const paid = r.invoices.filter((x) => x.status === 'paid').length
   const title = organizer || !mine
