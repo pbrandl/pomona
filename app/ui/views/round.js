@@ -47,14 +47,14 @@ function header (r) {
     ? `<a class="icon-btn" href="${esc(r.website)}" target="_blank" rel="noopener noreferrer" title="Website des Projekts" aria-label="Website des Projekts">${ICON.web}</a>`
     : ''
   // Everyone can invite while bidding is open; afterwards nobody can join.
+  // One button: the invite page shows the QR code and "Link kopieren".
   const invite = r.phase === 'bidding'
-    ? `<button class="icon-btn" data-action="open-sheet" data-sheet="invite" title="QR-Code zum Einladen" aria-label="QR-Code zum Einladen">${ICON.qr}</button>
-        <button class="icon-btn" data-action="copy-invite" title="Einladungslink kopieren" aria-label="Einladungslink kopieren">${ICON.share}</button>`
+    ? `<button class="icon-btn" data-action="open-sheet" data-sheet="invite" title="Einladen" aria-label="Einladen: QR-Code oder Link">${ICON.share}</button>`
     : ''
   const share = web || invite ? `<div class="head-actions">${web}${invite}</div>` : ''
   return `<div class="round-head">
     <p class="eyebrow ${r.phase}">${esc(eyebrow)}</p>
-    <div class="title-row"><h1>${esc(r.title)}</h1>${share}</div>
+    <div class="title-row"><h1 class="one-line" title="${esc(r.title)}">${esc(r.title)}</h1>${share}</div>
     ${!r.verified ? '<p class="warn-text small">Die Angaben des Organisators passen nicht zum Treuhandkonto. Vorsicht.</p>' : ''}
   </div>`
 }

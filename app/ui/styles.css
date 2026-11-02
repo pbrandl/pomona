@@ -834,3 +834,22 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; justif
 .head-actions { gap: 6px; }
 .icon-btn { width: 36px; height: 36px; }
 .icon-btn .ic { width: 18px; height: 18px; }
+
+/* Round title: always one line, ellipsis when too long (full title on hover) */
+.title-row { align-items: center; }
+.title-row h1.one-line { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.title-row .head-actions { padding-top: 0; }
+
+/* Small screens: ring on top, the four figures side by side below it */
+@media (max-width: 520px) {
+  .progress.split { flex-direction: column; align-items: flex-start; gap: 16px; }
+  .progress.split .ring { width: 150px; height: 150px; }
+  .progress.split .stats {
+    width: 100%; display: grid; grid-template-columns: repeat(4, auto); justify-content: space-between;
+    gap: 12px; text-align: left; align-items: start;
+  }
+  .progress.split .stats .stat { align-items: flex-start; }
+  .progress.split .stats .stat strong { font-size: 17px; }
+  .progress.split .stats .stat strong small { display: block; font-size: 11px; }
+}
+@media (max-width: 520px) { .progress.split .stats { align-items: end; } } /* labels on one baseline */
