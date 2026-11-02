@@ -114,6 +114,7 @@ function column (r, x, organizer) {
     got,
     due,
     html: `<div class="tk-col ${dot}${action ? ' clickable' : ''}"${attrs}>
+      <span class="tk-pad" aria-hidden="true"></span>
       <span class="tk-top">${got ? fmt(got) : ''}</span>
       <span class="tk-dot">${dot === 'done' ? ICON.check : ''}</span>
       <span class="tk-bottom">${due ? fmt(due) : ''}</span>

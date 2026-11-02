@@ -801,3 +801,7 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; justif
 /* caption ↔ timeline: the same 10px above and below */
 .tk-head + .tk-cap { margin: 12px 0 10px; }
 .tk-scroll + .tk-cap { margin: 10px 0 0; }
+/* Symmetric around the dots: an empty row above mirrors the date row below,
+   so "bezahlt" and "ausstehend" are equally far from the line. */
+.tk-scroll > .tk-line .tk-col { grid-template-rows: 18px 20px 28px 20px 18px; }
+.tk-col::after { top: 51px; }
