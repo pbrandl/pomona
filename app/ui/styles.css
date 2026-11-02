@@ -880,5 +880,9 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; justif
   .progress.split .stats .stat span { font-size: 14px; }
   .progress.split .ring .big { font-size: 26px; }
   .progress.split .ring .of { font-size: 14px; }
-  .progress.split .ring { width: var(--ring-lg, 172px); height: var(--ring-lg, 172px); }
+  .progress.split .ring { width: var(--ring-lg, 155px); height: var(--ring-lg, 155px); }
+}
+@media (min-width: 521px) {
+  .progress.split .stats .stat strong, .progress.split .ring .big { font-size: 22px; }
+  .progress.split .stats .stat strong small, .progress.split .stats .stat span, .progress.split .ring .of { font-size: 13px; }
 }
