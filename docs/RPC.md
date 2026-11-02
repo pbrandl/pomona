@@ -87,6 +87,7 @@ Beträge sind Strings in deutscher oder englischer Schreibweise, also `"1.234,56
     canInvoice: true,
     inviteOnly: true,
     bidders: 27,
+    average: '120.37', median: '108',     // pro Rate, über alle aktuellen Gebote (null ohne Gebote)
     myPledge: '100',                      // pro Rate
     myDeposit: '1200',                    // myPledge × installments (per Rechnung: '0')
     openInvoices: 1, openAmount: '100',   // per Rechnung: meine offenen Rechnungen

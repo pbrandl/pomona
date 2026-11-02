@@ -70,6 +70,9 @@ export class RoundContract {
   /** @param {string} who @returns {Promise<bigint>} per installment */
   pledgeOf (who) { return this.contract.pledgeOf(who) }
 
+  /** @returns {Promise<bigint[]>} all current bids per installment (for average and median) */
+  async pledges () { return [...await this.contract.pledges()] }
+
   /** @param {string} who @returns {Promise<bigint>} */
   refundable (who) { return this.contract.refundable(who) }
 

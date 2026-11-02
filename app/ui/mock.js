@@ -6,7 +6,9 @@
  * Rounds "Per Rechnung": ?s=payg-bidding|payg|payg-organizer
  */
 ;(function () {
-  const scenario = new URLSearchParams(window.location.search).get('s') || 'bidder'
+  // ?s=bidder, or #bidder (artifact pages pass only a plain hash)
+  const scenario = new URLSearchParams(window.location.search).get('s') || window.location.hash.slice(1) || 'bidder'
+  window.addEventListener('hashchange', () => window.location.reload())
   const now = Math.floor(Date.now() / 1000)
   const DAY = 86400
   const MONTH = 30 * DAY
@@ -79,7 +81,13 @@
     r.expiresAt = r.biddingEnd + r.interval * r.installments
     r.invoices = plan(r)
     openInvoices(r)
+    stats(r)
     return r
+  }
+  /** Average and median like core bidStats(); the median is made up for the preview. */
+  function stats (r) {
+    r.average = r.bidders ? String(Math.round(Number(r.total) / r.bidders * 100) / 100) : null
+    r.median = r.bidders ? String(Math.round(Number(r.total) / r.bidders * 0.9)) : null
   }
   function openInvoices (r) {
     const open = r.mode === 'invoice' ? r.invoices.filter((x) => x.status === 'open') : []
@@ -256,6 +264,7 @@
           r.total = String(Number(r.total) + n)
           r.progress = Number(r.total) / Number(r.target)
           r.bidders += 1
+          stats(r)
           if (!payg) state.wallet.usdt = String(Number(state.wallet.usdt) - n * r.installments)
           r.invoices = plan(r)
           return null

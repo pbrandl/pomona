@@ -1,20 +1,20 @@
 /**
- * The round, lean: one message per block, each fact once.
+ * The round on one page, lean:
  *
- *   header    phase · time left, title, description
- *   progress  ring with the one key number, one line of facts
+ *   header    phase · deadline, title with QR and share icons, description
+ *   progress  ring in the middle, bidders · average · median below
  *   you       your situation and the single next action (views/you.js)
- *   share     organizer during bidding: invite link + QR
- *   timeline  ① Bieten → ② Raten, two short lines
- *   plan      installments (folded to a few rows), tap a paid one → receipt
- *   news      latest message, more on demand
+ *   track     the installments as dots on a line: received above, outstanding
+ *             below, paid ones ticked. Tap a dot for receipt, payment or details.
+ *   news      newest message, the rest folded
  *   manage    organizer tools as quiet links
  *
  * @module ui/views/round
  */
-import { esc, fmt, per, date, shortDate, dateTime, short, left } from '../format.js'
-import { link } from './parts.js'
+import { esc, fmt, num, per, shortDate, dateTime, short } from '../format.js'
+import { link, sheet } from './parts.js'
 import { youCard } from './you.js'
+import { ICON } from './icons.js'
 
 export function round (ui) {
   const r = ui.status.round
@@ -23,9 +23,7 @@ export function round (ui) {
     ${header(r)}
     ${progress(r, p)}
     ${youCard(ui)}
-    ${share(ui, r)}
-    ${timeline(r, p)}
-    ${plan(ui, r, p)}
+    ${track(ui, r, p)}
     ${news(ui, r)}
     ${manage(ui, r)}
     <p class="small muted" style="text-align:center">${r.mode === 'invoice' ? 'Runde' : 'Treuhandkonto'} <span class="mono">${short(r.address)}</span> · ${esc(ui.status.network.name)} · <span class="live"><span class="dot on"></span>live</span></p>
@@ -34,17 +32,26 @@ export function round (ui) {
 
 // ------------------------------------------------------------------- header
 
+/** Unix seconds → "29.11.2026, 12:00" */
+const deadline = (t) => new Date(t * 1000).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+
 function header (r) {
-  const t = left(r.biddingEnd, r.now)
   const eyebrow = {
-    bidding: `Bietphase · noch ${t.value} ${t.unit.replace(' übrig', '')}`,
-    running: r.mode === 'invoice' ? `Ratenzahlung · Rechnung ${r.invoiceCount} von ${r.installments}` : `Ratenzahlung · ${r.invoiceCount} von ${r.installments} bezahlt`,
+    bidding: `Bietphase · bis ${deadline(r.biddingEnd)}`,
+    running: r.mode === 'invoice' ? `Ratenzahlung · Rechnung ${r.invoiceCount} von ${r.installments}` : `Ratenzahlung · ${r.invoiceCount} von ${r.installments} abgerechnet`,
     completed: 'Abgeschlossen',
     failed: 'Ziel nicht erreicht'
   }[r.phase]
+  // Sharing is the organizer's: the invite link carries the invite key.
+  const share = r.role === 'organizer' && r.phase === 'bidding'
+    ? `<div class="head-actions">
+        <button class="icon-btn" data-action="open-sheet" data-sheet="invite" title="QR-Code zum Einladen" aria-label="QR-Code zum Einladen">${ICON.qr}</button>
+        <button class="icon-btn" data-action="copy-invite" title="Einladungslink kopieren" aria-label="Einladungslink kopieren">${ICON.share}</button>
+      </div>`
+    : ''
   return `<div class="round-head">
     <p class="eyebrow ${r.phase}">${esc(eyebrow)}</p>
-    <h1>${esc(r.title)}</h1>
+    <div class="title-row"><h1>${esc(r.title)}</h1>${share}</div>
     ${r.description ? `<p class="lead">${esc(r.description)}</p>` : ''}
     ${!r.verified ? '<p class="warn-text small">Die Angaben des Organisators passen nicht zum Treuhandkonto. Vorsicht.</p>' : ''}
   </div>`
@@ -60,130 +67,106 @@ function ringSvg (value) {
 }
 
 function progress (r, p) {
-  const paying = r.phase === 'running' || r.phase === 'completed'
-  const center = paying
-    ? `<div class="big">${r.invoiceCount}<span class="muted" style="font-weight:400">/${r.installments}</span></div><div class="of">Raten</div>`
-    : `<div class="big">${fmt(r.progress * 100, 0)}%</div><div class="of">vom Ziel</div>`
-  const facts = paying
-    ? `${fmt(r.total)} ${esc(r.symbol)} ${p.per} · ${r.bidders} ${r.bidders === 1 ? 'Bieter' : 'Bietende'}`
-    : `${fmt(r.total)} von ${fmt(r.target)} ${esc(r.symbol)} ${p.per} · ${r.bidders} ${r.bidders === 1 ? 'Bieter' : 'Bietende'}`
-  return `<div class="progress">
-    <div class="ring small">${ringSvg(paying ? r.invoiceCount / r.installments : r.progress)}<div class="center">${center}</div></div>
-    <p class="muted">${facts}</p>
-  </div>`
-}
-
-// -------------------------------------------------------------------- share
-
-function share (ui, r) {
-  if (r.role !== 'organizer' || r.phase !== 'bidding') return ''
-  const inv = ui.invite
-  return `<div class="card share">
-    <div class="qr">${inv ? inv.qr : ''}</div>
-    <div class="stack" style="min-width:0">
-      <h2 style="margin:0">Einladen</h2>
-      <p class="small muted">${r.inviteOnly ? 'Nur wer diesen Link hat, kann bieten.' : 'Jeder mit dem Link kann bieten.'}</p>
-      <button class="btn ghost small" data-action="copy-invite">Link kopieren</button>
+  const sym = esc(r.symbol)
+  const center = `<div class="big">${fmt(r.progress * 100, 0)}%</div><div class="of">vom Ziel</div>`
+  const stat = (value, label) => `<div class="stat"><strong>${value}</strong><span>${label}</span></div>`
+  return `<div class="progress centered">
+    <div class="ring">${ringSvg(r.progress)}<div class="center">${center}</div></div>
+    <p class="muted">${fmt(r.total)} von ${fmt(r.target)} ${sym} ${p.per}</p>
+    <div class="stats">
+      ${stat(fmt(r.bidders), r.bidders === 1 ? 'Bietende Person' : 'Bietende')}
+      ${stat(r.average ? `${fmt(r.average)} <small>${sym}</small>` : '–', 'Durchschnitt')}
+      ${stat(r.median ? `${fmt(r.median)} <small>${sym}</small>` : '–', 'Median')}
     </div>
   </div>`
 }
 
-// ----------------------------------------------------------------- timeline
+// -------------------------------------------------------------------- track
 
-function timeline (r, p) {
-  const lastDue = r.biddingEnd + r.interval * (r.installments - 1)
-  const bidding = r.phase === 'bidding'
-  const span = r.biddingStart ? Math.max(1, r.biddingEnd - r.biddingStart) : null
-  const pct = bidding && span ? Math.min(100, Math.max(0, ((r.now - r.biddingStart) / span) * 100)) : null
+/**
+ * One column per installment. What is "received" and "outstanding" depends on
+ * who looks: the organizer sees the round's money, a bidder their own.
+ */
+function column (r, x, organizer) {
+  const payg = r.mode === 'invoice'
+  let got = 0
+  let due = 0
+  let dot = 'todo'
+  if (x.status === 'paid') { got = num(x.amount); dot = 'done' }
+  if (x.status === 'issued') {
+    got = num(x.paidSum)
+    due = Math.max(0, num(x.amount) - got)
+    dot = x.paidCount >= r.bidders ? 'done' : 'part'
+  }
+  if (x.status === 'open' || x.status === 'due') { due = num(x.amount); dot = 'now' }
+  if (x.status === 'scheduled') due = num(x.amount)
+  if (x.status === 'void') dot = 'void'
 
-  const bidState = bidding ? 'current' : r.phase === 'failed' ? 'failed' : 'done'
-  const bidWhen = `${r.biddingStart ? esc(date(r.biddingStart)) + ' – ' : 'bis '}${esc(date(r.biddingEnd))}`
+  let action = null
+  if (x.status === 'paid' && (organizer || x.mine)) action = organizer ? 'show-invoice' : 'show-receipt'
+  else if (x.status === 'open') action = 'open-pay'
+  else if (x.status === 'issued' && organizer) action = 'show-invoice'
+  else if (x.status === 'due' && organizer) action = 'invoice'
 
-  const payState = { bidding: 'next', running: 'current', completed: 'done', failed: 'skipped' }[r.phase]
-  const payWhen = r.installments === 1 ? esc(date(r.biddingEnd)) : `${esc(date(r.biddingEnd))} – ${esc(date(lastDue))}`
-  const payNote = {
-    bidding: r.mode === 'invoice' ? 'Startet, wenn das Ziel erreicht ist. Die Rechnungen kommen dann automatisch.' : 'Startet, wenn das Ziel erreicht ist.',
-    running: r.mode === 'invoice' ? `${r.invoiceCount} von ${r.installments} Rechnungen verschickt.` : `${r.invoiceCount} von ${r.installments} bezahlt.`,
-    completed: r.invoiceCount < r.installments ? 'Vorzeitig beendet. Der Rest ging zurück.' : 'Alle Raten bezahlt.',
-    failed: 'Findet nicht statt.'
-  }[r.phase]
-
-  return `<div class="card timeline">
-    <div class="tl-step ${bidState}"><div class="tl-dot">1</div><div class="tl-body">
-      <h3>Bieten</h3><p class="tl-when">${bidWhen}</p>
-      ${pct !== null ? `<div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>` : ''}
-    </div></div>
-    <div class="tl-step ${payState}"><div class="tl-dot">2</div><div class="tl-body">
-      <h3>${r.installments} Raten, ${esc(p.adj)}</h3><p class="tl-when">${payWhen}</p><p class="small muted">${payNote}</p>
-    </div></div>
-  </div>`
+  const label = `${payg ? 'Rechnung' : 'Rate'} ${x.index + 1}, ${shortDate(x.dueAt)}`
+  const attrs = action ? ` data-action="${action}" data-index="${x.index}" role="button" tabindex="0" aria-label="${esc(label)}"` : ` aria-label="${esc(label)}"`
+  return {
+    got,
+    due,
+    html: `<div class="tk-col ${dot}${action ? ' clickable' : ''}"${attrs}>
+      <span class="tk-top">${got ? fmt(got) : ''}</span>
+      <span class="tk-dot">${dot === 'done' ? ICON.check : ''}</span>
+      <span class="tk-bottom">${due ? fmt(due) : ''}</span>
+      <span class="tk-date">${esc(shortDate(x.dueAt))}</span>
+    </div>`
+  }
 }
 
-// --------------------------------------------------------------------- plan
-
-const STATUS = {
-  paid: () => '<span class="pill-s ok">Bezahlt</span>',
-  due: () => '<span class="pill-s due">Fällig</span>',
-  scheduled: () => '<span class="pill-s">Geplant</span>',
-  open: () => '<span class="pill-s due">Offen</span>',
-  issued: (x, r) => `<span class="pill-s ${x.paidCount >= r.bidders ? 'ok' : ''}" title="${x.paidCount} von ${r.bidders} haben bezahlt">${x.paidCount}/${r.bidders}</span>`,
-  void: () => '<span class="pill-s void">Entfällt</span>'
-}
-
-function plan (ui, r, p) {
+function track (ui, r, p) {
   if (r.phase === 'failed' || !r.invoices?.length) return ''
   const organizer = r.role === 'organizer'
   const mine = r.invoices.some((x) => x.mine)
-  // Invoice mode, bidder: fold around my last paid invoice, so the open one is right below.
-  const anchor = r.mode === 'invoice' && mine ? r.invoices.filter((x) => x.status === 'paid').length : r.invoiceCount
-  const list = fold(r.invoices, anchor, ui.showAllInvoices)
+  const cols = r.invoices.map((x) => column(r, x, organizer))
+  const got = cols.reduce((s, c) => s + c.got, 0)
+  const due = cols.reduce((s, c) => s + c.due, 0)
+  const sym = esc(r.symbol)
 
-  const rows = list.map((x) => {
-    if (x.more) return `<button class="plan-more" data-action="show-all-invoices">Alle ${r.invoices.length} ${r.mode === 'invoice' ? 'Rechnungen' : 'Raten'} anzeigen</button>`
-    // paid → receipt (bidder) or details (organizer); open → pay; issued → who paid (organizer)
-    let action = null
-    if (x.status === 'paid' && (organizer || x.mine)) action = organizer ? 'show-invoice' : 'show-receipt'
-    else if (x.status === 'open') action = 'open-pay'
-    else if (x.status === 'issued' && organizer) action = 'show-invoice'
-    const clickable = !!action
-    const attrs = clickable ? ` data-action="${action}" data-index="${x.index}" role="button" tabindex="0"` : ''
-    const when = {
-      paid: esc(shortDate(x.paidAt)) + (clickable ? (organizer ? ' · Details' : ' · Beleg') : ''),
-      open: 'seit ' + esc(shortDate(x.dueAt)) + ' · Bezahlen',
-      issued: esc(shortDate(x.dueAt)) + (clickable ? ' · Details' : '')
-    }[x.status] ?? 'ab ' + esc(shortDate(x.dueAt))
-    const amount = x.status === 'issued' ? fmt(x.paidSum) : fmt(x.amount)
-    return `<div class="plan-row ${x.status}${clickable ? ' clickable' : ''}"${attrs}>
-      <div class="plan-left"><strong>${r.mode === 'invoice' ? 'Rechnung' : 'Rate'} ${x.index + 1}</strong><span class="muted small">${when}</span></div>
-      <div class="plan-right"><span>${amount} ${esc(r.symbol)}</span>${STATUS[x.status](x, r)}${clickable ? '<span class="chev" aria-hidden="true">›</span>' : ''}</div>
-    </div>`
-  }).join('')
+  const words = organizer
+    ? { top: 'erhalten', bottom: 'ausstehend' }
+    : mine
+      ? { top: 'bezahlt', bottom: r.mode === 'invoice' ? 'zu zahlen' : 'hinterlegt' }
+      : { top: 'erhalten', bottom: 'geplant' }
+  const paid = r.invoices.filter((x) => x.status === 'paid').length
+  const title = organizer || !mine
+    ? `${r.installments} ${r.mode === 'invoice' ? 'Rechnungen' : 'Raten'}, ${esc(p.adj)}`
+    : `Deine Raten, ${esc(p.adj)}`
+  const summary = mine && !organizer ? `${paid} von ${r.installments} bezahlt` : `${fmt(got)} ${sym} erhalten`
 
-  const title = organizer ? 'Rechnungen' : mine ? 'Deine Raten' : 'Raten'
   return `<div class="card">
-    <div class="row" style="margin-bottom:8px"><h2 style="margin:0">${title}</h2><span class="small muted">${p.adj}</span></div>
-    ${rows}
+    <div class="row tk-head"><h2>${title}</h2><span class="small muted">${summary}</span></div>
+    <p class="tk-cap small"><i class="sw done"></i>${words.top} · ${fmt(got)} ${sym}</p>
+    <div class="tk-scroll" data-track>
+      <div class="tk-line" style="--n:${cols.length}">${cols.map((c) => c.html).join('')}</div>
+    </div>
+    <p class="tk-cap small"><i class="sw todo"></i>${words.bottom} · ${fmt(due)} ${sym}</p>
   </div>`
-}
-
-/** A few rows around "now": the last paid, the next ones. Everything on demand. */
-function fold (invoices, paid, all) {
-  if (all || invoices.length <= 4) return invoices
-  const from = Math.max(0, Math.min(paid - 1, invoices.length - 4))
-  const shown = invoices.slice(from, from + 4)
-  return [...shown, { more: true }]
 }
 
 // --------------------------------------------------------------------- news
 
 function news (ui, r) {
   if (!r.news.length) return ''
-  const list = ui.showAllNews ? r.news : r.news.slice(0, 1)
-  const items = list.map((n) => `<div class="news-item"><time>${esc(dateTime(n.at))}</time>${esc(n.text)}</div>`).join('')
-  const more = !ui.showAllNews && r.news.length > 1
-    ? `<button class="plan-more" data-action="show-all-news">Alle ${r.news.length} Neuigkeiten</button>`
-    : ''
-  return `<div class="card"><h2>Neuigkeiten</h2>${items}${more}</div>`
+  const [latest, ...older] = r.news
+  const item = (n) => `<div class="news-item"><time>${esc(dateTime(n.at))}</time>${esc(n.text)}</div>`
+  const open = ui.showAllNews
+  return `<div class="card news">
+    <button class="news-head" data-action="toggle-news" aria-expanded="${open}" ${older.length ? '' : 'disabled'}>
+      <h2>Neuigkeiten</h2>
+      ${older.length ? `<span class="small muted">${open ? 'Weniger' : `${older.length} ältere`}<span class="chev ${open ? 'up' : ''}" aria-hidden="true">›</span></span>` : ''}
+    </button>
+    ${item(latest)}
+    ${open ? older.map(item).join('') : ''}
+  </div>`
 }
 
 // ------------------------------------------------------------------- manage
@@ -200,6 +183,19 @@ function manage (ui, r) {
     ${rows.join('')}
     ${danger ? `<div class="manage-danger">${danger}</div>` : ''}
   </div>`
+}
+
+/** Page: the invite as a QR code, to show on a phone or print out. */
+export function invitePage (ui) {
+  const r = ui.status.round
+  const inv = ui.invite
+  return sheet('Einladen', `
+    <div class="invite-qr">
+      <div class="qr">${inv ? inv.qr : ''}</div>
+      <strong>${esc(r.title)}</strong>
+      <span class="small muted">${r.inviteOnly ? 'Nur wer diesen Code oder Link hat, kann bieten.' : 'Jeder mit dem Link kann bieten.'}</span>
+    </div>
+    <button class="btn accent block" data-action="copy-invite">${ICON.share}<span>Link kopieren</span></button>`)
 }
 
 /** Page: write a news message (one step, one page). */

@@ -18,7 +18,8 @@ import { esc, short, fmt, isoDay, endOfDay } from './format.js'
 import { PEAR } from './views/parts.js'
 import { onboarding, locked, createWalletSheet, restoreSheet, revealSheet, seedSheet } from './views/onboarding.js'
 import { start, createPage, joinPage, createStepError } from './views/start.js'
-import { round, newsPage } from './views/round.js'
+import { round, newsPage, invitePage } from './views/round.js'
+import { ICON } from './views/icons.js'
 import { walletSheet } from './views/wallet.js'
 import { receiptSheet, invoiceSheet, scanSheet } from './views/receipt.js'
 import { Scanner } from './scanner.js'
@@ -105,6 +106,7 @@ const SHEETS = {
   join: (u) => (u.status?.wallet.state === 'unlocked' ? joinPage(u) : ''),
   assistant: (u) => (u.status?.wallet.state === 'unlocked' ? assistantPage(u) : ''),
   news: (u) => (u.status?.round?.role === 'organizer' ? newsPage(u) : ''),
+  invite: (u) => (u.status?.round?.role === 'organizer' ? invitePage(u) : ''),
   wallet: (u) => (u.status?.wallet.state === 'unlocked' ? walletSheet(u) : '')
 }
 
@@ -136,8 +138,9 @@ function render () {
 
   // One step, one page: an open flow replaces the main view entirely.
   const flow = ui.sheet && SHEETS[ui.sheet] ? SHEETS[ui.sheet](ui) : ''
-  const toast = ui.toast ? `<div class="toast ${ui.toast.error ? 'error' : ''}" role="status">${esc(ui.toast.text)}</div>` : ''
+  const toast = ui.toast ? `<div class="toast ${ui.toast.error ? 'error' : ''}" role="status">${ui.toast.error ? ICON.alert : ICON.check}<span>${esc(ui.toast.text)}</span></div>` : ''
   $app.innerHTML = topbar() + `<main>${flow || body()}</main>` + toast
+  focusTrack()
   const where = ui.sheet + ':' + ui.createStep + ':' + ui.bidStep
   if (where !== lastPage) { lastPage = where; window.scrollTo(0, 0) }
 
@@ -196,6 +199,25 @@ async function startScanner () {
     scanner = null
     ui.scanError = e.message
   }
+}
+
+/**
+ * Wide rounds scroll the timeline sideways: start at the current installment,
+ * then keep the person's own scroll position across re-renders.
+ */
+let trackKey = null
+let trackLeft = 0
+function focusTrack () {
+  const el = $app.querySelector('[data-track]')
+  if (!el) return
+  const key = ui.status?.round?.address + ':' + ui.status?.round?.invoiceCount
+  if (key !== trackKey) {
+    const current = el.querySelector('.tk-col.now, .tk-col.part') || el.querySelector('.tk-col.todo')
+    trackLeft = current ? Math.max(0, current.offsetLeft - el.clientWidth / 2 + current.clientWidth / 2) : 0
+    trackKey = key
+  }
+  el.scrollLeft = trackLeft
+  el.addEventListener('scroll', () => { trackLeft = el.scrollLeft }, { passive: true })
 }
 
 let toastTimer = null
@@ -333,7 +355,7 @@ const actions = {
   'pick-amount': (el) => { ui.draft.amount = el.dataset.amount },
 
   'show-all-invoices': () => { ui.showAllInvoices = true },
-  'show-all-news': () => { ui.showAllNews = true },
+  'toggle-news': () => { ui.showAllNews = !ui.showAllNews },
 
   // wallet
   async 'create-wallet' () {

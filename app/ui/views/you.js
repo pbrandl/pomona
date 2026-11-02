@@ -32,8 +32,7 @@ export function youCard (ui) {
     if (last) actions = `<button class="btn ghost" data-action="show-invoice" data-index="${last.index}">Wer hat bezahlt?</button>`
   } else if (r.role === 'organizer') {
     if (r.phase === 'bidding') {
-      title = `${fmt(r.progress * 100, 0)} % vom Ziel erreicht`
-      sub = `Bieten möglich bis ${esc(dayTime(r.biddingEnd))}.`
+      return '' // progress and deadline are in the header and the ring
     } else if (r.phase === 'running' && r.canInvoice) {
       tone = 'act'
       title = `Rechnung ${r.invoiceCount + 1} ist fällig`

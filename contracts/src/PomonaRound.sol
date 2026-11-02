@@ -193,6 +193,18 @@ contract PomonaRound is ReentrancyGuard {
         return index < invoiceCount() ? biddingEnd + interval * uint64(index) : 0;
     }
 
+    /// @notice All current bids per installment (no addresses), for average and median.
+    function pledges() external view returns (uint256[] memory out) {
+        uint256 n;
+        for (uint256 i = 0; i < _bidders.length; i++) if (pledgeOf[_bidders[i]] != 0) n++;
+        out = new uint256[](n);
+        uint256 k;
+        for (uint256 i = 0; i < _bidders.length; i++) {
+            uint256 p = pledgeOf[_bidders[i]];
+            if (p != 0) out[k++] = p;
+        }
+    }
+
     /// @notice Invoice mode: bidders who have not paid issued invoice `index` yet.
     function unpaid(uint256 index) external view returns (address[] memory bidders, uint256[] memory amounts) {
         uint256 n;

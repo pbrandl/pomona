@@ -268,6 +268,10 @@ describe('PomonaRound', () => {
     assert.equal(await round.total(), USDT(60))
     await (await round.connect(alice).withdraw(USDT(20))).wait()
     assert.equal(await round.pledgeOf(await addr(alice)), USDT(40))
+    await (await round.connect(bob).bid(USDT(15), '0x')).wait()
+    assert.deepEqual([...await round.pledges()], [USDT(40), USDT(15)])
+    await (await round.connect(bob).withdraw(USDT(15))).wait()
+    assert.deepEqual([...await round.pledges()], [USDT(40)]) // withdrawn bids drop out
     assert.equal(await bal(alice), a0)
     assert.equal(await round.mode(), BigInt(Mode.Invoice))
   })

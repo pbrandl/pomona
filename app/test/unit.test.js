@@ -143,3 +143,11 @@ test('QVAC: hand-downloaded model file is used only with the right size and SHA-
     rmSync(dir, { recursive: true, force: true })
   }
 })
+
+test('bid statistics: average and median per installment', async () => {
+  const { bidStats } = await import('../core/pomona.js')
+  const f = (v) => String(v)
+  assert.deepEqual(bidStats([], f), { average: null, median: null })
+  assert.deepEqual(bidStats([100n, 50n, 300n], f), { average: '150', median: '100' })
+  assert.deepEqual(bidStats([40n, 10n, 20n, 30n], f), { average: '25', median: '25' })
+})

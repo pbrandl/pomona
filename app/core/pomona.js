@@ -661,10 +661,11 @@ export class Pomona extends EventEmitter {
 
     const info = await this.round.info()
     const now = (await this.provider.getBlock('latest')).timestamp
-    const [pledge, refundable, news] = await Promise.all([
+    const [pledge, refundable, news, pledges] = await Promise.all([
       me ? this.round.pledgeOf(me) : 0n,
       me ? this.round.refundable(me) : 0n,
-      this.p2p.news()
+      this.p2p.news(),
+      this.round.pledges()
     ])
     const invoices = await this._invoices(info, now, pledge, fmt)
     const open = info.mode === 'invoice' && pledge > 0n ? invoices.filter((x) => x.status === 'open') : []
@@ -696,6 +697,7 @@ export class Pomona extends EventEmitter {
       canInvoice: canInvoice(info, now),
       inviteOnly: !!info.inviteSigner,
       bidders: info.bidderCount,
+      ...bidStats(pledges, fmt), // average, median per installment
       myPledge: fmt(pledge),
       myDeposit: fmt(info.mode === 'invoice' ? 0n : pledge * BigInt(info.installments)),
       openInvoices: open.length, // invoice mode: my unpaid invoices
@@ -994,6 +996,20 @@ export class Pomona extends EventEmitter {
     // due dates fresh even when nothing happens on-chain.
     this._timer = setInterval(() => this._changed(), this.pollMs ?? 15000)
   }
+}
+
+/**
+ * Average and median of all bids (per installment), as display strings.
+ * @param {bigint[]} pledges
+ * @param {(v: bigint) => string} fmt
+ */
+export function bidStats (pledges, fmt) {
+  if (!pledges.length) return { average: null, median: null }
+  const sorted = [...pledges].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
+  const sum = sorted.reduce((s, v) => s + v, 0n)
+  const mid = Math.floor(sorted.length / 2)
+  const median = sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2n
+  return { average: fmt(sum / BigInt(sorted.length)), median: fmt(median) }
 }
 
 /**
