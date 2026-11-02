@@ -826,3 +826,8 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; justif
 .progress.split { align-items: stretch; }
 .progress.split .ring { width: auto; height: auto; align-self: stretch; aspect-ratio: 1; max-width: 50%; }
 .progress.split .ring svg { display: block; }
+/* Fixed ring size = height of the four figures beside it (4 × figure + label,
+   3 gaps), so it neither shrinks nor grows the row on wide screens. */
+.progress.split { align-items: flex-start; }
+.progress.split .ring { width: 175px; height: 175px; align-self: flex-start; aspect-ratio: auto; max-width: 48%; }
+.progress.split .ring { max-width: none; flex: none; }
