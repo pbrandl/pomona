@@ -60,7 +60,7 @@ function header (r) {
 // ----------------------------------------------------------------- progress
 
 function ringSvg (value) {
-  const R = 100
+  const R = 103 // stroke 13 reaches the edge of the 220 viewBox
   const C = 2 * Math.PI * R
   const v = Math.max(0, Math.min(1, value))
   return `<svg viewBox="0 0 220 220"><circle class="track" cx="110" cy="110" r="${R}"/><circle class="value" cx="110" cy="110" r="${R}" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - v)}"/></svg>`

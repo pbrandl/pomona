@@ -822,3 +822,7 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; justif
 .tk-bar::before { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--line); }
 .tk-bar i { position: absolute; bottom: 0; height: 3px; border-radius: 3px; background: var(--faint); }
 .tk-bar:hover i { background: var(--muted); }
+/* The ring fills the full height of the figures beside it, edge to edge */
+.progress.split { align-items: stretch; }
+.progress.split .ring { width: auto; height: auto; align-self: stretch; aspect-ratio: 1; max-width: 50%; }
+.progress.split .ring svg { display: block; }
