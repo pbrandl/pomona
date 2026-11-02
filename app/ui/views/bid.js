@@ -63,7 +63,7 @@ function amountPage (ui) {
   const display = touch
     ? `<div class="amount-display ${amount > 0 ? '' : 'empty'}" aria-live="polite"><strong>${typed(ui.draft.amount)}</strong>${unit}</div>`
     : `<label class="amount-display desktop" for="amount">
-        <input id="amount" data-draft="amount" inputmode="decimal" placeholder="0" value="${esc(ui.draft.amount)}" autocomplete="off" autofocus aria-label="Dein Gebot ${p.per} in ${esc(r.symbol)}">
+        <input id="amount" data-draft="amount" inputmode="decimal" value="${esc(ui.draft.amount)}" autocomplete="off" autofocus aria-label="Dein Gebot ${p.per} in ${esc(r.symbol)}">
         ${unit}
       </label>`
   return page(null, `
