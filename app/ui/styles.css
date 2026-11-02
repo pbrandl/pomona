@@ -886,3 +886,10 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; justif
   .progress.split .stats .stat strong, .progress.split .ring .big { font-size: 22px; }
   .progress.split .stats .stat strong small, .progress.split .stats .stat span, .progress.split .ring .of { font-size: 13px; }
 }
+/* Small screens: the three figures span the full width, outer ones flush with the edges */
+@media (max-width: 520px) {
+  .progress.split .stats { grid-template-columns: repeat(3, 1fr); justify-content: stretch; }
+  .progress.split .stats .stat:nth-child(1) { align-items: flex-start; text-align: left; }
+  .progress.split .stats .stat:nth-child(2) { align-items: center; text-align: center; }
+  .progress.split .stats .stat:nth-child(3) { align-items: flex-end; text-align: right; }
+}
