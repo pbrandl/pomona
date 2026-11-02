@@ -1005,3 +1005,17 @@ main:has(.page.fit) { padding-bottom: 0; }
 .bid-progress-box { background: var(--accent-soft); border-radius: 14px; padding: 14px 16px; }
 .bid-progress-box .bp-track { background: var(--surface); }
 .bp-mine { background: var(--faint); } /* your bid: plain grey segment */
+
+/* the note always shows, also on very short screens (keys shrink instead) */
+@media (max-height: 620px) {
+  .page.fit .bid-hint { display: block; font-size: 12px; line-height: 1.35; }
+  .page.fit .keypad .key { height: clamp(32px, 5.4dvh, 56px); }
+  .page.fit .amount-display strong { font-size: clamp(28px, 5dvh, 52px); }
+}
+.page.fit .keypad .key { height: clamp(32px, 6.1dvh, 58px); } .page.fit .bid-progress-box { padding: 10px 14px; }
+@media (max-height: 620px) {
+  .page.fit .keypad .key { height: clamp(30px, 5dvh, 56px); font-size: 19px; }
+  .page.fit > .stack-lg { gap: 1dvh; }
+  .page.fit .chips .chip { padding-block: 4px; }
+  .page.fit .amount-unit { font-size: 13px; }
+}

@@ -42,15 +42,18 @@ function amountPage (ui) {
   const cost = payg ? 0 : amount * r.installments
   const balance = num(ui.status.wallet.usdt)
   const touch = isTouch() // touch: keypad; desktop: a focused text field with a blinking caret
+  // The note is always there; without an amount it speaks of "deinen Betrag".
+  const what = amount > 0 ? `${fmt(amount + num(r.myPledge))} ${esc(r.symbol)}` : 'deinen Betrag'
+  const min = num(r.minBid) > 0 && !has ? ` Mindestgebot ${fmt(r.minBid)} ${esc(r.symbol)}.` : ''
   let hint
-  if (payg && amount > 0) {
-    hint = `Jetzt wird nichts abgebucht. Ab ${esc(date(r.biddingEnd))} kommt ${esc(p.adj)} eine Rechnung über ${fmt(amount + num(r.myPledge))} ${esc(r.symbol)}.`
+  if (payg) {
+    hint = `Jetzt wird nichts abgebucht. Ab ${esc(new Date(r.biddingEnd * 1000).toLocaleDateString('de-DE'))} kommt ${esc(p.adj)} eine Rechnung über ${what}.${min}`
   } else if (amount > 0 && cost > balance) {
     hint = `<span class="warn-text">Dafür brauchst du ${fmt(cost)} ${esc(r.symbol)}, dir fehlen ${fmt(cost - balance)}.</span> <button class="link" data-action="open-fund">Aufladen</button>`
   } else if (amount > 0) {
     hint = `${has ? 'Zusätzlich hinterlegst du' : 'Du hinterlegst'} ${r.installments} × ${fmt(amount)} = ${fmt(cost)} ${esc(r.symbol)}.`
   } else {
-    hint = num(r.minBid) > 0 ? `Mindestgebot ${fmt(r.minBid)} ${esc(r.symbol)} ${p.per}.` : `${r.installments} Raten, ${esc(p.adj)}.`
+    hint = `Du hinterlegst ${r.installments} × deinen Betrag im Treuhandkonto.${min}`
   }
   // Touch: the figure is shown, the keypad below types into it (no system keyboard).
   const unit = `<span class="amount-unit">${esc(r.symbol)} ${p.per}</span>`
