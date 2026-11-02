@@ -212,8 +212,12 @@ function focusTrack () {
   if (!el) return
   const key = ui.status?.round?.address + ':' + ui.status?.round?.invoiceCount
   if (key !== trackKey) {
-    const current = el.querySelector('.tk-col.now, .tk-col.part') || el.querySelector('.tk-col.todo')
-    trackLeft = current ? Math.max(0, current.offsetLeft - el.clientWidth / 2 + current.clientWidth / 2) : 0
+    // Start with the last settled installment exactly on the headline's left edge
+    // (column offsets are relative to the line, which starts at the card padding).
+    const cols = [...el.querySelectorAll('.tk-col')]
+    const next = cols.findIndex((c) => !c.classList.contains('done'))
+    const anchor = cols[Math.max(0, (next === -1 ? cols.length : next) - 1)]
+    trackLeft = anchor ? anchor.offsetLeft : 0
     trackKey = key
   }
   el.scrollLeft = trackLeft

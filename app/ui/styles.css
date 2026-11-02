@@ -780,3 +780,14 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; justif
   mask-image: linear-gradient(90deg, transparent, #000 24px, #000 calc(100% - 24px), transparent);
 }
 .card .tk-line { min-width: max(100%, calc(var(--n) * 56px)); }
+
+/* Columns start at their left edge, so the first dot, amount and date sit
+   exactly on the headline's line; each column draws the line to the next dot. */
+.tk-col { justify-items: start; padding: 0; }
+.tk-line::before { display: none; }
+.tk-col::after { content: ''; position: absolute; left: 11px; width: 100%; top: 33px; height: 2px; background: var(--line); }
+.tk-col:last-child::after { display: none; }
+.tk-col.done::after { background: var(--accent); }
+.tk-col .tk-dot { z-index: 1; }
+.tk-col.clickable:hover { background: none; }
+.tk-col.clickable:hover .tk-dot { box-shadow: 0 0 0 4px var(--accent-soft); }
