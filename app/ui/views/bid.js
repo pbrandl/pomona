@@ -82,7 +82,7 @@ export function progressBar (r, amount) {
   const after = before + amount
   const w = (v) => Math.max(0, Math.min(100, (v / target) * 100))
   const text = amount > 0
-    ? `Mit deinem Gebot: <strong>${fmt(after, 0)}</strong> von ${fmt(target, 0)} ${esc(r.symbol)} · ${fmt((after / target) * 100, 0)} %`
+    ? `<strong>${fmt(after, 0)}</strong> von ${fmt(target, 0)} ${esc(r.symbol)} · ${fmt((after / target) * 100, 0)} %`
     : `<strong>${fmt(before, 0)}</strong> von ${fmt(target, 0)} ${esc(r.symbol)} · ${fmt((before / target) * 100, 0)} %`
   return `<div class="bid-progress">
     <div class="bp-track" role="img" aria-label="${amount > 0 ? 'Fortschritt mit deinem Gebot' : 'Fortschritt der Runde'}">
