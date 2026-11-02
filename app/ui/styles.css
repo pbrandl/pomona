@@ -795,3 +795,9 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; justif
 .progress.split .stats .stat { gap: 0; }
 .progress.split .stats .stat strong { line-height: 1.15; }
 .progress.split .stats .stat span { line-height: 1.3; }
+/* same distance from the dots to the caption above and below:
+   above = gap + amount row, below = amount row + date row + gap */
+.tk-cap:first-of-type, .tk-head + .tk-cap { margin-bottom: 20px; }
+/* caption ↔ timeline: the same 10px above and below */
+.tk-head + .tk-cap { margin: 12px 0 10px; }
+.tk-scroll + .tk-cap { margin: 10px 0 0; }
