@@ -4,6 +4,8 @@ import { test, before, after } from 'node:test'
 import assert from 'node:assert/strict'
 import { setup, PASSWORD } from './helpers.js'
 import { encodeInvite, decodeInvite, decodeReceipt, encodeReceipt } from '../core/index.js'
+import { receiptMessage } from '../core/links.js'
+import { Wallet } from 'ethers'
 
 const DAY = 86400
 
@@ -36,6 +38,12 @@ test('wallet: password-protected, lockable, seed only with password', async () =
   await assert.rejects(a.unlock({ password: 'falsches-passwort' }), /Falsches Passwort/)
   assert.equal((await a.unlock({ password: PASSWORD })).address, address)
   assert.throws(() => a.revealSeed({ password: 'falsches-passwort' }), /Falsches Passwort/)
+  assert.equal(a.revealSeed({ password: PASSWORD }), seed)
+
+  // Brute force: after three wrong passwords, attempts are throttled.
+  for (let i = 0; i < 3; i++) assert.throws(() => a.revealSeed({ password: 'rate-' + i + 'xxxx' }), /Falsches Passwort/)
+  assert.throws(() => a.revealSeed({ password: PASSWORD }), /Zu viele falsche Versuche/)
+  a._passwordBlockedUntil = 0 // (test shortcut instead of waiting)
   assert.equal(a.revealSeed({ password: PASSWORD }), seed)
 
   const b = await env.make()
@@ -118,8 +126,19 @@ test('monthly round: bid via Pears link, invoice per month, receipts, terminate,
   assert.equal(v.installment, 1)
   assert.equal(v.title, 'Solawi Lindenhof 2027')
   await assert.rejects(alice.receipt({ index: 1 }), /keinen Beleg/)
+  // Tampering with a real receipt breaks its signature.
   const forged = encodeReceipt({ ...decodeReceipt(code), index: 1 })
-  assert.equal((await bob.verifyReceipt({ code: forged })).valid, false)
+  assert.match((await bob.verifyReceipt({ code: forged })).reason, /Unterschrift/)
+  // Bob builds a receipt for Alice's (public) address with his own key: rejected.
+  const aliceAddr = (await alice.status()).wallet.address
+  const fake = { network: 'local', round: s.round.address, bidder: aliceAddr, index: 0, at: Math.floor(Date.now() / 1000) }
+  const bobKey = Wallet.createRandom()
+  const fakeSig = await bobKey.signMessage(receiptMessage(fake))
+  const v2 = await farm.verifyReceipt({ code: encodeReceipt({ ...fake, owner: bobKey.address, sig: fakeSig }) })
+  assert.equal(v2.valid, false)
+  // An old screenshot expires.
+  const old = { ...decodeReceipt(code), at: decodeReceipt(code).at - 3600 }
+  assert.match((await bob.verifyReceipt({ code: encodeReceipt(old) })).reason, /abgelaufen/)
 
   await env.warp(MONTH)
   await farm.invoice() // installment 2

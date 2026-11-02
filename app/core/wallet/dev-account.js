@@ -103,6 +103,10 @@ export class DevAccount {
     await (await this._funder.sendTransaction({ to: me, value: parseEther('1') })).wait()
   }
 
+  async signText (message) {
+    return (await this._acc()).sign(message)
+  }
+
   dispose () {
     this.wdk.dispose()
   }

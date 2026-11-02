@@ -30,6 +30,9 @@
  * @property {(calls: Call[]) => Promise<bigint|null>} quoteFee
  *   Expected fee in USDT base units, or null if fees are not paid in USDT.
  * @property {(to: string, amount: bigint, opts?: { onStep?: Function }) => Promise<{ hash: string }>} sendUsdt
+ * @property {(message: string) => Promise<string>} signText
+ *   EIP-191 signature by the account's key. The wallet policy only allows
+ *   receipt messages ("pomona-beleg:v2:…").
  * @property {() => void} dispose
  */
 

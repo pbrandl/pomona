@@ -90,7 +90,7 @@ function reviewPage (ui) {
     </div>
     ${q.enough
       ? `<ul class="facts">
-          <li>Das Geld liegt im Treuhand-Contract, nicht beim Organisator.</li>
+          <li>Das Geld liegt im Treuhandkonto, nicht beim Organisator.</li>
           <li>Bis ${esc(dayTime(r.biddingEnd))} kannst du erhöhen oder zurückziehen.</li>
           <li>Wird das Ziel nicht erreicht, bekommst du alles zurück.</li>
           <li>Für jede abgerechnete Rate bekommst du einen Beleg.</li>
@@ -111,7 +111,7 @@ function donePage (ui) {
   return page(null, `
     <div class="stack" style="text-align:center;align-items:center">
       <div class="big-check">✓</div>
-      <h1 style="font-size:26px">Dein Gebot ist im Contract</h1>
+      <h1 style="font-size:26px">Dein Gebot liegt im Treuhandkonto</h1>
       <p class="muted">${fmt(done.pledgeAfter)} ${esc(r.symbol)} ${p.per} · ${fmt(done.deposit)} ${esc(r.symbol)} hinterlegt</p>
     </div>
     ${stepper(null, true)}

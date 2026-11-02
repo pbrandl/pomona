@@ -12,7 +12,7 @@
  */
 import { EventEmitter } from 'events'
 import WDK from '@tetherto/wdk'
-import { Wallet as KeyWallet, getBytes, isAddress, getAddress, id as topicOf, zeroPadValue } from 'ethers'
+import { Wallet as KeyWallet, Contract, getBytes, isAddress, getAddress, id as topicOf, zeroPadValue, verifyMessage } from 'ethers'
 import qrcode from 'qrcode-generator'
 
 import { getNetwork, networkIds, isReady, DEFAULT_NETWORK } from './config/networks.js'
@@ -22,7 +22,7 @@ import { RoundContract, FactoryContract, TokenContract } from './chain/contracts
 import { explain } from './chain/reverts.js'
 import { openAccount, seal, open, checkPassword } from './wallet/index.js'
 import { P2PNode } from './p2p/node.js'
-import { encodeInvite, decodeInvite, encodeReceipt, decodeReceipt } from './links.js'
+import { encodeInvite, decodeInvite, encodeReceipt, decodeReceipt, receiptMessage, RECEIPT_TTL } from './links.js'
 import { parseAmount, formatAmount } from './units.js'
 import { INTERVALS, intervalName, canInvoice, dueAt, DAY } from './schedule.js'
 import { PomonaError, fail } from './errors.js'
@@ -74,6 +74,8 @@ export class Pomona extends EventEmitter {
     this.link = null
     this._sealed = null
     this._seedForReopen = null
+    this._failedPasswords = 0
+    this._passwordBlockedUntil = 0
     this._busy = null
     this._busyStep = null
     this._unwatchFunds = null
@@ -155,7 +157,7 @@ export class Pomona extends EventEmitter {
   async unlock ({ password }) {
     if (this.account) return { address: await this.account.address() }
     if (!this._sealed) fail('NO_WALLET', 'Es gibt noch keine Wallet.')
-    this._openAccount(open(this._sealed, password))
+    this._openAccount(this._openVault(password))
     this._changed()
     return { address: await this.account.address() }
   }
@@ -177,7 +179,7 @@ export class Pomona extends EventEmitter {
    */
   revealSeed ({ password }) {
     if (!this._sealed) fail('NO_WALLET', 'Es gibt noch keine Wallet.')
-    return open(this._sealed, password)
+    return this._openVault(password)
   }
 
   /** Dev chain only: 5,000 test USDT. */
@@ -196,7 +198,7 @@ export class Pomona extends EventEmitter {
    */
   async sendUsdt ({ to, amount, password }) {
     this._needAccount()
-    open(this._sealed, password)
+    this._openVault(password)
     if (!isAddress(String(to))) fail('BAD_ADDRESS', 'Bitte eine gültige Adresse (0x…) angeben.')
     const meta = await this._token()
     const units = parseAmount(amount, meta.decimals)
@@ -444,16 +446,29 @@ export class Pomona extends EventEmitter {
     const me = await this.account.address()
     const r = await this.round.receipt(me, Number(index))
     if (r.amount === 0n) fail('NO_RECEIPT', 'Für diese Rate gibt es keinen Beleg.')
-    const code = encodeReceipt({ network: this.net.id, round: this.round.address, bidder: me, index: Number(index) })
-    return { code, qr: qrSvg(code) }
+    const base = { network: this.net.id, round: this.round.address, bidder: me, index: Number(index), at: Math.floor(Date.now() / 1000) }
+    const message = receiptMessage(base)
+    const sig = await this.account.signText(message)
+    const code = encodeReceipt({ ...base, owner: verifyMessage(message, sig), sig })
+    return { code, qr: qrSvg(code), validUntil: base.at + RECEIPT_TTL }
   }
 
   /**
-   * Checks a receipt against the chain. Anyone can do this, no wallet needed.
+   * Checks a receipt. Anyone can do this, no wallet needed:
+   *  1. fresh (shown within RECEIPT_TTL),
+   *  2. signed by the paying account's key (owner of the smart account),
+   *  3. the installment is paid on-chain by that account.
    * @param {{ code: string }} p
    */
   async verifyReceipt ({ code }) {
     const r = decodeReceipt(code)
+    const age = Math.floor(Date.now() / 1000) - r.at
+    if (age > RECEIPT_TTL || age < -RECEIPT_TTL) {
+      return { valid: false, reason: 'Dieser Beleg ist abgelaufen. Bitte den QR-Code in der App neu öffnen lassen.' }
+    }
+    let signer = null
+    try { signer = verifyMessage(receiptMessage(r), r.sig) } catch {}
+    if (!same(signer, r.owner)) return { valid: false, reason: 'Die Unterschrift des Belegs passt nicht.' }
     if (!networkIds().includes(r.network)) fail('BAD_LINK', 'Unbekanntes Netzwerk im Beleg.')
     const net = this._network(r.network)
     const own = net.id === this.net.id
@@ -461,6 +476,12 @@ export class Pomona extends EventEmitter {
     try {
       if (!net.factory || !(await new FactoryContract(net.factory, provider).isRound(r.round))) {
         return { valid: false, reason: 'Diese Runde wurde nicht mit Pomona erstellt.' }
+      }
+      if (!same(r.owner, r.bidder)) {
+        // Smart account: the signing key must be an owner of the paying Safe.
+        const safe = new Contract(r.bidder, ['function isOwner(address owner) view returns (bool)'], provider)
+        const owns = await safe.isOwner(r.owner).catch(() => false)
+        if (!owns) return { valid: false, reason: 'Der Beleg wurde nicht vom zahlenden Konto unterschrieben.' }
       }
       const round = new RoundContract(r.round, provider)
       const [{ amount, paidAt }, info] = await Promise.all([round.receipt(r.bidder, r.index), round.info()])
@@ -571,6 +592,29 @@ export class Pomona extends EventEmitter {
   // ------------------------------------------------------------------ helpers
 
   /**
+   * Opens the seed vault with brute-force protection: after three wrong
+   * passwords every further attempt waits exponentially longer (max. 5 min).
+   * @private
+   */
+  _openVault (password) {
+    const now = Date.now()
+    if (now < this._passwordBlockedUntil) {
+      fail('TOO_MANY_ATTEMPTS', `Zu viele falsche Versuche. Bitte in ${Math.ceil((this._passwordBlockedUntil - now) / 1000)} Sekunden erneut.`)
+    }
+    try {
+      const seed = open(this._sealed, password)
+      this._failedPasswords = 0
+      return seed
+    } catch (e) {
+      this._failedPasswords++
+      if (this._failedPasswords >= 3) {
+        this._passwordBlockedUntil = now + Math.min(300, 2 ** (this._failedPasswords - 3) * 5) * 1000
+      }
+      throw e
+    }
+  }
+
+  /**
    * The installment plan as the UI shows it: one entry per invoice the
    * organizer may issue.
    *  - status 'paid'      invoiced; `paidAt` set; bidders have a receipt
@@ -581,7 +625,14 @@ export class Pomona extends EventEmitter {
    * @private
    */
   async _invoices (info, now, pledge, fmt) {
-    const paidAt = await Promise.all(Array.from({ length: info.invoiceCount }, (_, i) => this.round.invoicedAt(i)))
+    // Invoice times never change once set: cache them instead of asking the
+    // RPC for up to 520 values on every refresh.
+    const cache = this._invoiceTimes ??= new Map()
+    const paidAt = await Promise.all(Array.from({ length: info.invoiceCount }, async (_, i) => {
+      const key = this.round.address + ':' + i
+      if (!cache.has(key)) cache.set(key, await this.round.invoicedAt(i))
+      return cache.get(key)
+    }))
     const amount = fmt(pledge > 0n ? pledge : info.total)
     const open = info.phase === 'bidding' || info.phase === 'running'
     return Array.from({ length: info.installments }, (_, i) => {

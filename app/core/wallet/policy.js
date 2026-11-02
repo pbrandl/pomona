@@ -8,6 +8,7 @@
  *      • USDT with `approve(<current round>, …)` only;
  *    and never with a native value;
  *  - `transfer` of USDT (the "Senden" button in the wallet);
+ *  - `sign` of receipt messages only ("pomona-beleg:v2:…"), never anything else;
  *  - `waitForTransaction`.
  *
  * Even a compromised UI or a bug in the core cannot make the wallet approve a
@@ -77,6 +78,12 @@ export function pomonaPolicy (t) {
         operation: 'transfer',
         action: 'ALLOW',
         conditions: [({ args }) => !!args[0] && same(args[0].token, t.token())]
+      },
+      {
+        name: 'sign-receipts-only',
+        operation: 'sign',
+        action: 'ALLOW',
+        conditions: [({ args }) => typeof args[0] === 'string' && args[0].startsWith('pomona-beleg:v2:')]
       },
       { name: 'wait-for-receipts', operation: 'waitForTransaction', action: 'ALLOW', conditions: [] }
     ]

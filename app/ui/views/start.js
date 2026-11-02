@@ -62,7 +62,7 @@ export function createPage (ui) {
       <p class="small muted" style="margin-top:-16px">Wird Bietenden als Orientierung vorgeschlagen.</p>`
   } else {
     body = review(ui)
-    next = btn(ui, 'create-round', 'Runde starten', 'accent block', { busy: 'Contract wird angelegt…' })
+    next = btn(ui, 'create-round', 'Runde starten', 'accent block', { busy: 'Runde wird angelegt…' })
   }
 
   return page(CREATE_STEPS[at] === 'Prüfen' ? 'Alles richtig?' : titleFor(at), `${body}<div class="actions sticky">${next}</div>`, {
@@ -100,13 +100,13 @@ function review (ui) {
     </div>
     <div><label for="network">Netzwerk</label><select class="field" id="network" data-draft="network">${networks}</select></div>
     <label class="switch"><input type="checkbox" data-draft="inviteOnly" ${d.inviteOnly ? 'checked' : ''}> Nur mit Einladungslink bieten</label>
-    <p class="small muted">Danach bekommst du einen Link zum Teilen. Die Angaben oben stehen dann fest im Contract.</p>`
+    <p class="small muted">Danach bekommst du einen Link zum Teilen. Die Angaben oben stehen dann unveränderlich fest.</p>`
 }
 
 export function joinPage (ui) {
   return page('Einer Runde beitreten', `
     <p class="lead">Füge den Link ein, den du vom Organisator bekommen hast.</p>
     ${field(ui, 'link', 'Einladungslink', { area: true, mono: true, placeholder: 'pomona://…' })}
-    <p class="small muted">Die Runde wird direkt von anderen Teilnehmern geladen, ohne Server. Pomona prüft, dass der Contract echt ist.</p>
+    <p class="small muted">Die Runde wird direkt von anderen Teilnehmern geladen, ohne Server. Pomona prüft, dass die Runde echt ist.</p>
     <div class="actions sticky">${btn(ui, 'join', 'Beitreten', 'accent block', { busy: 'Suche Peers…' })}</div>`)
 }

@@ -34,7 +34,7 @@ Events: `ready`, `change` (der Status kann sich geändert haben) und `error` (Fe
 | `refund` | – | – |
 | `postNews` | `text` | – (Organisator) |
 | `invite` | – | `{ link, qr }` (Organisator) |
-| `receipt` | `index` (0-basiert) | `{ code, qr }` |
+| `receipt` | `index` (0-basiert) | `{ code, qr, validUntil }`. Der Code ist vom Konto unterschrieben und 10 Minuten gültig. |
 | `verifyReceipt` | `code` | `{ valid, reason? , title?, installment, installments, amount, symbol, paidAt, bidder, round }` |
 | `qr` | `text` | SVG-Markup |
 | `assistantAsk` | `text` (max. 500) oder `topic` (Vorschlag) | `{ reply, actions, source }`. `actions` sind nur Vorschläge (`bid`, `open`, `receipt`, `invoice`, `withdraw`, `refund`, `news`, `install`), geprüft gegen Rolle und Phase. `source`: `topic`, `rules`, `model`, `faq`, `none`. |

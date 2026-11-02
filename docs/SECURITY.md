@@ -62,6 +62,17 @@ Stand: Version 0.2. Dieses Dokument enthält das Bedrohungsmodell, die Ergebniss
 | **Offline-Brute-Force auf den Tresor:** Mit Zugriff auf die Festplatte lassen sich Passwörter raten. | Mindestens 8 Zeichen, Argon2id mit Parametern für interaktive Nutzung. Für Mainnet die Parameter erhöhen (sie werden im Tresor mitgespeichert, eine Migration ist also möglich) und eine automatische Sperre bei Inaktivität einbauen. |
 | **Seed im Arbeitsspeicher**, solange die Wallet entsperrt ist. | JavaScript-Strings lassen sich nicht zuverlässig löschen. `lock()` entfernt alle Referenzen. |
 
+## Prüfung von Version 0.4 (November 2026)
+
+| # | Befund | Schwere | Status |
+|---|---|---|---|
+| 11 | **Belege ließen sich fälschen.** Ein Beleg enthielt nur öffentliche Daten (Netz, Runde, Adresse, Rate). Wer die Adresse eines zahlenden Mitglieds von der Blockchain abliest, konnte einen gültigen Beleg erzeugen, etwa für eine Abholung, ohne selbst bezahlt zu haben. | Hoch | **Behoben.** Belege (Format v2) sind mit dem Schlüssel des zahlenden Kontos unterschrieben (EIP-191). Beim Smart Account prüft der Anbieter on-chain `isOwner` am Safe. Sie gelten nur 10 Minuten, und die App erneuert den QR-Code, solange er offen ist. Manipulierte, fremd unterschriebene und alte Belege werden abgelehnt (`flow.test.js`). Die Wallet-Policy erlaubt `sign` nur für Beleg-Nachrichten. |
+| 12 | **Passwort-Raten über die App** (z. B. bei kompromittierter Oberfläche) war unbegrenzt möglich. | Mittel | **Behoben.** Nach drei Fehlversuchen kommt eine exponentiell wachsende Sperre (5 s bis 5 min) für Entsperren, Notfall-Wörter und Senden. |
+| 13 | **Last auf dem RPC-Anbieter:** Jede Statusabfrage las bis zu 520 Rechnungszeiten. Bei öffentlichen Anbietern drohte Drosselung. | Niedrig | **Behoben.** Die Zeiten ändern sich nie und werden zwischengespeichert. |
+| 14 | Escaping in der Oberfläche: alle Werte geprüft. Werte aus dem Contract (z. B. Token-Symbol) laufen ebenfalls durch `esc()`. | – | Kein Befund. |
+
+Verbleibend: Ein Beleg kann innerhalb seiner 10 Minuten weitergegeben werden (Screenshot). Für mehr bräuchte es eine Rückfrage an das Gerät der bietenden Person (Challenge-Response).
+
 ## Assistent „Frag Pomona“ (QVAC)
 
 | Risiko | Gegenmaßnahme |

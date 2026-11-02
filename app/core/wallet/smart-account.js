@@ -94,6 +94,10 @@ export class SmartAccount {
     return { hash }
   }
 
+  async signText (message) {
+    return (await this._acc()).sign(message)
+  }
+
   dispose () {
     this.wdk.dispose()
   }

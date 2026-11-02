@@ -1,52 +1,56 @@
 /**
- * The round, top to bottom:
- *   hero      phase badge, title, ring (funding while bidding, installments afterwards)
- *   timeline  ① Bieten (date range, countdown)  →  ② Raten (first … last due date)
- *   bid       only while bidding
- *   plan      every installment: paid (tap → receipt/invoice), due, scheduled, void
- *   refund    when something comes back
- *   organizer share link, invoice button, check receipts, news, cancel/terminate
- *   news
+ * The round, lean: one message per block, each fact once.
+ *
+ *   header    phase · time left, title, description
+ *   progress  ring with the one key number, one line of facts
+ *   you       your situation and the single next action (views/you.js)
+ *   share     organizer during bidding: invite link + QR
+ *   timeline  ① Bieten → ② Raten, two short lines
+ *   plan      installments (folded to a few rows), tap a paid one → receipt
+ *   news      latest message, more on demand
+ *   manage    organizer tools as quiet links
+ *
  * @module ui/views/round
  */
-import { esc, fmt, num, per, date, dateTime, short, left, dayTime } from '../format.js'
-import { btn, link } from './parts.js'
-import { statusLine } from './status.js'
+import { esc, fmt, per, date, shortDate, dateTime, short, left } from '../format.js'
+import { link } from './parts.js'
+import { youCard } from './you.js'
 
 export function round (ui) {
   const r = ui.status.round
   const p = per(r.intervalName)
   return `<div class="stack-lg">
-    ${statusLine(ui)}
-    ${hero(r, p)}
+    ${header(r)}
+    ${progress(r, p)}
+    ${youCard(ui)}
+    ${share(ui, r)}
     ${timeline(r, p)}
-    ${bidCard(ui, r, p)}
-    ${planCard(ui, r, p)}
-    ${refundCard(ui, r)}
-    ${organizerCard(ui, r)}
-    ${newsCard(r)}
-    <p class="small muted" style="text-align:center">Contract <span class="mono">${short(r.address)}</span> · ${esc(ui.status.network.name)} · <span class="live"><span class="dot on"></span>live</span></p>
+    ${plan(ui, r, p)}
+    ${news(ui, r)}
+    ${manage(ui, r)}
+    <p class="small muted" style="text-align:center">Treuhandkonto <span class="mono">${short(r.address)}</span> · ${esc(ui.status.network.name)} · <span class="live"><span class="dot on"></span>live</span></p>
   </div>`
 }
 
-// --------------------------------------------------------------------- hero
+// ------------------------------------------------------------------- header
 
-function hero (r, p) {
-  const badge = {
-    bidding: '<span class="badge">Bietphase läuft</span>',
-    running: '<span class="badge">Ratenzahlung läuft</span>',
-    completed: '<span class="badge neutral">Abgeschlossen</span>',
-    failed: '<span class="badge warn">Ziel nicht erreicht</span>'
+function header (r) {
+  const t = left(r.biddingEnd, r.now)
+  const eyebrow = {
+    bidding: `Bietphase · noch ${t.value} ${t.unit.replace(' übrig', '')}`,
+    running: `Ratenzahlung · ${r.invoiceCount} von ${r.installments} bezahlt`,
+    completed: 'Abgeschlossen',
+    failed: 'Ziel nicht erreicht'
   }[r.phase]
-  return `<div class="hero stack">
-    ${badge}
+  return `<div class="round-head">
+    <p class="eyebrow ${r.phase}">${esc(eyebrow)}</p>
     <h1>${esc(r.title)}</h1>
     ${r.description ? `<p class="lead">${esc(r.description)}</p>` : ''}
-    ${!r.verified ? '<span class="badge warn">Angaben passen nicht zum Contract</span>' : ''}
-    ${r.phase === 'running' || r.phase === 'completed' ? installmentRing(r, p) : fundingRing(r, p)}
-    ${stats(r, p)}
+    ${!r.verified ? '<p class="warn-text small">Die Angaben des Organisators passen nicht zum Treuhandkonto. Vorsicht.</p>' : ''}
   </div>`
 }
+
+// ----------------------------------------------------------------- progress
 
 function ringSvg (value) {
   const R = 100
@@ -55,215 +59,144 @@ function ringSvg (value) {
   return `<svg viewBox="0 0 220 220"><circle class="track" cx="110" cy="110" r="${R}"/><circle class="value" cx="110" cy="110" r="${R}" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - v)}"/></svg>`
 }
 
-function fundingRing (r, p) {
-  return `<div class="ring">${ringSvg(r.progress)}
-    <div class="center"><div class="big">${fmt(r.progress * 100, 0)}%</div><div class="of">${fmt(r.total)} von ${fmt(r.target)} ${esc(r.symbol)}<br>${p.per}</div></div>
+function progress (r, p) {
+  const paying = r.phase === 'running' || r.phase === 'completed'
+  const center = paying
+    ? `<div class="big">${r.invoiceCount}<span class="muted" style="font-weight:400">/${r.installments}</span></div><div class="of">Raten</div>`
+    : `<div class="big">${fmt(r.progress * 100, 0)}%</div><div class="of">vom Ziel</div>`
+  const facts = paying
+    ? `${fmt(r.total)} ${esc(r.symbol)} ${p.per} · ${r.bidders} ${r.bidders === 1 ? 'Bieter' : 'Bietende'}`
+    : `${fmt(r.total)} von ${fmt(r.target)} ${esc(r.symbol)} ${p.per} · ${r.bidders} ${r.bidders === 1 ? 'Bieter' : 'Bietende'}`
+  return `<div class="progress">
+    <div class="ring small">${ringSvg(paying ? r.invoiceCount / r.installments : r.progress)}<div class="center">${center}</div></div>
+    <p class="muted">${facts}</p>
   </div>`
 }
 
-function installmentRing (r, p) {
-  return `<div class="ring">${ringSvg(r.invoiceCount / r.installments)}
-    <div class="center"><div class="big">${r.invoiceCount}<span class="muted" style="font-weight:400"> / ${r.installments}</span></div><div class="of">Raten bezahlt<br>${fmt(r.total)} ${esc(r.symbol)} ${p.per}</div></div>
-  </div>`
-}
+// -------------------------------------------------------------------- share
 
-function stats (r, p) {
-  let cells
-  if (r.phase === 'bidding') {
-    const t = left(r.biddingEnd, r.now)
-    cells = [
-      [String(r.bidders), r.bidders === 1 ? 'Bieter' : 'Bietende'],
-      [t.value, t.unit],
-      [fmt(Math.max(0, num(r.target) - num(r.total))), `fehlen ${p.per}`]
-    ]
-  } else {
-    cells = [
-      [String(r.bidders), r.bidders === 1 ? 'Bieter' : 'Bietende'],
-      [fmt(num(r.total)), `${r.symbol} ${p.per}`],
-      [fmt(num(r.total) * r.installments), 'gesamt zugesagt']
-    ]
-  }
-  return `<div class="card stats" style="align-self:stretch">${cells.map(([v, l]) => `<div><strong>${esc(v)}</strong><span>${esc(l)}</span></div>`).join('')}</div>`
+function share (ui, r) {
+  if (r.role !== 'organizer' || r.phase !== 'bidding') return ''
+  const inv = ui.invite
+  return `<div class="card share">
+    <div class="qr">${inv ? inv.qr : ''}</div>
+    <div class="stack" style="min-width:0">
+      <h2 style="margin:0">Einladen</h2>
+      <p class="small muted">${r.inviteOnly ? 'Nur wer diesen Link hat, kann bieten.' : 'Jeder mit dem Link kann bieten.'}</p>
+      <button class="btn ghost small" data-action="copy-invite">Link kopieren</button>
+    </div>
+  </div>`
 }
 
 // ----------------------------------------------------------------- timeline
 
-/** The two phases with their dates. The current one is highlighted. */
 function timeline (r, p) {
-  const firstDue = r.biddingEnd
   const lastDue = r.biddingEnd + r.interval * (r.installments - 1)
   const bidding = r.phase === 'bidding'
+  const span = r.biddingStart ? Math.max(1, r.biddingEnd - r.biddingStart) : null
+  const pct = bidding && span ? Math.min(100, Math.max(0, ((r.now - r.biddingStart) / span) * 100)) : null
 
-  let bidState, bidText
-  if (bidding) {
-    const t = left(r.biddingEnd, r.now)
-    const span = r.biddingStart ? Math.max(1, r.biddingEnd - r.biddingStart) : null
-    const pct = span ? Math.min(100, Math.max(0, ((r.now - r.biddingStart) / span) * 100)) : null
-    bidState = 'current'
-    bidText = `<p class="tl-when">${r.biddingStart ? `${esc(date(r.biddingStart))} – ` : 'bis '}${esc(dayTime(r.biddingEnd))}</p>
-      ${pct !== null ? `<div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>` : ''}
-      <p class="small muted">Noch ${esc(t.value)} ${esc(t.unit.replace(' übrig', ''))}. Bis dahin kannst du bieten, erhöhen und zurückziehen.</p>`
-  } else {
-    bidState = r.phase === 'failed' ? 'failed' : 'done'
-    bidText = `<p class="tl-when">${r.biddingStart ? `${esc(date(r.biddingStart))} – ` : 'bis '}${esc(date(r.biddingEnd))}</p>
-      <p class="small muted">${r.phase === 'failed' ? 'Das Ziel wurde nicht erreicht. Alle bekommen ihr Geld zurück.' : 'Beendet. Die Gebote stehen fest.'}</p>`
-  }
+  const bidState = bidding ? 'current' : r.phase === 'failed' ? 'failed' : 'done'
+  const bidWhen = `${r.biddingStart ? esc(date(r.biddingStart)) + ' – ' : 'bis '}${esc(date(r.biddingEnd))}`
 
-  let payState, payText
-  const range = r.installments === 1 ? `am ${esc(date(firstDue))}` : `${esc(date(firstDue))} – ${esc(date(lastDue))}`
-  const how = `${r.installments} ${r.installments === 1 ? 'Rate' : 'Raten'}, ${p.adj}`
-  if (bidding) {
-    payState = 'next'
-    payText = `<p class="tl-when">${range}</p><p class="small muted">${how}. Startet automatisch, wenn die Bietphase endet und das Ziel erreicht ist. Pro Rate stellt der Organisator eine Rechnung.</p>`
-  } else if (r.phase === 'running') {
-    payState = 'current'
-    payText = `<p class="tl-when">${range}</p><p class="small muted">${how}. ${r.invoiceCount} von ${r.installments} bezahlt.</p>`
-  } else if (r.phase === 'completed') {
-    payState = 'done'
-    payText = `<p class="tl-when">${range}</p><p class="small muted">${r.invoiceCount} von ${r.installments} Raten bezahlt.${r.invoiceCount < r.installments ? ' Der Rest geht an die Bietenden zurück.' : ''}</p>`
-  } else {
-    payState = 'skipped'
-    payText = '<p class="small muted">Findet nicht statt.</p>'
-  }
+  const payState = { bidding: 'next', running: 'current', completed: 'done', failed: 'skipped' }[r.phase]
+  const payWhen = r.installments === 1 ? esc(date(r.biddingEnd)) : `${esc(date(r.biddingEnd))} – ${esc(date(lastDue))}`
+  const payNote = {
+    bidding: 'Startet, wenn das Ziel erreicht ist.',
+    running: `${r.invoiceCount} von ${r.installments} bezahlt.`,
+    completed: r.invoiceCount < r.installments ? 'Vorzeitig beendet. Der Rest ging zurück.' : 'Alle Raten bezahlt.',
+    failed: 'Findet nicht statt.'
+  }[r.phase]
 
   return `<div class="card timeline">
-    <div class="tl-step ${bidState}"><div class="tl-dot">1</div><div class="tl-body"><h3>Bieten</h3>${bidText}</div></div>
-    <div class="tl-step ${payState}"><div class="tl-dot">2</div><div class="tl-body"><h3>Ratenzahlung per Rechnung</h3>${payText}</div></div>
-  </div>`
-}
-
-// ---------------------------------------------------------------------- bid
-
-function bidCard (ui, r, p) {
-  if (r.phase !== 'bidding') return ''
-  const has = num(r.myPledge) > 0
-  if (!has) {
-    return `<div class="card stack" id="bid-card">
-      <div class="row"><h2 style="margin:0">Mitbieten</h2><span class="small muted">bis ${esc(dayTime(r.biddingEnd))}</span></div>
-      ${r.guide ? `<p class="muted">Richtwert ${fmt(r.guide)} ${esc(r.symbol)} ${p.per}. Gib, was du kannst.</p>` : ''}
-      <button class="btn accent block" data-action="start-bid">Gebot abgeben</button>
-    </div>`
-  }
-  return `<div class="card stack" id="bid-card">
-    <div class="row"><h2 style="margin:0">Dein Gebot</h2><span class="small muted">änderbar bis ${esc(dayTime(r.biddingEnd))}</span></div>
-    <div class="mine"><span class="muted">${fmt(r.myDeposit)} ${esc(r.symbol)} hinterlegt</span><strong>${fmt(r.myPledge)} ${esc(r.symbol)} <span class="muted small">${p.per}</span></strong></div>
-    <div class="row" style="justify-content:flex-start;gap:12px">
-      <button class="btn ghost" data-action="start-bid">Erhöhen</button>
-      ${link(ui, 'withdraw', ui.pending === 'withdraw' ? 'Wird zurückgezogen…' : 'Zurückziehen')}
-    </div>
+    <div class="tl-step ${bidState}"><div class="tl-dot">1</div><div class="tl-body">
+      <h3>Bieten</h3><p class="tl-when">${bidWhen}</p>
+      ${pct !== null ? `<div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>` : ''}
+    </div></div>
+    <div class="tl-step ${payState}"><div class="tl-dot">2</div><div class="tl-body">
+      <h3>${r.installments} Raten, ${esc(p.adj)}</h3><p class="tl-when">${payWhen}</p><p class="small muted">${payNote}</p>
+    </div></div>
   </div>`
 }
 
 // --------------------------------------------------------------------- plan
 
 const STATUS = {
-  paid: (x) => `<span class="pill-s ok">Bezahlt ${esc(date(x.paidAt))}</span>`,
+  paid: () => '<span class="pill-s ok">Bezahlt</span>',
   due: () => '<span class="pill-s due">Fällig</span>',
   scheduled: () => '<span class="pill-s">Geplant</span>',
   void: () => '<span class="pill-s void">Entfällt</span>'
 }
 
-/**
- * All installments. Paid ones open the receipt (bidder) or the invoice
- * (organizer). Long plans are folded around the current installment.
- */
-function planCard (ui, r, p) {
+function plan (ui, r, p) {
   if (r.phase === 'failed' || !r.invoices?.length) return ''
   const organizer = r.role === 'organizer'
   const mine = r.invoices.some((x) => x.mine)
   const list = fold(r.invoices, r.invoiceCount, ui.showAllInvoices)
 
   const rows = list.map((x) => {
-    if (x.more) return `<button class="plan-more" data-action="show-all-invoices">… ${x.more} weitere Raten anzeigen</button>`
+    if (x.more) return `<button class="plan-more" data-action="show-all-invoices">Alle ${r.invoices.length} Raten anzeigen</button>`
     const clickable = x.status === 'paid' && (organizer || x.mine)
     const action = organizer ? 'show-invoice' : 'show-receipt'
     const attrs = clickable ? ` data-action="${action}" data-index="${x.index}" role="button" tabindex="0"` : ''
     return `<div class="plan-row ${x.status}${clickable ? ' clickable' : ''}"${attrs}>
-      <div class="plan-left"><strong>Rate ${x.index + 1}</strong><span class="muted small">${x.status === 'paid' ? '' : 'fällig ab ' + esc(date(x.dueAt))}</span></div>
+      <div class="plan-left"><strong>Rate ${x.index + 1}</strong><span class="muted small">${x.status === 'paid' ? esc(shortDate(x.paidAt)) + (clickable ? (organizer ? ' · Details' : ' · Beleg') : '') : 'ab ' + esc(shortDate(x.dueAt))}</span></div>
       <div class="plan-right"><span>${fmt(x.amount)} ${esc(r.symbol)}</span>${STATUS[x.status](x)}${clickable ? '<span class="chev" aria-hidden="true">›</span>' : ''}</div>
     </div>`
   }).join('')
 
   const title = organizer ? 'Rechnungen' : mine ? 'Deine Raten' : 'Raten'
-  const sub = r.phase === 'bidding'
-    ? 'Vorschau. Die Rechnungen beginnen mit dem Ende der Bietphase.'
-    : organizer ? 'Tippe auf eine bezahlte Rechnung für Details.' : mine ? 'Tippe auf eine bezahlte Rate, um den Beleg zu sehen.' : ''
   return `<div class="card">
-    <div class="row"><h2 style="margin:0">${title}</h2><span class="small muted">${p.adj}</span></div>
-    ${sub ? `<p class="small muted" style="margin:6px 0 14px">${sub}</p>` : ''}
+    <div class="row" style="margin-bottom:8px"><h2 style="margin:0">${title}</h2><span class="small muted">${p.adj}</span></div>
     ${rows}
   </div>`
 }
 
-/** Shows everything for up to 14 rows; otherwise paid tail + current + a few upcoming. */
+/** A few rows around "now": the last paid, the next ones. Everything on demand. */
 function fold (invoices, paid, all) {
-  if (all || invoices.length <= 14) return invoices
-  const from = Math.max(0, paid - 3)
-  const to = Math.min(invoices.length, paid + 4)
-  const out = []
-  if (from > 0) out.push({ more: from })
-  out.push(...invoices.slice(from, to))
-  if (to < invoices.length) out.push({ more: invoices.length - to })
-  return out
+  if (all || invoices.length <= 4) return invoices
+  const from = Math.max(0, Math.min(paid - 1, invoices.length - 4))
+  const shown = invoices.slice(from, from + 4)
+  return [...shown, { more: true }]
 }
 
-// ------------------------------------------------------------------- refund
+// --------------------------------------------------------------------- news
 
-function refundCard (ui, r) {
-  if (num(r.refundable) <= 0) return ''
-  const why = r.phase === 'failed' ? 'Das Ziel wurde nicht erreicht.' : 'Diese Raten werden nicht mehr abgerechnet.'
-  return `<div class="card stack">
-    <div class="mine"><span class="muted">Zurück an dich</span><strong>${fmt(r.refundable)} ${esc(r.symbol)}</strong></div>
-    <p class="small muted">${why} Hol dir den Betrag aus dem Contract zurück.</p>
-    ${btn(ui, 'refund', 'Betrag zurückholen', 'accent block', { busy: 'Wird überwiesen…' })}
-  </div>`
+function news (ui, r) {
+  if (!r.news.length) return ''
+  const list = ui.showAllNews ? r.news : r.news.slice(0, 1)
+  const items = list.map((n) => `<div class="news-item"><time>${esc(dateTime(n.at))}</time>${esc(n.text)}</div>`).join('')
+  const more = !ui.showAllNews && r.news.length > 1
+    ? `<button class="plan-more" data-action="show-all-news">Alle ${r.news.length} Neuigkeiten</button>`
+    : ''
+  return `<div class="card"><h2>Neuigkeiten</h2>${items}${more}</div>`
 }
 
-// ---------------------------------------------------------------- organizer
+// ------------------------------------------------------------------- manage
 
-function organizerCard (ui, r) {
+function manage (ui, r) {
   if (r.role !== 'organizer') return ''
-  const parts = []
-
-  if (r.phase === 'bidding') {
-    const inv = ui.invite
-    parts.push(`<div class="share">
-      <div class="qr">${inv ? inv.qr : ''}</div>
-      <div class="stack" style="min-width:0">
-        <p class="small muted">${r.inviteOnly ? 'Nur wer diesen Link hat, kann bieten.' : 'Jeder mit dem Link kann bieten.'}</p>
-        <div class="linkbox">${esc(inv?.link || '')}</div>
-        <button class="btn ghost small" data-action="copy-invite">Link kopieren</button>
-      </div>
-    </div>`)
-  }
-
-  if (r.phase === 'running') {
-    const next = r.invoiceCount + 1
-    parts.push(`<div class="stack">
-      ${btn(ui, 'invoice', `Rechnung ${next} stellen · ${fmt(r.total)} ${r.symbol}`, 'accent block', { disabled: !r.canInvoice, busy: 'Wird abgerechnet…' })}
-      ${r.canInvoice ? '' : `<p class="small muted">Rechnung ${next} ist ab ${esc(dayTime(r.nextInvoiceAt))} möglich.</p>`}
-    </div>`)
-  }
-
-  if (r.phase !== 'bidding' && r.invoiceCount > 0) {
-    parts.push('<div class="row" style="margin-top:16px"><p class="small muted">Bietende zeigen ihren Beleg als QR-Code.</p><button class="btn ghost small" data-action="open-scan">Beleg prüfen</button></div>')
-  }
-
-  parts.push(`<div class="amount" style="margin-top:16px">
-      <input id="news" data-draft="news" placeholder="Neuigkeit an alle…" value="${esc(ui.draft.news)}" autocomplete="off">
-      ${btn(ui, 'post-news', 'Senden', 'ghost small')}
-    </div>`)
-
+  const rows = ['<button class="manage-row" data-action="open-sheet" data-sheet="news">Neuigkeit an alle schreiben<span class="chev">›</span></button>']
+  if (r.invoiceCount > 0) rows.push('<button class="manage-row" data-action="open-scan">Beleg prüfen<span class="chev">›</span></button>')
   const danger = r.phase === 'bidding'
     ? link(ui, 'cancel', 'Runde abbrechen', 'danger')
     : r.phase === 'running' ? link(ui, 'terminate', 'Ratenzahlung vorzeitig beenden', 'danger') : ''
-  if (danger) parts.push(`<div class="row small" style="margin-top:12px"><span></span>${danger}</div>`)
-
-  return `<div class="card"><h2>Organisation</h2>${parts.join('')}</div>`
+  return `<div class="card manage">
+    <h2>Verwalten</h2>
+    ${rows.join('')}
+    ${danger ? `<div class="manage-danger">${danger}</div>` : ''}
+  </div>`
 }
 
-function newsCard (r) {
-  if (!r.news.length) return ''
-  const items = r.news.map((n) => `<div class="news-item"><time>${esc(dateTime(n.at))}</time>${esc(n.text)}</div>`).join('')
-  return `<div class="card"><h2>Neuigkeiten</h2>${items}</div>`
+/** Page: write a news message (one step, one page). */
+export function newsPage (ui) {
+  return `<section class="page">
+    <div class="page-top"><button class="link back" data-action="close-sheet">← Zurück</button></div>
+    <h1 class="page-title">Neuigkeit an alle</h1>
+    <div class="stack-lg">
+      <p class="lead">Alle Bietenden sehen sie in der Runde und bekommen eine Benachrichtigung.</p>
+      <div><label for="news">Nachricht</label><textarea class="field" id="news" data-draft="news" placeholder="Hoffest am Samstag um 14 Uhr …" style="height:140px">${esc(ui.draft.news)}</textarea></div>
+      <div class="actions sticky"><button class="btn accent block" data-action="post-news">Senden</button></div>
+    </div>
+  </section>`
 }

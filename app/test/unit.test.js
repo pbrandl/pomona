@@ -39,9 +39,10 @@ test('invite links round-trip and reject tampering', () => {
 })
 
 test('receipt codes round-trip and validate', () => {
-  const r = { network: 'sepolia', round: A(2), bidder: A(3), index: 4 }
+  const r = { network: 'sepolia', round: A(2), bidder: A(3), index: 4, at: 1700000000, owner: A(4), sig: '0x' + 'ab'.repeat(65) }
   assert.deepEqual(decodeReceipt(encodeReceipt(r)), r)
   assert.throws(() => decodeReceipt(encodeReceipt({ ...r, index: -1 })), /ungültig/)
+  assert.throws(() => decodeReceipt(encodeReceipt({ ...r, sig: '0x12' })), /ungültig/) // unsigned receipts are not accepted
   assert.throws(() => decodeReceipt(encodeInvite({ manifest: 'a'.repeat(64), network: 'x', round: A(1) })), /kein Beleg/)
 })
 

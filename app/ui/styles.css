@@ -588,3 +588,47 @@ h3 { font-weight: 600; }
 .amount.ask { height: 52px; background: var(--surface); }
 .amount.ask input { font-size: 15px; font-weight: 400; }
 .chip.question { height: auto; min-height: 38px; padding: 8px 14px; text-align: left; line-height: 1.35; font-weight: 400; }
+
+/* --------------------------------------------------- round, lean layout */
+
+.round-head > * + * { margin-top: 8px; }
+.eyebrow {
+  margin: 0; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--accent);
+}
+.eyebrow.failed { color: var(--danger); }
+.eyebrow.completed { color: var(--muted); }
+
+.progress { display: flex; align-items: center; gap: 20px; }
+.ring.small { width: 128px; height: 128px; margin: 0; flex: none; }
+.ring.small circle { stroke-width: 14; }
+.ring.small .big { font-size: 26px; }
+.ring.small .of { font-size: 12px; }
+.progress p { margin: 0; font-size: 15px; }
+
+.you {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  padding: 18px 20px; border-radius: var(--radius); background: var(--surface);
+  border: 1px solid var(--line); box-shadow: var(--shadow);
+}
+.you.act { border-color: var(--accent); }
+.you.ok { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 30%, var(--line)); }
+.you-title { margin: 0 0 2px; font-size: 17px; font-weight: 600; }
+.you-actions { display: flex; align-items: center; gap: 14px; }
+
+.manage h2 { margin-bottom: 4px; }
+.manage-row {
+  display: flex; align-items: center; justify-content: space-between; width: 100%;
+  padding: 14px 0; border: 0; border-top: 1px solid var(--line); background: none; cursor: pointer; font-size: 15px; text-align: left;
+}
+.manage-row:first-of-type { border-top: 0; }
+.manage-row:hover { color: var(--accent); }
+.manage-danger { padding-top: 12px; border-top: 1px solid var(--line); font-size: 13px; }
+
+@media (max-width: 520px) {
+  .progress { gap: 16px; }
+  .ring.small { width: 104px; height: 104px; }
+  .ring.small .big { font-size: 22px; }
+  .you { padding: 16px; }
+  .you-actions { width: 100%; }
+  .you-actions .btn { flex: 1; }
+}

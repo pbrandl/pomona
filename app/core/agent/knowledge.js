@@ -28,7 +28,7 @@ export const TOPICS = {
       const p = per(r?.intervalName)
       const plan = r ? ` In dieser Runde: ${r.installments} Raten, ${p.adj}, ab ${day(r.biddingEnd)}.` : ''
       return {
-        text: 'Alle sagen in der Bietphase, wie viel sie pro Rate geben möchten. Das Geld für alle Raten liegt dann in einem Treuhand-Contract, nicht beim Organisator. ' +
+        text: 'Alle sagen in der Bietphase, wie viel sie pro Rate geben möchten. Das Geld für alle Raten liegt dann in einem Treuhandkonto, nicht beim Organisator. ' +
           'Ist nach der Bietphase das Ziel erreicht, stellt der Organisator Rate für Rate eine Rechnung. Für jede bezahlte Rate bekommst du einen Beleg. ' +
           'Wird das Ziel nicht erreicht, bekommen alle ihr Geld zurück.' + plan
       }
@@ -41,7 +41,7 @@ export const TOPICS = {
       const r = s.round
       const refund = r && Number(r.refundable) > 0
       return {
-        text: 'Dann findet keine Ratenzahlung statt, und alle holen ihren hinterlegten Betrag vollständig aus dem Contract zurück. Niemand kann das Geld in diesem Fall abbuchen, auch der Organisator nicht.' +
+        text: 'Dann findet keine Ratenzahlung statt, und alle holen ihren hinterlegten Betrag vollständig aus dem Treuhandkonto zurück. Niemand kann das Geld in diesem Fall abbuchen, auch der Organisator nicht.' +
           (refund ? ` Für dich liegen gerade ${num(r.refundable)} ${r.symbol} zum Zurückholen bereit.` : ''),
         actions: refund ? [{ type: 'refund' }] : []
       }
@@ -85,8 +85,8 @@ export const TOPICS = {
       if (r.phase === 'bidding') return { text: `Die Bietphase läuft bis ${day(r.biddingEnd)}. Wird das Ziel erreicht, ist die erste Rate ab dann fällig, danach ${p.adj}, insgesamt ${r.installments}-mal.` }
       if (r.phase === 'running') {
         const text = r.canInvoice
-          ? `Rate ${r.invoiceCount + 1} von ${r.installments} ist jetzt fällig. ${r.role === 'organizer' ? 'Du kannst die Rechnung stellen.' : 'Der Organisator stellt sie, du musst nichts tun: Der Betrag liegt schon im Contract.'}`
-          : `Rate ${r.invoiceCount + 1} von ${r.installments} ist ab ${day(r.nextInvoiceAt)} fällig. Du musst nichts tun, der Betrag liegt schon im Contract.`
+          ? `Rate ${r.invoiceCount + 1} von ${r.installments} ist jetzt fällig. ${r.role === 'organizer' ? 'Du kannst die Rechnung stellen.' : 'Der Organisator stellt sie, du musst nichts tun: Der Betrag liegt schon im Treuhandkonto.'}`
+          : `Rate ${r.invoiceCount + 1} von ${r.installments} ist ab ${day(r.nextInvoiceAt)} fällig. Du musst nichts tun, der Betrag liegt schon im Treuhandkonto.`
         return { text, actions: r.role === 'organizer' && r.canInvoice ? [{ type: 'invoice' }] : [] }
       }
       if (r.phase === 'completed') return { text: `Die Ratenzahlung ist abgeschlossen: ${r.invoiceCount} von ${r.installments} Raten wurden abgerechnet.` }
@@ -117,8 +117,8 @@ export const TOPICS = {
     question: 'Ist mein Geld sicher?',
     keywords: ['sicher', 'betrug', 'vertrauen', 'risiko', 'weg'],
     answer: (s) => ({
-      text: 'Das Geld liegt in einem Treuhand-Contract ohne Administrator. Der Organisator bekommt pro Rechnung nur eine Rate und höchstens einmal pro Intervall. Was nicht abgerechnet wird, geht an dich zurück. Dein Konto ist mit deinem Passwort verschlüsselt und läuft nur auf diesem Gerät. ' +
-        'Ehrlich gesagt: Der Contract ist noch nicht extern geprüft. Diese Version ist ein Prototyp für Testnetze.'
+      text: 'Das Geld liegt in einem Treuhandkonto ohne Verwalter (ein Smart Contract). Der Organisator bekommt pro Rechnung nur eine Rate und höchstens einmal pro Intervall. Was nicht abgerechnet wird, geht an dich zurück. Dein Konto ist mit deinem Passwort verschlüsselt und läuft nur auf diesem Gerät. ' +
+        'Ehrlich gesagt: Der Smart Contract ist noch nicht extern geprüft. Diese Version ist ein Prototyp für Testnetze.'
     })
   },
   fund: {
@@ -135,7 +135,7 @@ export const TOPICS = {
     answer: (s) => {
       const r = s.round
       const amount = Number(r?.refundable)
-      if (amount > 0) return { text: `Für dich liegen ${num(amount)} ${r.symbol} im Contract bereit. Ein Klick, und sie sind wieder in deinem Konto.`, actions: [{ type: 'refund' }] }
+      if (amount > 0) return { text: `Für dich liegen ${num(amount)} ${r.symbol} im Treuhandkonto bereit. Ein Klick, und sie sind wieder in deinem Konto.`, actions: [{ type: 'refund' }] }
       if (r?.phase === 'bidding' && pledged(r)) return { text: `Während der Bietphase kannst du dein Gebot zurückziehen, dann kommen ${num(r.myDeposit)} ${r.symbol} sofort zurück.`, actions: [{ type: 'withdraw' }] }
       return { text: 'Geld zurück gibt es, wenn das Ziel verfehlt wird oder wenn Raten nicht mehr abgerechnet werden. Im Moment ist für dich nichts zurückzuholen.' }
     }
@@ -166,7 +166,7 @@ export const TOPICS = {
     keywords: ['rechnung stellen', 'abrechnen', 'rechnung'],
     answer: (s) => {
       const r = s.round
-      if (r?.role !== 'organizer') return { text: 'Rechnungen stellt der Organisator. Du musst nichts tun: Deine Rate liegt schon im Contract, und du bekommst automatisch einen Beleg.' }
+      if (r?.role !== 'organizer') return { text: 'Rechnungen stellt der Organisator. Du musst nichts tun: Deine Rate liegt schon im Treuhandkonto, und du bekommst automatisch einen Beleg.' }
       if (r.canInvoice) return { text: `Rechnung ${r.invoiceCount + 1} ist fällig. Damit gehen ${num(r.total)} ${r.symbol} an dein Konto, und alle Bietenden bekommen ihren Beleg.`, actions: [{ type: 'invoice' }] }
       if (r.phase === 'running') return { text: `Die nächste Rechnung ist ab ${day(r.nextInvoiceAt)} möglich, höchstens eine pro Intervall.` }
       return { text: 'Rechnungen gibt es erst nach einer erfolgreichen Bietphase.' }
@@ -209,7 +209,7 @@ export function matchTopic (text) {
 /** Background knowledge for the language model (compact, factual). */
 export const FACTS = [
   'Pomona ist eine Bietrunde ohne Server: Organisator startet eine Runde, Bietende geben einen Betrag pro Rate an.',
-  'Beim Bieten wird Betrag × Anzahl Raten im Treuhand-Contract hinterlegt. Der Organisator kann nicht vorab darauf zugreifen.',
+  'Beim Bieten wird Betrag × Anzahl Raten im Treuhandkonto hinterlegt. Der Organisator kann nicht vorab darauf zugreifen.',
   'Bis zum Ende der Bietphase kann man erhöhen oder zurückziehen; danach stehen die Gebote fest.',
   'Ziel erreicht: Der Organisator stellt höchstens einmal pro Intervall (Woche oder Monat) eine Rechnung, höchstens so oft wie Raten vereinbart sind. Jede Rechnung zahlt eine Rate aller Gebote aus.',
   'Ziel verfehlt oder Runde abgebrochen: alle bekommen ihren hinterlegten Betrag vollständig zurück.',

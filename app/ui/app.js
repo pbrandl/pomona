@@ -18,7 +18,7 @@ import { esc, short, fmt, isoDay, endOfDay } from './format.js'
 import { PEAR } from './views/parts.js'
 import { onboarding, locked, createWalletSheet, restoreSheet, revealSheet, seedSheet } from './views/onboarding.js'
 import { start, createPage, joinPage, createStepError } from './views/start.js'
-import { round } from './views/round.js'
+import { round, newsPage } from './views/round.js'
 import { walletSheet } from './views/wallet.js'
 import { receiptSheet, invoiceSheet, scanSheet } from './views/receipt.js'
 import { Scanner } from './scanner.js'
@@ -42,6 +42,7 @@ const ui = {
   verified: null, // result of verifyReceipt in the scan sheet
   scanError: null, // camera unavailable → paste only
   showAllInvoices: false,
+  showAllNews: false,
   quote: null, // quoteBid result while the bid confirmation is open
   bidDone: null, // { pledgeAfter, deposit } after a successful bid
   fundBaseline: null, // balance when "Aufladen" was opened, to show what arrived
@@ -95,6 +96,7 @@ const SHEETS = {
   create: (u) => (u.status?.wallet.state === 'unlocked' ? createPage(u) : ''),
   join: (u) => (u.status?.wallet.state === 'unlocked' ? joinPage(u) : ''),
   assistant: (u) => (u.status?.wallet.state === 'unlocked' ? assistantPage(u) : ''),
+  news: (u) => (u.status?.round?.role === 'organizer' ? newsPage(u) : ''),
   wallet: (u) => (u.status?.wallet.state === 'unlocked' ? walletSheet(u) : '')
 }
 
@@ -142,6 +144,7 @@ function render () {
 }
 
 let lastPage = ''
+let receiptTimer = null
 
 /** Sends a question (or a suggestion topic) and appends the answer. */
 async function askAssistant (params) {
@@ -296,11 +299,8 @@ const actions = {
         return actions.refund()
       case 'news':
         ui.draft.news = a.text
-        ui.sheet = null
-        render()
-        document.getElementById('news')?.scrollIntoView({ block: 'center' })
-        document.getElementById('news')?.focus()
-        return toast('Entwurf eingefügt. Prüfe ihn und tippe auf „Senden“.')
+        ui.sheet = 'news' // the person reads and sends it themselves
+        return
       case 'install':
         return run('assistantInstall', { model: 'small' })
     }
@@ -319,6 +319,7 @@ const actions = {
   'pick-amount': (el) => { ui.draft.amount = el.dataset.amount },
 
   'show-all-invoices': () => { ui.showAllInvoices = true },
+  'show-all-news': () => { ui.showAllNews = true },
 
   // wallet
   async 'create-wallet' () {
@@ -443,8 +444,11 @@ const actions = {
     await run('terminate')
   },
   async 'post-news' () {
+    if (!ui.draft.news.trim()) throw new Error('Bitte eine Nachricht schreiben.')
     await run('postNews', { text: ui.draft.news })
     ui.draft.news = ''
+    ui.sheet = null
+    toast('Neuigkeit gesendet')
   },
 
   // receipts
@@ -458,6 +462,12 @@ const actions = {
     call('verifyReceipt', { code: rc.code })
       .then((v) => { rc.verified = v }, (e) => { rc.verified = { valid: false, reason: e.message } })
       .finally(render)
+    // Signed receipts expire after 10 minutes: renew while the page is open.
+    clearInterval(receiptTimer)
+    receiptTimer = setInterval(async () => {
+      if (ui.sheet !== 'receipt' || ui.receipt?.index !== index) return clearInterval(receiptTimer)
+      try { Object.assign(ui.receipt, await call('receipt', { index })); render() } catch {}
+    }, 4 * 60 * 1000)
   },
   /** Organizer taps a paid invoice. */
   'show-invoice' (el) {
@@ -524,7 +534,7 @@ $app.addEventListener('change', (e) => {
 })
 
 /** Enter submits the obvious action of a field. */
-const ENTER = { amount: 'review-bid', news: 'post-news', password: null, verify: 'verify-receipt', link: 'join', ask: 'agent-send' }
+const ENTER = { amount: 'review-bid', password: null, verify: 'verify-receipt', link: 'join', ask: 'agent-send' }
 $app.addEventListener('keydown', (e) => {
   // Clickable rows (role="button") react to Enter and Space like buttons.
   if ((e.key === 'Enter' || e.key === ' ') && e.target.getAttribute?.('role') === 'button') {

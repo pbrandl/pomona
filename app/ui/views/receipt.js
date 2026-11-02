@@ -14,9 +14,9 @@ import { btn, field, sheet, spinner } from './parts.js'
 
 /** The verification line under a receipt. */
 function verdict (v) {
-  if (!v) return `<p class="verify pending">${spinner} Wird am Contract geprüft…</p>`
+  if (!v) return `<p class="verify pending">${spinner} Wird geprüft…</p>`
   if (!v.valid) return `<p class="verify bad">✕ ${esc(v.reason || 'Ungültig')}</p>`
-  return '<p class="verify ok">✓ Am Contract bestätigt</p>'
+  return '<p class="verify ok">✓ Echt und bezahlt</p>'
 }
 
 export function receiptSheet (ui) {
@@ -35,12 +35,12 @@ export function receiptSheet (ui) {
         <dt>Betrag</dt><dd><strong>${fmt(inv.amount)} ${esc(r.symbol)}</strong></dd>
         <dt>Bezahlt am</dt><dd>${esc(dayTime(inv.paidAt))}</dd>
         <dt>Von</dt><dd class="mono">${esc(short(ui.status.wallet.address))}</dd>
-        <dt>Contract</dt><dd class="mono">${esc(short(r.address))}</dd>
+        <dt>Treuhandkonto</dt><dd class="mono">${esc(short(r.address))}</dd>
       </dl>
       <div class="qr receipt-qr">${rc.qr || ''}</div>
       ${verdict(rc.verified)}
     </div>
-    <p class="small muted">Zeig diesen QR-Code beim Anbieter vor. Er prüft ihn in Pomona unter „Beleg prüfen“ direkt an der Blockchain, ohne dir vertrauen zu müssen.</p>
+    <p class="small muted">Zeig diesen QR-Code beim Anbieter vor. Er prüft ihn in Pomona unter „Beleg prüfen“ direkt an der Blockchain. Der Code ist mit deinem Konto unterschrieben und 10 Minuten gültig; solange diese Seite offen ist, erneuert er sich von selbst.</p>
     <button class="btn ghost small" data-action="copy-receipt">Code kopieren</button>`)
 }
 
