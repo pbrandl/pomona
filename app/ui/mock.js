@@ -115,6 +115,17 @@
   const update = new URLSearchParams(window.location.search).get('update')
   const listeners = []
   const changed = () => { for (const fn of listeners) fn() }
+  /** Simulates a transaction: busy with progress steps, ~2 s. */
+  const tx = async (name) => {
+    for (const step of ['prepare', 'sign', 'confirm']) {
+      state.busy = name
+      state.busyStep = step
+      changed()
+      await new Promise((resolve) => setTimeout(resolve, 600))
+    }
+    state.busy = null
+    state.busyStep = null
+  }
   // For screenshots: simulate an incoming transfer.
   window.__mockDeposit = (amount) => { state.wallet.usdt = String(Number(state.wallet.usdt) + amount); changed() }
   const seed = 'apfel birne wiese ernte korb sonne regen erde samen blüte frucht garten'
@@ -211,6 +222,61 @@
           r.invoices = plan(r)
           return null
         }
+        // The other transactions, simulated with the same progress steps.
+        case 'withdraw': {
+          const r = state.round
+          await tx('withdraw')
+          const pledge = Number(r.myPledge)
+          state.wallet.usdt = String(Number(state.wallet.usdt) + pledge * r.installments)
+          r.total = String(Number(r.total) - pledge)
+          r.progress = Number(r.total) / Number(r.target)
+          r.bidders = Math.max(0, r.bidders - 1)
+          r.myPledge = '0'
+          r.myDeposit = '0'
+          r.invoices = plan(r)
+          return null
+        }
+        case 'refund': {
+          const r = state.round
+          await tx('refund')
+          state.wallet.usdt = String(Number(state.wallet.usdt) + Number(r.refundable))
+          r.refundable = '0'
+          return null
+        }
+        case 'invoice': {
+          const r = state.round
+          await tx('invoice')
+          state.wallet.usdt = String(Number(state.wallet.usdt) + Number(r.total))
+          r.invoiceCount += 1
+          r.canInvoice = false
+          r.nextInvoiceAt = r.biddingEnd + r.interval * r.invoiceCount
+          r.invoices = plan(r)
+          return null
+        }
+        case 'cancel': {
+          const r = state.round
+          await tx('cancel')
+          r.phase = 'failed'
+          r.refundable = r.myDeposit
+          r.invoices = plan(r)
+          return null
+        }
+        case 'terminate': {
+          const r = state.round
+          await tx('terminate')
+          r.phase = 'completed'
+          r.canInvoice = false
+          r.refundable = String(Number(r.myPledge) * (r.installments - r.invoiceCount))
+          r.invoices = plan(r)
+          return null
+        }
+        case 'postNews':
+          state.round.news.unshift({ text: String(params.text), at: Date.now() })
+          return null
+        case 'faucet':
+          await tx('faucet')
+          state.wallet.usdt = String(Number(state.wallet.usdt) + 5000)
+          return null
         default: return null
       }
     },
