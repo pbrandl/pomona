@@ -102,7 +102,9 @@
 
   // Assistant: the real knowledge/intent/action modules from core/agent run in
   // the browser too; only the language model is simulated (?ai=ready).
-  const ai = { state: new URLSearchParams(window.location.search).get('ai') === 'ready' ? 'ready' : 'none', model: null, progress: null, error: null }
+  const aiParam = new URLSearchParams(window.location.search).get('ai')
+  const ai = { state: aiParam === 'ready' ? 'ready' : 'none', model: null, progress: null, error: null, missing: false, manual: aiParam === 'manual' ? { dir: '/Users/anna/pomona-models' } : null }
+  let manualTries = 0
   let agent = null
   const loadAgent = async () => {
     if (!agent) {
@@ -111,7 +113,10 @@
     }
     return agent
   }
-  const MODELS = [{ key: 'small', label: 'Kompakt', size: '1,1 GB', note: '' }, { key: 'better', label: 'Genauer', size: '2,5 GB', note: '' }]
+  const MODELS = [
+    { key: 'small', label: 'Kompakt', size: '1,1 GB', note: '', file: 'Qwen3-1.7B-Q4_0.gguf', url: 'https://huggingface.co/unsloth/Qwen3-1.7B-GGUF/resolve/d7f544eead698dbd1f15126ef60b45a1e1933222/Qwen3-1.7B-Q4_0.gguf' },
+    { key: 'better', label: 'Genauer', size: '2,5 GB', note: '', file: 'Qwen3-4B-Q4_K_M.gguf', url: null }
+  ]
   const update = new URLSearchParams(window.location.search).get('update')
   const listeners = []
   const changed = () => { for (const fn of listeners) fn() }
@@ -137,7 +142,7 @@
       switch (method) {
         case 'status': {
           const { K } = await loadAgent()
-          state.assistant = state.wallet.state === 'unlocked' ? { ...ai, models: MODELS, suggestions: K.suggestions(state) } : null
+          state.assistant = state.wallet.state === 'unlocked' ? { ...ai, models: ai.manual ? MODELS.filter((m) => m.url) : MODELS, suggestions: K.suggestions(state) } : null
           return structuredClone(state)
         }
         case 'assistantAsk': {
@@ -161,6 +166,12 @@
         }
         case 'assistantInstall': {
           ai.model = params.model || 'small'
+          if (ai.manual && manualTries++ === 0) { // first try: file not there yet
+            ai.state = 'error'; ai.missing = true; ai.error = 'Die Modelldatei ist noch nicht im Ordner.'
+            return { started: true }
+          }
+          ai.missing = false
+          ai.error = null
           ai.state = 'downloading'
           ai.progress = 0
           const tick = () => {

@@ -33,11 +33,12 @@ export function link (ui, action, label, cls = '', data = {}) {
 }
 
 /** A labelled input bound to ui.draft[key]. */
-export function field (ui, key, label, { type = 'text', placeholder = '', mode = '', area = false, mono = false } = {}) {
+export function field (ui, key, label, { type = 'text', placeholder = '', mode = '', area = false, mono = false, hint = '' } = {}) {
   const v = esc(ui.draft[key])
   const attrs = `class="field${mono ? ' mono' : ''}" id="${key}" data-draft="${key}" placeholder="${esc(placeholder)}"${mode ? ` inputmode="${mode}"` : ''}`
   const input = area ? `<textarea ${attrs}>${v}</textarea>` : `<input ${attrs} type="${type}" value="${v}" autocomplete="off">`
-  return `<div><label for="${key}">${esc(label)}</label>${input}</div>`
+  const help = hint ? `<p class="field-hint small muted" id="${key}-hint">${esc(hint)}</p>` : ''
+  return `<div><label for="${key}">${esc(label)}</label>${hint ? input.replace(' autocomplete', ` aria-describedby="${key}-hint" autocomplete`) : input}${help}</div>`
 }
 
 /**

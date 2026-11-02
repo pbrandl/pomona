@@ -66,7 +66,9 @@ Vorschläge und einfache Fragen beantwortet der Assistent auch ohne Modell. Für
    mkdir -p ~/pomona-models
    mv ~/Downloads/Qwen3-1.7B-Q4_0.gguf ~/pomona-models/
    ```
-3. In Pomona „Frag Pomona“ öffnen und **Kompakt** einrichten.
+3. In Pomona „Frag Pomona“ öffnen und auf **Einrichten** tippen.
+
+Diese drei Schritte zeigt Pomona in „Frag Pomona“ auch selbst an, mit Download-Link und dem Ordnerpfad zum Kopieren.
 
 Beim ersten Mal prüft Pomona die SHA-256-Prüfsumme der Datei gegen den QVAC-Katalog. Das dauert einige Sekunden. Ist die Datei beschädigt oder ein anderes Modell, lehnt Pomona sie ab. Danach läuft der Assistent offline.
 

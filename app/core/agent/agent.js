@@ -32,9 +32,11 @@ export class Assistant {
    * @param {(p: { amount: string }) => Promise<object>} opts.quoteBid
    * @param {{ get: (k: string) => Promise<any>, set: (k: string, v: any) => Promise<void> }} opts.settings
    * @param {() => import('./qvac.js').Engine} opts.engine - creates the model engine on first use
+   * @param {string|null} [opts.manualDir] - models come as hand-downloaded files from this folder
    * @param {() => void} [opts.onChange]
    */
-  constructor ({ getStatus, quoteBid, settings, engine, onChange = () => {} }) {
+  constructor ({ getStatus, quoteBid, settings, engine, manualDir = null, onChange = () => {} }) {
+    this.manualDir = manualDir
     this.getStatus = getStatus
     this.quoteBid = quoteBid
     this.settings = settings
@@ -45,6 +47,7 @@ export class Assistant {
     this.state = 'none' // none | installed | downloading | loading | ready | error
     this.progress = null
     this.error = null
+    this.missing = false
     this.turns = [] // short conversation memory for the model, never persisted
     this._busy = false
     this._loading = null
@@ -66,7 +69,11 @@ export class Assistant {
       model: this.model,
       progress: this.progress,
       error: this.error,
-      models: Object.entries(MODELS).map(([key, m]) => ({ key, label: m.label, size: m.size, note: m.note })),
+      missing: this.missing,
+      models: Object.entries(MODELS)
+        .filter(([, m]) => !this.manualDir || m.url)
+        .map(([key, m]) => ({ key, label: m.label, size: m.size, note: m.note, file: m.file, url: m.url })),
+      manual: this.manualDir ? { dir: this.manualDir } : null,
       suggestions: suggestions(status)
     }
   }
@@ -91,6 +98,7 @@ export class Assistant {
     this.state = 'downloading'
     this.progress = 0
     this.error = null
+    this.missing = false
     this.onChange()
     this._loading = (async () => {
       try {
@@ -105,7 +113,8 @@ export class Assistant {
         this.progress = 1
       } catch (e) {
         this.state = 'error'
-        this.error = 'Das Sprachmodell konnte nicht geladen werden: ' + (e?.message || e)
+        this.missing = e?.code === 'MODEL_MISSING'
+        this.error = this.missing ? 'Die Modelldatei ist noch nicht im Ordner.' : 'Das Sprachmodell konnte nicht geladen werden: ' + (e?.message || e)
         throw e
       } finally {
         this._loading = null

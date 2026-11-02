@@ -494,6 +494,7 @@ const actions = {
 
   // clipboard
   async 'copy-invite' () { await window.pomona.copy(ui.invite.link); toast('Link kopiert') },
+  async 'copy-models-dir' () { await window.pomona.copy(ui.status.assistant.manual.dir); toast('Ordner kopiert') },
   async 'copy-address' () { await window.pomona.copy(ui.status.wallet.address); toast('Adresse kopiert') },
   async 'copy-receipt' () { await window.pomona.copy(ui.receipt.code); toast('Beleg kopiert') }
 }

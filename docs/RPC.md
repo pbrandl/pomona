@@ -61,7 +61,9 @@ Beträge sind Strings in deutscher oder englischer Schreibweise, also `"1.234,56
   assistant: {                            // „Frag Pomona“
     state: 'none' | 'installed' | 'downloading' | 'loading' | 'ready' | 'error',
     model: 'small' | 'better' | null, progress: 0.34 | null, error: null,
-    models: [{ key, label, size, note }],
+    models: [{ key, label, size, note, file, url }],
+    manual: null | { dir },               // Entwicklermodus: Modell als Datei aus diesem Ordner
+    missing: false,                       // true: Datei liegt noch nicht im Ordner
     suggestions: [{ topic, question }]    // passend zu Rolle und Phase
   },
   busy: null | 'bid' | 'invoice' | …,     // laufende Transaktion

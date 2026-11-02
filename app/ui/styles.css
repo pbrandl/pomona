@@ -632,3 +632,17 @@ h3 { font-weight: 600; }
   .you-actions { width: 100%; }
   .you-actions .btn { flex: 1; }
 }
+
+.field-hint { margin: 8px 0 0; }
+
+/* Model setup by hand: three numbered steps */
+.setup-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
+.setup-steps li { display: grid; grid-template-columns: 28px 1fr; gap: 12px; align-items: start; }
+.setup-n { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--line); display: grid; place-items: center; font-size: 14px; color: var(--muted); }
+.stack-sm { display: grid; gap: 8px; min-width: 0; }
+.stack-sm .btn { justify-self: start; }
+.stack-sm .btn.block { justify-self: stretch; }
+.setup-path { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; }
+.setup-path .mono { overflow-wrap: anywhere; flex: 1; min-width: 0; }
+a.btn { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+.setup-steps li:last-child { align-items: center; }

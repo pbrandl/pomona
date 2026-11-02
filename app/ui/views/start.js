@@ -58,8 +58,7 @@ export function createPage (ui) {
       </div>
       ${field(ui, 'target', `Ziel ${p.per} (USDT)`, { mode: 'decimal', placeholder: '4.000' })}
       ${field(ui, 'installments', 'Anzahl Rechnungen', { mode: 'numeric', placeholder: '12' })}
-      ${field(ui, 'guide', `Richtwert ${p.per} (optional)`, { mode: 'decimal', placeholder: target > 0 ? `z. B. ${fmt(Math.round(target / 40))} bei 40 Haushalten` : '100' })}
-      <p class="small muted" style="margin-top:-16px">Wird Bietenden als Orientierung vorgeschlagen.</p>`
+      ${field(ui, 'guide', `Richtwert ${p.per} (optional)`, { mode: 'decimal', placeholder: target > 0 ? `z. B. ${fmt(Math.round(target / 40))} bei 40 Haushalten` : '100', hint: 'Wird Bietenden als Orientierung vorgeschlagen.' })}`
   } else {
     body = review(ui)
     next = btn(ui, 'create-round', 'Runde starten', 'accent block', { busy: 'Runde wird angelegt…' })

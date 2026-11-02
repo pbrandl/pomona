@@ -87,6 +87,7 @@ export class Pomona extends EventEmitter {
       getStatus: () => this.status(),
       quoteBid: (p) => this.quoteBid(p),
       settings: { get: (k) => this.p2p.getSetting(k), set: (k, v) => this.p2p.setSetting(k, v) },
+      manualDir: modelsLocalOnly ? modelsDir : null,
       engine: assistantEngine ?? (() => new QvacEngine({ cacheDir: storage + '/models', localDir: modelsDir, localOnly: modelsLocalOnly })),
       onChange: () => this._changed()
     })
