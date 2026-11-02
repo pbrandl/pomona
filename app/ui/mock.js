@@ -357,6 +357,12 @@
           await tx('faucet')
           state.wallet.usdt = String(Number(state.wallet.usdt) + 5000)
           return null
+        case 'join': {
+          if (!String(params.link).startsWith('pomona://')) throw Object.assign(new Error('Das ist kein Pomona-Einladungslink.'), { code: 'BAD_LINK' })
+          await new Promise((resolve) => setTimeout(resolve, 600))
+          state.round = round({ mode: 'invoice' })
+          return structuredClone(state)
+        }
         default: return null
       }
     },

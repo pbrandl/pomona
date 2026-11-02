@@ -5,6 +5,7 @@
  */
 import { esc, fmt, num, per, date, dayTime, endOfDay } from '../format.js'
 import { btn, field, page } from './parts.js'
+import { ICON } from './icons.js'
 
 export const CREATE_STEPS = ['Runde', 'Bietphase', 'Raten', 'Prüfen']
 
@@ -13,7 +14,7 @@ export function start () {
     <div class="stack"><h1>Eine Runde, ein Ziel.</h1><p class="lead">Starte eine Bietrunde für dein Projekt oder tritt einer bei.</p></div>
     <div class="stack">
       <button class="card choice" data-action="open-create"><div><strong>Runde starten</strong><span class="muted">Für dein Projekt, z. B. eine Solawi. Dauert zwei Minuten.</span></div><span class="chev">›</span></button>
-      <button class="card choice" data-action="open-sheet" data-sheet="join"><div><strong>Einer Runde beitreten</strong><span class="muted">Mit dem Link, den du bekommen hast.</span></div><span class="chev">›</span></button>
+      <button class="card choice" data-action="open-sheet" data-sheet="join"><div><strong>Einer Runde beitreten</strong><span class="muted">Mit dem Einladungslink oder per QR-Code.</span></div><span class="chev">›</span></button>
     </div>
   </div>`
 }
@@ -112,8 +113,16 @@ function review (ui) {
 }
 
 export function joinPage (ui) {
+  const camera = ui.joinScan
+    ? `<div class="scanner"><div id="scanner-slot"></div><div class="scanner-frame"></div></div>
+       <p class="small muted" style="text-align:center">Halte den QR-Code der Einladung vor die Kamera.</p>`
+    : ''
   return page('Einer Runde beitreten', `
-    <p class="lead">Füge den Link ein, den du vom Organisator bekommen hast.</p>
+    <p class="lead">Scanne den QR-Code der Einladung oder füge den Link ein.</p>
+    <button class="btn ghost block" data-action="join-scan">${ICON.qr}<span>${ui.joinScan ? 'Kamera schließen' : 'QR-Code scannen'}</span></button>
+    ${camera}
+    ${ui.scanError ? `<p class="small muted">${esc(ui.scanError)}</p>` : ''}
+    <div class="or"><span>oder</span></div>
     ${field(ui, 'link', 'Einladungslink', { area: true, mono: true, placeholder: 'pomona://…' })}
     <p class="small muted">Die Runde wird direkt von anderen Teilnehmern geladen, ohne Server. Pomona prüft, dass die Runde echt ist.</p>
     <div class="actions sticky">${btn(ui, 'join', 'Beitreten', 'accent block', { busy: 'Suche Peers…' })}</div>`)

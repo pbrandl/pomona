@@ -893,3 +893,7 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; justif
   .progress.split .stats .stat:nth-child(2) { align-items: center; text-align: center; }
   .progress.split .stats .stat:nth-child(3) { align-items: flex-end; text-align: right; }
 }
+
+/* "oder" divider between scanning and pasting */
+.or { display: flex; align-items: center; gap: 12px; color: var(--faint); font-size: 13px; }
+.or::before, .or::after { content: ''; flex: 1; height: 1px; background: var(--line); }

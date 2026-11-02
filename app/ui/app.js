@@ -43,6 +43,7 @@ const ui = {
   invoiceIndex: null, // organizer: which paid invoice is open
   verified: null, // result of verifyReceipt in the scan sheet
   scanError: null, // camera unavailable → paste only
+  joinScan: false, // "Einer Runde beitreten": camera open for the invite QR
   showAllInvoices: false,
   showAllNews: false,
   quote: null, // quoteBid result while the bid confirmation is open
@@ -181,19 +182,34 @@ function stopScanner () {
   scanner?.stop()
   scanner = null
 }
-async function startScanner () {
+/**
+ * @param {'receipt'|'invite'} [kind] - receipts (organizer checks) or invite
+ *   QR codes (joining a round). Each only accepts its own kind of code.
+ */
+async function startScanner (kind = 'receipt') {
   stopScanner()
   ui.scanError = null
-  scanner = new Scanner(async (code) => {
-    scanner = null
-    ui.draft.verify = code
-    try {
-      ui.verified = await call('verifyReceipt', { code })
-    } catch (e) {
-      ui.verified = { valid: false, reason: e.message }
-    }
-    render()
-  })
+  if (kind === 'invite') {
+    scanner = new Scanner(async (code) => {
+      scanner = null
+      ui.joinScan = false
+      ui.draft.link = code
+      render()
+      try { await actions.join() } catch (e) { toast(e.message, true) }
+      render()
+    }, (c) => c.startsWith('pomona://'))
+  } else {
+    scanner = new Scanner(async (code) => {
+      scanner = null
+      ui.draft.verify = code
+      try {
+        ui.verified = await call('verifyReceipt', { code })
+      } catch (e) {
+        ui.verified = { valid: false, reason: e.message }
+      }
+      render()
+    })
+  }
   try {
     await scanner.start()
   } catch (e) {
@@ -317,6 +333,7 @@ const actions = {
   'open-sheet': (el) => { ui.sheet = el.dataset.sheet },
   'close-sheet': () => {
     ui.sheet = null
+    ui.joinScan = false
     ui.quote = null
     ui.bidDone = null
     ui.bidStep = 'amount'
@@ -487,7 +504,17 @@ const actions = {
     ui.createStep = 0
     toast('Runde gestartet. Teile jetzt den Link.')
   },
+  /** Join page: open or close the camera for the invite QR code. */
+  async 'join-scan' () {
+    if (ui.joinScan) { stopScanner(); ui.joinScan = false; return }
+    ui.joinScan = true
+    render()
+    await startScanner('invite')
+    if (ui.scanError) ui.joinScan = false
+  },
   async join () {
+    stopScanner()
+    ui.joinScan = false
     await run('join', { link: ui.draft.link.trim() })
     ui.draft.link = ''
     ui.sheet = null
