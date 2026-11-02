@@ -554,9 +554,13 @@ export class Pomona extends EventEmitter {
     if (text) await this.p2p.postNews(text)
   }
 
-  /** @returns {{ link: string, qr: string }} organizer only */
+  /**
+   * The invite link and its QR code. Every participant may share it: they hold
+   * the same link already, so this grants nobody more than copying it would.
+   * @returns {{ link: string, qr: string }}
+   */
   invite () {
-    if (this.saved?.role !== 'organizer') fail('NOT_ORGANIZER', 'Nur der Organisator teilt die Einladung.')
+    if (!this.saved) fail('NO_ROUND', 'Noch keine Runde.')
     return { link: this.link, qr: qrSvg(this.link) }
   }
 

@@ -42,8 +42,8 @@ function header (r) {
     completed: 'Abgeschlossen',
     failed: 'Ziel nicht erreicht'
   }[r.phase]
-  // Sharing is the organizer's: the invite link carries the invite key.
-  const share = r.role === 'organizer' && r.phase === 'bidding'
+  // Everyone can invite while bidding is open; afterwards nobody can join.
+  const share = r.phase === 'bidding'
     ? `<div class="head-actions">
         <button class="icon-btn" data-action="open-sheet" data-sheet="invite" title="QR-Code zum Einladen" aria-label="QR-Code zum Einladen">${ICON.qr}</button>
         <button class="icon-btn" data-action="copy-invite" title="Einladungslink kopieren" aria-label="Einladungslink kopieren">${ICON.share}</button>

@@ -106,7 +106,7 @@ const SHEETS = {
   join: (u) => (u.status?.wallet.state === 'unlocked' ? joinPage(u) : ''),
   assistant: (u) => (u.status?.wallet.state === 'unlocked' ? assistantPage(u) : ''),
   news: (u) => (u.status?.round?.role === 'organizer' ? newsPage(u) : ''),
-  invite: (u) => (u.status?.round?.role === 'organizer' ? invitePage(u) : ''),
+  invite: (u) => (u.status?.round ? invitePage(u) : ''),
   wallet: (u) => (u.status?.wallet.state === 'unlocked' ? walletSheet(u) : '')
 }
 
@@ -238,7 +238,7 @@ async function refresh () {
     ui.status = await call('status')
     const s = ui.status
     deliver(changes(prev, s, { own: ui.pending }), (text) => toast(text))
-    if (s.round?.role === 'organizer' && !ui.invite) ui.invite = await call('invite')
+    if (s.round && !ui.invite) ui.invite = await call('invite')
     if (s.wallet.address && !ui.addressQr) ui.addressQr = await call('qr', { text: s.wallet.address })
     if (s.wallet.state !== 'unlocked') ui.addressQr = null
   } catch (e) {
