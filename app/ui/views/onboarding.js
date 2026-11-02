@@ -11,8 +11,8 @@ export const WALLET_STEPS = ['Passwort', 'Notfall-Wörter', 'Aufladen']
 export function onboarding (ui) {
   return `<div class="center-screen stack-lg">
     <div class="stack">
-      <h1>Gemeinsam finanzieren.<br><span class="muted">Ohne Mittelsmann.</span></h1>
-      <p class="lead">Pomona ist eine Bietrunde, die auf euren Rechnern läuft. Alle bieten in USDT, das Geld liegt in einem Treuhandkonto auf der Blockchain und wird Rate für Rate abgerechnet. Wird das Ziel verfehlt, geht alles zurück.</p>
+      <h1>Gemeinsam finanzieren.<br>Mit <span class="brand">Pomona</span>.</h1>
+      <p class="lead">Pomona ist eine Bietrunde, die auf euren Rechnern läuft, ohne Mittelsmann. Alle sagen in USDT zu, was sie pro Woche oder Monat geben. Ist das Ziel erreicht, wird Rate für Rate bezahlt, und für jede Rate gibt es einen Beleg.</p>
     </div>
     <div class="row" style="justify-content:flex-start">
       <button class="btn accent" data-action="create-wallet-start">Konto anlegen</button>

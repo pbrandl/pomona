@@ -1029,3 +1029,4 @@ main:has(.page.fit) { padding-bottom: 0; }
 .bid-hint.warn .note-lead, .bid-hint.warn .note-lead .ic { color: var(--danger); }
 @media (max-height: 620px) { .page.fit .bid-hint { display: grid; font-size: 12px; } }
 .bp-track { height: 6px; border-radius: 6px; } /* slimmer bar */
+h1 .brand { color: var(--accent); }
