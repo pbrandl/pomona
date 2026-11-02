@@ -976,3 +976,15 @@ main:has(.page.fit) { padding-bottom: 0; }
 .amount.inline .btn { flex: none; }
 .you .you-actions:has(.inline-bid) { justify-items: start; }
 .you .you-actions:has(.inline-bid) > .inline-bid { justify-self: stretch; }
+/* "Dein Gebot" box: label, the bid in the currency, one button */
+.bid-box { align-items: flex-end; }
+.bid-box-main { display: grid; gap: 2px; min-width: 0; }
+.bid-box-label { margin: 0; text-transform: uppercase; letter-spacing: 0.06em; font-size: 11px; }
+.bid-box-amount { margin: 0; font-size: 15px; color: var(--muted); }
+.bid-box-amount strong { font-size: 30px; font-weight: 600; color: var(--ink); letter-spacing: -0.02em; }
+.bid-box-amount strong.none { color: var(--faint); }
+.bid-box .you-actions { display: flex; align-items: center; gap: 16px; }
+.bid-box .you-actions .btn { min-width: 140px; }
+@media (max-width: 520px) { .bid-box .you-actions { width: 100%; } .bid-box .you-actions .btn { flex: 1; } }
+/* the amount step on desktop: same layout, centred and not wider than a phone */
+@media (pointer: fine) { .page.fit { max-width: 440px; margin-inline: auto; } }

@@ -219,6 +219,28 @@ async function startScanner (kind = 'receipt') {
 }
 
 /**
+ * Bid step "Betrag": the keyboard feeds the keypad on desktop
+ * (digits, comma or dot, Backspace, Enter).
+ */
+document.addEventListener('keydown', (e) => {
+  if (ui.sheet !== 'bid' || ui.bidStep !== 'amount' || e.metaKey || e.ctrlKey || e.altKey) return
+  if (e.target?.closest?.('input, textarea, select')) return
+  let k = null
+  if (/^[0-9]$/.test(e.key)) k = e.key
+  else if (e.key === ',' || e.key === '.') k = ','
+  else if (e.key === 'Backspace' || e.key === 'Delete') k = 'del'
+  else if (e.key === 'Enter') {
+    e.preventDefault()
+    $app.querySelector('[data-action="review-bid"]:not([disabled])')?.click()
+    return
+  }
+  if (!k) return
+  e.preventDefault()
+  actions.key({ dataset: { key: k } })
+  render()
+})
+
+/**
  * Wide rounds scroll the timeline sideways: start at the current installment,
  * then keep the person's own scroll position across re-renders.
  */

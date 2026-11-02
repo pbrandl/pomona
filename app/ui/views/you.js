@@ -6,7 +6,6 @@
  */
 import { esc, fmt, num, per, date, dayTime } from '../format.js'
 import { btn, link } from './parts.js'
-import { isTouch, progressBar, guideChips } from './bid.js'
 
 export function youCard (ui) {
   const s = ui.status
@@ -50,26 +49,7 @@ export function youCard (ui) {
       sub = 'Die Bietenden holen ihr Geld zurück.'
     }
   } else if (r.phase === 'bidding') {
-    if (pledge > 0) {
-      tone = 'ok'
-      title = `Du bietest ${fmt(r.myPledge)} ${sym} ${p.per}`
-      sub = r.mode === 'invoice'
-        ? `Bezahlt wird erst mit jeder Rechnung. Änderbar bis ${esc(dayTime(r.biddingEnd))}.`
-        : `${fmt(r.myDeposit)} ${sym} liegen im Treuhandkonto. Änderbar bis ${esc(dayTime(r.biddingEnd))}.`
-      actions = isTouch()
-        ? `<button class="btn ghost" data-action="start-bid">Erhöhen</button>${link(ui, 'withdraw', ui.pending === 'withdraw' ? 'Wird zurückgezogen…' : 'Zurückziehen')}`
-        : `${inlineBid(ui, r, p, 'Erhöhen um', 'Erhöhen')}${link(ui, 'withdraw', ui.pending === 'withdraw' ? 'Wird zurückgezogen…' : 'Zurückziehen')}`
-    } else if (num(s.wallet.usdt) <= 0 && r.mode !== 'invoice') {
-      tone = 'act'
-      title = 'Lade dein Konto auf'
-      sub = 'Dann kannst du mitbieten. Bezahlt wird in USDT.'
-      actions = '<button class="btn accent" data-action="open-fund">Aufladen</button>'
-    } else {
-      tone = 'act'
-      title = 'Mitbieten'
-      sub = r.guide ? `Richtwert ${fmt(r.guide)} ${sym} ${p.per}. Gib, was du kannst.` : `Dein Betrag ${p.per}, ${r.installments} Raten.`
-      actions = isTouch() ? '<button class="btn accent" data-action="start-bid">Gebot abgeben</button>' : inlineBid(ui, r, p, `Dein Gebot ${p.per}`, 'Bieten')
-    }
+    return yourBid(ui, r, p)
   } else if (pledge > 0 && r.openInvoices > 0) {
     tone = 'act'
     const open = r.invoices.filter((x) => x.status === 'open')
@@ -102,18 +82,25 @@ export function youCard (ui) {
 }
 
 /**
- * Desktop: bid right here, as in franzwerk. Type the amount, Enter or the
- * button opens the "Prüfen" page (fee, balance, confirmation).
+ * "Dein Gebot": the bid in the currency and one button that starts the
+ * three-step bid flow (Betrag → Prüfen → Fertig). Same on desktop and mobile.
  */
-function inlineBid (ui, r, p, placeholder, label) {
-  const amount = num(ui.draft.amount)
-  return `<div class="inline-bid">
-    ${!(num(r.myPledge) > 0) && r.guide ? guideChips(ui, r, p) : ''}
-    <div class="amount inline">
-      <span class="prefix">${esc(r.symbol)}</span>
-      <input id="amount" data-draft="amount" inputmode="decimal" placeholder="${esc(placeholder)}" value="${esc(ui.draft.amount)}" autocomplete="off" aria-label="${esc(placeholder)}">
-      <button class="btn accent" data-action="review-bid" ${amount > 0 ? '' : 'disabled'}>${label} →</button>
+function yourBid (ui, r, p) {
+  const sym = esc(r.symbol)
+  const pledge = num(r.myPledge)
+  const payg = r.mode === 'invoice'
+  const note = pledge > 0
+    ? (payg ? `Bezahlt wird mit jeder Rechnung. Änderbar bis ${esc(dayTime(r.biddingEnd))}.` : `${fmt(r.myDeposit)} ${sym} liegen im Treuhandkonto. Änderbar bis ${esc(dayTime(r.biddingEnd))}.`)
+    : r.guide ? `Richtwert ${fmt(r.guide)} ${sym} ${p.per}. Gib, was du kannst.` : `${r.installments} Raten, ${esc(p.adj)}.`
+  return `<div class="you bid-box ${pledge > 0 ? 'ok' : 'act'}" role="status">
+    <div class="bid-box-main">
+      <p class="small muted bid-box-label">Dein Gebot</p>
+      <p class="bid-box-amount"><strong class="${pledge > 0 ? '' : 'none'}">${fmt(pledge)}</strong> ${sym} <span>${p.per}</span></p>
+      <p class="small muted">${note}</p>
     </div>
-    ${progressBar(r, amount)}
+    <div class="you-actions">
+      <button class="btn accent" data-action="start-bid">${pledge > 0 ? 'Erhöhen' : 'Bieten'}</button>
+      ${pledge > 0 ? link(ui, 'withdraw', ui.pending === 'withdraw' ? 'Wird zurückgezogen…' : 'Zurückziehen') : ''}
+    </div>
   </div>`
 }

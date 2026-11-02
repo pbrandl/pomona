@@ -41,7 +41,7 @@ function amountPage (ui) {
   const payg = r.mode === 'invoice'
   const cost = payg ? 0 : amount * r.installments
   const balance = num(ui.status.wallet.usdt)
-  const touch = isTouch()
+  const touch = true // same three-step layout everywhere; desktop also types on the keyboard
   let hint
   if (payg && amount > 0) {
     hint = `Jetzt wird nichts abgebucht. Ab ${esc(date(r.biddingEnd))} kommt ${esc(p.adj)} eine Rechnung über ${fmt(amount + num(r.myPledge))} ${esc(r.symbol)}.`
