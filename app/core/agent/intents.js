@@ -66,8 +66,16 @@ export function matchIntent (text, s) {
     return { text: 'Gerade ist keine Rechnung fällig.', actions: [] }
   }
 
+  if (/(rechnung|rate) (be)?zahlen|bezahlen/.test(t) && r?.mode === 'invoice' && r.role !== 'organizer') {
+    if (r.openInvoices > 0) return { text: `Offen sind ${num(r.openAmount)} ${r.symbol}. Prüfen und bestätigen musst du selbst, danach bekommst du den Beleg.`, actions: [{ type: 'pay' }] }
+    return { text: 'Gerade ist keine Rechnung offen.', actions: [] }
+  }
+
   if (/zurückziehen|zurueckziehen|gebot (löschen|loeschen|stornieren)/.test(t)) {
-    if (r?.phase === 'bidding' && Number(r.myPledge) > 0) return { text: `Du kannst dein Gebot bis zum Ende der Bietphase zurückziehen. ${num(r.myDeposit)} ${r.symbol} gehen dann in dein Konto zurück.`, actions: [{ type: 'withdraw' }] }
+    if (r?.phase === 'bidding' && Number(r.myPledge) > 0) {
+      const back = Number(r.myDeposit) > 0 ? ` ${num(r.myDeposit)} ${r.symbol} gehen dann in dein Konto zurück.` : ''
+      return { text: `Du kannst dein Gebot bis zum Ende der Bietphase zurückziehen.${back}`, actions: [{ type: 'withdraw' }] }
+    }
     return null
   }
 

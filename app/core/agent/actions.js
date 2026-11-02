@@ -6,6 +6,7 @@
  *   { type: 'open', page }         → fund | wallet | scan | join | create
  *   { type: 'receipt', index }     → receipt of a paid installment (0-based)
  *   { type: 'invoice' }            → organizer: invoice page/confirmation
+ *   { type: 'pay' }                → invoice mode: pay page for open invoices
  *   { type: 'withdraw' }           → withdraw confirmation
  *   { type: 'refund' }             → refund button
  *   { type: 'news', text }         → organizer: news field pre-filled, not sent
@@ -52,6 +53,9 @@ export function validateAction (a, s) {
     case 'invoice':
       if (!organizer || !r.canInvoice) return null
       return { type: 'invoice', label: `Rechnung ${r.invoiceCount + 1} stellen` }
+    case 'pay':
+      if (!r || r.mode !== 'invoice' || !(r.openInvoices > 0)) return null
+      return { type: 'pay', label: `Rechnung bezahlen: ${num(r.openAmount)} ${r.symbol}` }
     case 'withdraw':
       if (!r || r.phase !== 'bidding' || !(Number(r.myPledge) > 0)) return null
       return { type: 'withdraw', label: 'Gebot zurückziehen' }

@@ -25,6 +25,7 @@ contract PomonaFactory {
     }
 
     function createRound(
+        PomonaRound.Mode mode,
         uint256 target,
         uint256 minBid,
         uint64 biddingEnd,
@@ -32,7 +33,7 @@ contract PomonaFactory {
         uint32 installments,
         address inviteSigner
     ) external returns (PomonaRound round) {
-        round = new PomonaRound(token, msg.sender, target, minBid, biddingEnd, interval, installments, inviteSigner);
+        round = new PomonaRound(mode, token, msg.sender, target, minBid, biddingEnd, interval, installments, inviteSigner);
         isRound[address(round)] = true;
         _roundsOf[msg.sender].push(address(round));
         emit RoundCreated(address(round), msg.sender);

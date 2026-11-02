@@ -32,6 +32,7 @@ export const METHODS = {
   createRound: {
     params: {
       title: ['string', LIMITS.title],
+      mode: ['string', 8],
       description: ['string', LIMITS.description],
       network: ['string', 32],
       target: 'amount',
@@ -50,6 +51,9 @@ export const METHODS = {
   bid: { params: { amount: 'amount' }, run: (app, p) => app.bid(p) },
   withdraw: { params: { amount: 'amount' }, run: (app, p) => app.withdraw(p) },
   invoice: { run: (app) => app.invoice() },
+  quotePay: { params: { index: 'number' }, run: (app, p) => app.quotePay(p) },
+  pay: { params: { index: 'number' }, run: (app, p) => app.pay(p) },
+  invoiceDetails: { params: { index: 'number' }, run: (app, p) => app.invoiceDetails(p) },
   terminate: { run: (app) => app.terminate() },
   cancel: { run: (app) => app.cancel() },
   refund: { run: (app) => app.refund() },

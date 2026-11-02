@@ -6,7 +6,7 @@
  */
 import { Contract, Interface, ZeroAddress } from 'ethers'
 import abi from './abi.js'
-import { PHASES } from '../schedule.js'
+import { PHASES, MODES } from '../schedule.js'
 
 /** @typedef {{ to: string, data: string }} Call */
 
@@ -17,6 +17,7 @@ const erc20Iface = new Interface(abi.ERC20)
 /**
  * @typedef {Object} RoundInfo
  * @property {string} address
+ * @property {'deposit'|'invoice'} mode - escrow up front, or pay each invoice
  * @property {string} token
  * @property {string} organizer
  * @property {bigint} target        - per installment
@@ -48,6 +49,7 @@ export class RoundContract {
     const i = await this.contract.info()
     return {
       address: this.address,
+      mode: MODES[Number(i.mode)],
       token: i.token,
       organizer: i.organizer,
       target: i.target,
@@ -84,9 +86,21 @@ export class RoundContract {
     return { amount, paidAt: Number(paidAt) }
   }
 
-  /** @param {number} index @returns {Promise<number>} unix seconds, 0 if not invoiced */
-  async invoicedAt (index) {
-    return Number(await this.contract.invoicedAt(index))
+  /** @param {number} index @returns {Promise<number>} unix seconds the invoice was issued, 0 if not yet */
+  async issuedAt (index) {
+    return Number(await this.contract.issuedAt(index))
+  }
+
+  /** Invoice mode: who paid invoice `index`, and how much. */
+  async paidStats (index) {
+    const [count, sum] = await Promise.all([this.contract.paidCount(index), this.contract.paidSum(index)])
+    return { count: Number(count), sum }
+  }
+
+  /** Invoice mode: bidders with an unpaid invoice `index`. */
+  async unpaid (index) {
+    const [bidders, amounts] = await this.contract.unpaid(index)
+    return bidders.map((b, i) => ({ bidder: b, amount: amounts[i] }))
   }
 
   /**
@@ -107,6 +121,8 @@ export class RoundContract {
   bid (amount, invite) { return { to: this.address, data: roundIface.encodeFunctionData('bid', [amount, invite]) } }
   /** @param {bigint} amount @returns {Call} */
   withdraw (amount) { return { to: this.address, data: roundIface.encodeFunctionData('withdraw', [amount]) } }
+  /** @param {number} index @returns {Call} */
+  pay (index) { return { to: this.address, data: roundIface.encodeFunctionData('pay', [index]) } }
   /** @returns {Call} */
   invoice () { return { to: this.address, data: roundIface.encodeFunctionData('invoice', []) } }
   /** @returns {Call} */
@@ -142,14 +158,14 @@ export class FactoryContract {
   async roundsOf (organizer) { return [...await this.contract.roundsOf(organizer)] }
 
   /**
-   * @param {{ target: bigint, minBid: bigint, biddingEnd: number, interval: number, installments: number, inviteSigner: string|null }} p
+   * @param {{ mode: 'deposit'|'invoice', target: bigint, minBid: bigint, biddingEnd: number, interval: number, installments: number, inviteSigner: string|null }} p
    * @returns {Call}
    */
   createRound (p) {
     return {
       to: this.address,
       data: factoryIface.encodeFunctionData('createRound', [
-        p.target, p.minBid, p.biddingEnd, p.interval, p.installments, p.inviteSigner ?? ZeroAddress
+        MODES.indexOf(p.mode ?? 'deposit'), p.target, p.minBid, p.biddingEnd, p.interval, p.installments, p.inviteSigner ?? ZeroAddress
       ])
     }
   }

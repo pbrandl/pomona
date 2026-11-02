@@ -64,9 +64,10 @@ export async function setup () {
     const provider = new JsonRpcProvider(chain.url, undefined, { cacheTimeout: -1, pollingInterval: 50 })
     const signer = new Wallet(HARDHAT_DEV_KEY, provider)
     const now = (await provider.getBlock('latest')).timestamp
-    const c = await new ContractFactory(a.abi, a.bytecode, signer).deploy(addresses.token, organizer, 1_000_000n, 0n, now + 86400, 7 * 86400, 4, '0x0000000000000000000000000000000000000000')
+    const c = await new ContractFactory(a.abi, a.bytecode, signer).deploy(0, addresses.token, organizer, 1_000_000n, 0n, now + 86400, 7 * 86400, 4, '0x0000000000000000000000000000000000000000')
     await c.waitForDeployment()
     const address = await c.getAddress()
+    await provider.removeAllListeners() // no log polling may outlive the provider
     provider.destroy()
     return address
   }

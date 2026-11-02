@@ -24,6 +24,7 @@ import { receiptSheet, invoiceSheet, scanSheet } from './views/receipt.js'
 import { Scanner } from './scanner.js'
 import { fundSheet } from './views/fund.js'
 import { bidPage } from './views/bid.js'
+import { payPage } from './views/pay.js'
 import { assistantPage, SPARK } from './views/assistant.js'
 import { changes, deliver } from './notify.js'
 
@@ -45,6 +46,11 @@ const ui = {
   showAllNews: false,
   quote: null, // quoteBid result while the bid confirmation is open
   bidDone: null, // { pledgeAfter, deposit } after a successful bid
+  payStep: 'review', // "Rechnung bezahlen": review → done
+  payIndex: null, // which invoice (0-based), null = all open ones
+  payQuote: null, // quotePay result
+  payDone: null, // { invoices, amount } after paying
+  invoiceDetails: null, // organizer, invoice mode: who paid, who not
   fundBaseline: null, // balance when "Aufladen" was opened, to show what arrived
   showSend: false,
   update: null, // { version } when a new app version is ready
@@ -60,6 +66,7 @@ const ui = {
     target: '',
     installments: '12',
     interval: 'month',
+    mode: 'invoice', // 'invoice' (pay each invoice) | 'deposit' (escrow up front)
     endDate: isoDay(Math.floor(Date.now() / 1000) + 14 * 86400), // last day of bidding
     minBid: '',
     inviteOnly: true,
@@ -93,6 +100,7 @@ const SHEETS = {
   scan: scanSheet,
   fund: (u) => (u.status?.wallet.state === 'unlocked' ? fundSheet(u) : ''),
   bid: (u) => (u.status?.round ? bidPage(u) : ''),
+  pay: (u) => (u.status?.round ? payPage(u) : ''),
   create: (u) => (u.status?.wallet.state === 'unlocked' ? createPage(u) : ''),
   join: (u) => (u.status?.wallet.state === 'unlocked' ? joinPage(u) : ''),
   assistant: (u) => (u.status?.wallet.state === 'unlocked' ? assistantPage(u) : ''),
@@ -228,12 +236,16 @@ const clearPasswords = () => { ui.draft.password = ''; ui.draft.password2 = ''; 
 const actions = {
   tab: (el) => { ui.tab = el.dataset.tab },
   interval: (el) => { ui.draft.interval = el.dataset.interval },
+  mode: (el) => { ui.draft.mode = el.dataset.mode },
   'open-sheet': (el) => { ui.sheet = el.dataset.sheet },
   'close-sheet': () => {
     ui.sheet = null
     ui.quote = null
     ui.bidDone = null
     ui.bidStep = 'amount'
+    ui.payQuote = null
+    ui.payDone = null
+    ui.payStep = 'review'
     ui.onboarding = false
     clearPasswords()
     stopScanner()
@@ -290,6 +302,8 @@ const actions = {
       case 'invoice':
         ui.sheet = null
         return actions.invoice()
+      case 'pay':
+        return actions['open-pay']()
       case 'withdraw':
         ui.sheet = null
         return actions.withdraw()
@@ -381,6 +395,7 @@ const actions = {
     await run('createRound', {
       title: d.title,
       description: d.description,
+      mode: d.mode,
       target: d.target,
       minBid: d.minBid || '0',
       interval: d.interval,
@@ -420,8 +435,25 @@ const actions = {
     ui.bidStep = 'done'
     ui.draft.amount = ''
   },
+  /** Invoice mode: open the pay page for one invoice (data-index) or all open ones. */
+  async 'open-pay' (el) {
+    ui.payIndex = el?.dataset?.index != null ? Number(el.dataset.index) : null
+    ui.payQuote = null
+    ui.payDone = null
+    ui.payStep = 'review'
+    ui.sheet = 'pay'
+    render()
+    ui.payQuote = await call('quotePay', ui.payIndex === null ? {} : { index: ui.payIndex })
+  },
+  async 'confirm-pay' () {
+    const q = ui.payQuote
+    await run('pay', ui.payIndex === null ? {} : { index: ui.payIndex })
+    ui.payDone = { invoices: q.invoices, amount: q.amount }
+    ui.payStep = 'done'
+  },
   async withdraw () {
-    if (!window.confirm('Dein ganzes Gebot zurückziehen? Der hinterlegte Betrag geht zurück in deine Wallet.')) return
+    const deposit = ui.status.round.mode !== 'invoice'
+    if (!window.confirm(deposit ? 'Dein ganzes Gebot zurückziehen? Der hinterlegte Betrag geht zurück in deine Wallet.' : 'Dein Gebot zurückziehen?')) return
     await run('withdraw', { amount: 'all' })
     toast('Gebot zurückgezogen')
   },
@@ -470,9 +502,13 @@ const actions = {
     }, 4 * 60 * 1000)
   },
   /** Organizer taps a paid invoice. */
-  'show-invoice' (el) {
+  async 'show-invoice' (el) {
     ui.invoiceIndex = Number(el.dataset.index)
+    ui.invoiceDetails = null
     ui.sheet = 'invoice'
+    if (ui.status.round.mode !== 'invoice') return
+    render()
+    ui.invoiceDetails = await call('invoiceDetails', { index: ui.invoiceIndex })
   },
   async 'open-scan' () {
     ui.verified = null

@@ -59,6 +59,9 @@ Stand: Version 0.2. Dieses Dokument enthält das Bedrohungsmodell, die Ergebniss
 | **Paymaster und Bundler:** Der Paymaster bekommt eine USDT-Freigabe für die Gebühren. | WDK prüft die Paymaster-Adresse gegen die Konfiguration. Seriöse Anbieter wählen und die Gebührenobergrenze aktiv lassen. |
 | **IP-Adressen:** Peers im selben Hyperswarm-Topic sehen ihre IP-Adressen gegenseitig. | So funktioniert P2P. In der App erklären. |
 | **Öffentliche Chain:** Gebote und Beträge sind öffentlich und pseudonym. | Für jede Person eine eigene Wallet nutzen. |
+| **Per Rechnung: keine Zahlungsgarantie.** Gebote sind Zusagen, niemand muss eine Rechnung bezahlen. | So gewollt, damit niemand vorstrecken muss. Der Organisator sieht pro Rechnung, wer offen ist. Wer Sicherheit braucht, wählt „Vorab hinterlegen“. |
+| **Per Rechnung: Sybil ohne Kosten.** Da Bieten nichts hinterlegt, lassen sich Zusagen leicht aufblähen, damit das Ziel erreicht wirkt. | Einladungslink (Standard) und Mindestgebot nutzen. Es zählt, was bezahlt wird: Die Ratenliste zeigt die echten Eingänge. |
+| **Per Rechnung: offene Rechnungen sind öffentlich.** Wer die Runde kennt, kann auf der Chain sehen, welche Adresse nicht bezahlt hat (`unpaid`). | Pseudonym, nicht anonym. Die App zeigt die Liste nur dem Organisator, Bietende sehen nur Summen. |
 | **Offline-Brute-Force auf den Tresor:** Mit Zugriff auf die Festplatte lassen sich Passwörter raten. | Mindestens 8 Zeichen, Argon2id mit Parametern für interaktive Nutzung. Für Mainnet die Parameter erhöhen (sie werden im Tresor mitgespeichert, eine Migration ist also möglich) und eine automatische Sperre bei Inaktivität einbauen. |
 | **Seed im Arbeitsspeicher**, solange die Wallet entsperrt ist. | JavaScript-Strings lassen sich nicht zuverlässig löschen. `lock()` entfernt alle Referenzen. |
 
@@ -89,6 +92,14 @@ Verbleibend: Ein Beleg kann innerhalb seiner 10 Minuten weitergegeben werden (Sc
 ## Entwicklermodus ohne Pear (`npm run dev`)
 
 Im Browser liegt zwischen Oberfläche und Kern ein lokaler HTTP-Server statt der `pear-pipe`. Er lauscht nur auf 127.0.0.1. Jeder Aufruf braucht ein Token, das bei jedem Start zufällig neu erzeugt wird und mit `timingSafeEqual` geprüft wird. Ein eigener Header erzwingt bei fremden Seiten eine CORS-Vorabprüfung, die nie beantwortet wird. Fremde `Host`-Header (DNS-Rebinding) werden abgelehnt. Ausgeliefert werden nur `index.html` und `ui/`. Es gelten dieselbe CSP wie in Pear und zusätzlich `frame-ancestors 'none'`. Der Modus nutzt immer die lokale Chain mit Testgeld. Details in [DEV.md](DEV.md).
+
+## Modus „Per Rechnung“ (`pay`)
+
+- `pay(i)` zieht per `transferFrom` genau das eigene Gebot vom Bieter direkt zum Organisator. Der Contract hält dabei kein Geld, prüft aber, dass beim Organisator genau dieser Betrag ankommt (Fee-Tokens werden abgelehnt).
+- Doppelt zahlen geht nicht (`AlreadyPaid`), nicht gestellte Rechnungen auch nicht (`NotIssued`), Fremde ebenfalls nicht (`NotBidder`).
+- Die Freigabe (`approve`) gilt nur für den Betrag der zu zahlenden Rechnungen und nur für die eigene Runde. Sie geht mit der Zahlung in derselben Signatur raus. Die WDK-Policy erlaubt Freigaben weiterhin nur an die eigene Runde.
+- Vor jeder Zahlung zeigt die App Betrag, Empfänger, Gebühr und Guthaben. Reicht das Guthaben nicht (inklusive der Gebühr in USDT), bietet sie Aufladen statt einer Zahlung an, die scheitern würde.
+- Der Assistent kann die Bezahlseite nur öffnen. Bezahlen muss die Person selbst.
 
 ## Vor einem Mainnet-Einsatz
 

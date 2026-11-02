@@ -319,3 +319,77 @@ test('assistant on a real round: answers, prepares, never moves money', async ()
   erik.lock()
   assert.equal(erik.assistant.turns.length, 0) // conversation forgotten on lock
 })
+
+test('invoice mode: bid without deposit, invoices arrive by themselves, pay with one signature, receipt only after paying', async () => {
+  const farm = await env.funded()
+  const alice = await env.funded()
+  const poor = await env.make()
+  await poor.createWallet({ password: PASSWORD }) // no USDT
+
+  const { link } = await farm.createRound({ title: 'Kleine Solawi', mode: 'invoice', target: '100', interval: 'week', installments: 3, biddingDays: 2, inviteOnly: true })
+  await alice.join({ link })
+  await poor.join({ link })
+
+  const q = await alice.quoteBid({ amount: '60' })
+  assert.equal(q.mode, 'invoice')
+  assert.equal(q.deposit, '0')
+  const before = (await alice.status()).wallet.usdt
+  await alice.bid({ amount: '60' })
+  await poor.bid({ amount: '40' }) // a promise needs no balance
+  let s = await alice.status()
+  assert.equal(s.wallet.usdt, before) // nothing locked
+  assert.equal(s.round.mode, 'invoice')
+  assert.equal(s.round.myDeposit, '0')
+  assert.equal(s.round.invoices[0].status, 'scheduled')
+  await assert.rejects(alice.pay({}), /keine offene Rechnung/)
+
+  await env.warp(2 * DAY)
+  s = await alice.status()
+  assert.equal(s.round.phase, 'running')
+  assert.equal(s.round.canInvoice, false) // nobody has to issue anything
+  assert.equal(s.round.openInvoices, 1)
+  assert.equal(s.round.openAmount, '60')
+  assert.equal(s.round.invoices[0].status, 'open')
+  await assert.rejects(alice.receipt({ index: 0 }), /keinen Beleg/)
+  await assert.rejects(farm.invoice(), /automatisch/)
+
+  const farmBefore = Number((await farm.status()).wallet.usdt)
+  const quote = await alice.quotePay({})
+  assert.deepEqual(quote.invoices, [1])
+  assert.equal(quote.amount, '60')
+  await alice.pay({})
+  assert.equal(Number((await farm.status()).wallet.usdt) - farmBefore, 60)
+  s = await alice.status()
+  assert.equal(s.round.invoices[0].status, 'paid')
+  assert.equal(s.round.openInvoices, 0)
+  const r = await alice.receipt({ index: 0 })
+  const v = await farm.verifyReceipt({ code: r.code })
+  assert.equal(v.valid, true)
+  assert.equal(v.amount, '60')
+
+  // Not enough USDT: no payment, no receipt, invoice stays open.
+  await assert.rejects(poor.pay({}), /fehlen 40 USDT\. Ohne Zahlung gibt es keinen Beleg/)
+  s = await poor.status()
+  assert.equal(s.round.invoices[0].status, 'open')
+  await assert.rejects(poor.receipt({ index: 0 }), /keinen Beleg/)
+
+  // The organizer sees who has paid and who has not.
+  s = await farm.status()
+  assert.equal(s.round.invoices[0].status, 'issued')
+  assert.equal(s.round.invoices[0].paidCount, 1)
+  assert.equal(s.round.invoices[0].paidSum, '60')
+  const d = await farm.invoiceDetails({ index: 0 })
+  assert.equal(d.unpaid.length, 1)
+  assert.equal(d.unpaid[0].amount, '40')
+  await assert.rejects(alice.invoiceDetails({ index: 0 }), /Organisator/)
+
+  // Two weeks later: two invoices open at once, paid in one go.
+  await env.warp(14 * DAY)
+  s = await alice.status()
+  assert.equal(s.round.openInvoices, 2)
+  await alice.pay({})
+  s = await alice.status()
+  assert.deepEqual(s.round.invoices.map((x) => x.status), ['paid', 'paid', 'paid'])
+  assert.equal(s.round.phase, 'running') // until the last interval is over
+  assert.equal(s.round.invoiceCount, 3)
+})

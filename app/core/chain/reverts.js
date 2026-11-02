@@ -18,7 +18,11 @@ const MESSAGES = {
   NotDue: 'Die nächste Rechnung ist noch nicht fällig.',
   NothingToRefund: 'Es gibt nichts zurückzuzahlen.',
   UnsupportedToken: 'Dieser Token wird nicht unterstützt.',
-  BadParams: 'Ungültige Angaben für die Runde.'
+  BadParams: 'Ungültige Angaben für die Runde.',
+  WrongMode: 'Das passt nicht zur Art, wie in dieser Runde bezahlt wird.',
+  NotIssued: 'Diese Rechnung ist noch nicht da.',
+  NotBidder: 'Du hast in dieser Runde nicht geboten.',
+  AlreadyPaid: 'Diese Rechnung ist schon bezahlt.'
 }
 
 /**

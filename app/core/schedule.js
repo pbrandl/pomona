@@ -15,6 +15,14 @@ export const INTERVALS = Object.freeze({
   month: 30 * DAY
 })
 
+/**
+ * How bidders pay (`PomonaRound.Mode`, enum order):
+ *  - deposit: all installments go into escrow while bidding; the organizer invoices
+ *  - invoice: bidding is a promise; each invoice is issued automatically and every
+ *             bidder pays it from their wallet (receipt only after paying)
+ */
+export const MODES = Object.freeze(['deposit', 'invoice'])
+
 /** Phase names as returned by the contract's `phase()` (enum order). */
 export const PHASES = Object.freeze(['bidding', 'failed', 'running', 'completed'])
 
@@ -58,7 +66,8 @@ export function expiresAt (info) {
  * @returns {boolean} Whether the organizer can invoice right now.
  */
 export function canInvoice (info, now) {
-  return info.phase === 'running' &&
+  return info.mode !== 'invoice' &&
+    info.phase === 'running' &&
     info.invoiceCount < info.installments &&
     now >= dueAt(info, info.invoiceCount) &&
     now < expiresAt(info)

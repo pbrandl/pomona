@@ -24,7 +24,7 @@ import { openAccount, seal, open, checkPassword } from './wallet/index.js'
 import { P2PNode } from './p2p/node.js'
 import { encodeInvite, decodeInvite, encodeReceipt, decodeReceipt, receiptMessage, RECEIPT_TTL } from './links.js'
 import { parseAmount, formatAmount } from './units.js'
-import { INTERVALS, intervalName, canInvoice, dueAt, DAY } from './schedule.js'
+import { INTERVALS, MODES, intervalName, canInvoice, dueAt, DAY } from './schedule.js'
 import { PomonaError, fail } from './errors.js'
 import { VERSION } from './version.js'
 import { Assistant } from './agent/agent.js'
@@ -116,7 +116,7 @@ export class Pomona extends EventEmitter {
     this._unwatchFunds?.()
     await this.assistant.close()
     this.account?.dispose()
-    this.provider?.destroy()
+    retire(this.provider)
     await this.p2p.close()
   }
 
@@ -220,6 +220,8 @@ export class Pomona extends EventEmitter {
    * @param {string} p.target        - per installment, e.g. "4.000"
    * @param {string} [p.minBid]      - per installment
    * @param {string} [p.guide]       - suggested bid per installment ("Richtwert"), shown to bidders
+   * @param {'deposit'|'invoice'} [p.mode] - deposit: all installments in escrow while bidding;
+   *   invoice: bidding locks nothing, every invoice is paid from the bidder's wallet
    * @param {'week'|'month'} p.interval
    * @param {number|string} p.installments - how often the organizer may invoice
    * @param {number} [p.biddingEnd]          - end of bidding, unix seconds (preferred)
@@ -234,6 +236,8 @@ export class Pomona extends EventEmitter {
     const description = String(p.description ?? '').trim().slice(0, LIMITS.description)
     if (!title) fail('BAD_INPUT', 'Bitte gib der Runde einen Namen.')
     if (!Object.hasOwn(INTERVALS, p.interval)) fail('BAD_INPUT', 'Bitte Woche oder Monat als Intervall wählen.')
+    const mode = p.mode ?? 'deposit'
+    if (!MODES.includes(mode)) fail('BAD_INPUT', 'Bitte „Vorab hinterlegen“ oder „Per Rechnung“ wählen.')
     const installments = Number(p.installments)
     if (!Number.isInteger(installments) || installments < 1 || installments > LIMITS.maxInstallments) {
       fail('BAD_INPUT', `Anzahl der Rechnungen: 1 bis ${LIMITS.maxInstallments}.`)
@@ -259,6 +263,7 @@ export class Pomona extends EventEmitter {
     const address = await this._exclusive('create', async (onStep) => {
       const before = await factory.roundsOf(me)
       await this.account.execute([factory.createRound({
+        mode,
         target,
         minBid,
         biddingEnd,
@@ -326,7 +331,14 @@ export class Pomona extends EventEmitter {
     const b = await this._prepareBid(amount)
     const fee = b.enough ? await this.account.quoteFee(b.calls).catch(() => null) : null
     const fmt = (v) => formatAmount(v, b.meta.decimals)
+    // Invoice mode moves no money, but the network fee is paid in USDT too.
+    let missing = b.enough ? 0n : b.cost - b.balance
+    if (b.info.mode === 'invoice' && fee !== null && b.balance < fee) {
+      b.enough = false
+      missing = fee - b.balance
+    }
     return {
+      mode: b.info.mode,
       amount: fmt(b.units),
       pledgeAfter: fmt(b.previous + b.units),
       installments: b.info.installments,
@@ -334,7 +346,7 @@ export class Pomona extends EventEmitter {
       fee: fee === null ? null : fmt(fee),
       balance: fmt(b.balance),
       enough: b.enough,
-      missing: fmt(b.enough ? 0n : b.cost - b.balance),
+      missing: fmt(missing),
       symbol: b.meta.symbol
     }
   }
@@ -364,7 +376,8 @@ export class Pomona extends EventEmitter {
     if (units === 0n) fail('BAD_AMOUNT', 'Bitte einen Betrag eingeben.')
     const previous = await this.round.pledgeOf(me)
     if (previous + units < info.minBid) fail('BELOW_MIN', `Das Mindestgebot ist ${formatAmount(info.minBid, meta.decimals)} ${meta.symbol} pro Rate.`)
-    const cost = units * BigInt(info.installments)
+    // Invoice mode: a bid is a promise; money moves with each paid invoice.
+    const cost = info.mode === 'invoice' ? 0n : units * BigInt(info.installments)
     const balance = await this.account.usdtBalance()
 
     let invite = '0x'
@@ -378,7 +391,7 @@ export class Pomona extends EventEmitter {
     const token = new TokenContract(meta.address, this.provider)
     const allowance = await token.allowance(me, this.round.address)
     const calls = []
-    if (allowance < cost) {
+    if (cost > 0n && allowance < cost) {
       // USDT on Ethereum requires resetting a non-zero allowance to 0 first.
       if (allowance !== 0n) calls.push(token.approve(this.round.address, 0n))
       calls.push(token.approve(this.round.address, cost))
@@ -399,9 +412,118 @@ export class Pomona extends EventEmitter {
     await this._simulateAndRun('withdraw', this.round.withdraw(units))
   }
 
-  /** Organizer: release the next installment of all bids. */
+  /**
+   * Invoice mode: what paying would cost (one invoice, or all open ones).
+   * @param {{ index?: number }} p
+   */
+  async quotePay ({ index } = {}) {
+    const q = await this._preparePay(index)
+    const fee = q.enough ? await this.account.quoteFee(q.calls).catch(() => null) : null
+    const fmt = (v) => formatAmount(v, q.meta.decimals)
+    // The network fee is paid in USDT as well: amount + fee must be there.
+    const need = q.cost + (fee ?? 0n)
+    q.enough = q.balance >= need
+    return {
+      invoices: q.list.map((i) => i + 1),
+      amount: fmt(q.cost),
+      fee: fee === null ? null : fmt(fee),
+      balance: fmt(q.balance),
+      enough: q.enough,
+      missing: fmt(q.enough ? 0n : need - q.balance),
+      symbol: q.meta.symbol
+    }
+  }
+
+  /**
+   * Invoice mode: pay issued invoices from this wallet, straight to the
+   * organizer, in one signature (approve + pay). Without `index`, all open
+   * invoices. Only a successful payment creates a receipt.
+   * @param {{ index?: number }} p
+   */
+  async pay ({ index } = {}) {
+    const q = await this._preparePay(index)
+    if (!q.enough) {
+      const f = (v) => formatAmount(v, q.meta.decimals)
+      fail('NO_FUNDS', `Dafür brauchst du ${f(q.cost)} ${q.meta.symbol}. Dir fehlen ${f(q.cost - q.balance)} ${q.meta.symbol}. Ohne Zahlung gibt es keinen Beleg.`)
+    }
+    await this._exclusive('pay', (onStep) => this.account.execute(q.calls, { onStep }))
+  }
+
+  /** @private */
+  async _preparePay (index) {
+    const { info, me } = await this._roundContext(null)
+    if (info.mode !== 'invoice') fail('WRONG_MODE', 'In dieser Runde wird nicht per Rechnung bezahlt.')
+    const pledge = await this.round.pledgeOf(me)
+    if (pledge === 0n) fail('NOT_BIDDER', 'Du hast in dieser Runde nicht geboten.')
+    const open = await this._openInvoices(info, me)
+    const list = index == null ? open : open.filter((i) => i === Number(index))
+    if (!list.length) fail('NOTHING', index == null ? 'Es gibt keine offene Rechnung.' : 'Diese Rechnung ist schon bezahlt oder noch nicht da.')
+    const meta = await this._token()
+    const cost = pledge * BigInt(list.length)
+    const balance = await this.account.usdtBalance()
+    const token = new TokenContract(meta.address, this.provider)
+    const allowance = await token.allowance(me, this.round.address)
+    const calls = []
+    if (allowance < cost) {
+      if (allowance !== 0n) calls.push(token.approve(this.round.address, 0n)) // USDT on Ethereum
+      calls.push(token.approve(this.round.address, cost))
+    }
+    for (const i of list) calls.push(this.round.pay(i))
+    return { meta, list, cost, balance, enough: balance >= cost, calls }
+  }
+
+  /**
+   * Invoice mode: issued invoices `me` has not paid yet (0-based, oldest first).
+   * Paid ones are cached: a payment can never be undone.
+   * @private
+   */
+  async _openInvoices (info, me) {
+    const out = []
+    for (let i = 0; i < info.invoiceCount; i++) {
+      if (!(await this._myPaidAt(me, i))) out.push(i)
+    }
+    return out
+  }
+
+  /** @private */
+  async _myPaidAt (me, i) {
+    const cache = this._paidCache ??= new Map()
+    const key = this.round.address + ':' + me + ':' + i
+    if (cache.has(key)) return cache.get(key)
+    const { paidAt } = await this.round.receipt(me, i)
+    if (paidAt) cache.set(key, paidAt)
+    return paidAt || null
+  }
+
+  /**
+   * Organizer, invoice mode: who has paid invoice `index` and who has not.
+   * (Public on-chain anyway; the app only shows it to the organizer.)
+   * @param {{ index: number }} p
+   */
+  async invoiceDetails ({ index }) {
+    const { info } = await this._roundContext(null, { organizer: true })
+    if (info.mode !== 'invoice') fail('WRONG_MODE', 'In dieser Runde wird nicht per Rechnung bezahlt.')
+    index = Number(index)
+    if (!(index >= 0 && index < info.invoiceCount)) fail('NOTHING', 'Diese Rechnung gibt es noch nicht.')
+    const meta = await this._token()
+    const fmt = (v) => formatAmount(v, meta.decimals)
+    const [stats, unpaid] = await Promise.all([this.round.paidStats(index), this.round.unpaid(index)])
+    return {
+      index,
+      dueAt: dueAt(info, index),
+      paidCount: stats.count,
+      paidSum: fmt(stats.sum),
+      total: fmt(info.total),
+      bidders: info.bidderCount,
+      unpaid: unpaid.map((u) => ({ bidder: u.bidder, amount: fmt(u.amount) })),
+      symbol: meta.symbol
+    }
+  }
+
+  /** Organizer, deposit mode: release the next installment of all bids. */
   async invoice () {
     const { info, now } = await this._roundContext('running', { organizer: true })
+    if (info.mode !== 'deposit') fail('WRONG_MODE', 'In dieser Runde kommen die Rechnungen automatisch.')
     if (!canInvoice(info, now)) fail('NOT_DUE', 'Die nächste Rechnung ist noch nicht fällig.')
     await this._simulateAndRun('invoice', this.round.invoice())
   }
@@ -545,7 +667,9 @@ export class Pomona extends EventEmitter {
       this.p2p.news()
     ])
     const invoices = await this._invoices(info, now, pledge, fmt)
+    const open = info.mode === 'invoice' && pledge > 0n ? invoices.filter((x) => x.status === 'open') : []
     s.round = {
+      mode: info.mode,
       role: this.saved.role,
       title: this.manifest?.title ?? '',
       description: this.manifest?.description ?? '',
@@ -573,7 +697,9 @@ export class Pomona extends EventEmitter {
       inviteOnly: !!info.inviteSigner,
       bidders: info.bidderCount,
       myPledge: fmt(pledge),
-      myDeposit: fmt(pledge * BigInt(info.installments)),
+      myDeposit: fmt(info.mode === 'invoice' ? 0n : pledge * BigInt(info.installments)),
+      openInvoices: open.length, // invoice mode: my unpaid invoices
+      openAmount: fmt(pledge * BigInt(open.length)),
       refundable: fmt(refundable),
       invoices,
       news
@@ -628,12 +754,13 @@ export class Pomona extends EventEmitter {
    * @private
    */
   async _invoices (info, now, pledge, fmt) {
+    if (info.mode === 'invoice') return this._invoicesPayg(info, pledge, fmt)
     // Invoice times never change once set: cache them instead of asking the
     // RPC for up to 520 values on every refresh.
     const cache = this._invoiceTimes ??= new Map()
     const paidAt = await Promise.all(Array.from({ length: info.invoiceCount }, async (_, i) => {
       const key = this.round.address + ':' + i
-      if (!cache.has(key)) cache.set(key, await this.round.invoicedAt(i))
+      if (!cache.has(key)) cache.set(key, await this.round.issuedAt(i))
       return cache.get(key)
     }))
     const amount = fmt(pledge > 0n ? pledge : info.total)
@@ -645,6 +772,30 @@ export class Pomona extends EventEmitter {
       else if (open) status = 'scheduled'
       return { index: i, dueAt: dueAt(info, i), paidAt: paidAt[i] ?? null, amount, status, mine: pledge > 0n }
     })
+  }
+
+  /**
+   * Invoice mode ("pay as you go"). Invoices issue themselves at their due date.
+   * For a bidder:     'paid' (receipt) | 'open' (issued, not paid) | 'scheduled' | 'void'
+   * For the organizer and everyone else: 'issued' (with paidCount, paidSum) | 'scheduled' | 'void'
+   * @private
+   */
+  async _invoicesPayg (info, pledge, fmt) {
+    const me = this.account ? await this.account.address() : null
+    const mine = pledge > 0n
+    const upcoming = info.phase === 'bidding' || info.phase === 'running'
+    return Promise.all(Array.from({ length: info.installments }, async (_, i) => {
+      const issued = i < info.invoiceCount
+      const base = { index: i, dueAt: dueAt(info, i), mine }
+      if (mine) {
+        const paidAt = issued ? await this._myPaidAt(me, i) : null
+        const status = paidAt ? 'paid' : issued ? 'open' : upcoming ? 'scheduled' : 'void'
+        return { ...base, paidAt, amount: fmt(pledge), status }
+      }
+      if (!issued) return { ...base, paidAt: null, amount: fmt(info.total), status: upcoming ? 'scheduled' : 'void' }
+      const stats = await this.round.paidStats(i)
+      return { ...base, paidAt: null, amount: fmt(info.total), status: 'issued', paidCount: stats.count, paidSum: fmt(stats.sum) }
+    }))
   }
 
   /** @private */
@@ -666,7 +817,7 @@ export class Pomona extends EventEmitter {
     }
     this.net = net
     this.tokenMeta = null
-    this.provider?.destroy()
+    retire(this.provider)
     this.provider = providerFor(net)
     if (reopen && this.account) {
       // Accounts are bound to a network (provider, paymaster, policy targets).
@@ -843,6 +994,18 @@ export class Pomona extends EventEmitter {
     // due dates fresh even when nothing happens on-chain.
     this._timer = setInterval(() => this._changed(), this.pollMs ?? 15000)
   }
+}
+
+/**
+ * Shuts a provider down without cancelling a request that is already on its
+ * way: stop event polling now, destroy a moment later.
+ * @param {import('ethers').JsonRpcProvider|null} provider
+ */
+function retire (provider) {
+  if (!provider) return
+  provider.removeAllListeners().catch(() => {})
+  const t = setTimeout(() => provider.destroy(), 1000)
+  t.unref?.()
 }
 
 /** @param {string} text @returns {string} SVG markup (generated locally, no user HTML) */

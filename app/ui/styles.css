@@ -646,3 +646,11 @@ h3 { font-weight: 600; }
 .setup-path .mono { overflow-wrap: anywhere; flex: 1; min-width: 0; }
 a.btn { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
 .setup-steps li:last-child { align-items: center; }
+
+/* "Wie wird bezahlt?": two cards, one selected */
+.choice.mode { text-align: left; }
+.choice.mode .radio { flex: none; width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--line); }
+.choice.mode.on { border-color: var(--accent); }
+.choice.mode.on .radio { border-color: var(--accent); background: radial-gradient(circle, var(--accent) 45%, transparent 50%); }
+.choice.mode:not(.on) { border-color: var(--line); }
+.choice.mode:not(.on):hover { border-color: var(--muted); }

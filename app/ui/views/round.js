@@ -28,7 +28,7 @@ export function round (ui) {
     ${plan(ui, r, p)}
     ${news(ui, r)}
     ${manage(ui, r)}
-    <p class="small muted" style="text-align:center">Treuhandkonto <span class="mono">${short(r.address)}</span> · ${esc(ui.status.network.name)} · <span class="live"><span class="dot on"></span>live</span></p>
+    <p class="small muted" style="text-align:center">${r.mode === 'invoice' ? 'Runde' : 'Treuhandkonto'} <span class="mono">${short(r.address)}</span> · ${esc(ui.status.network.name)} · <span class="live"><span class="dot on"></span>live</span></p>
   </div>`
 }
 
@@ -38,7 +38,7 @@ function header (r) {
   const t = left(r.biddingEnd, r.now)
   const eyebrow = {
     bidding: `Bietphase · noch ${t.value} ${t.unit.replace(' übrig', '')}`,
-    running: `Ratenzahlung · ${r.invoiceCount} von ${r.installments} bezahlt`,
+    running: r.mode === 'invoice' ? `Ratenzahlung · Rechnung ${r.invoiceCount} von ${r.installments}` : `Ratenzahlung · ${r.invoiceCount} von ${r.installments} bezahlt`,
     completed: 'Abgeschlossen',
     failed: 'Ziel nicht erreicht'
   }[r.phase]
@@ -102,8 +102,8 @@ function timeline (r, p) {
   const payState = { bidding: 'next', running: 'current', completed: 'done', failed: 'skipped' }[r.phase]
   const payWhen = r.installments === 1 ? esc(date(r.biddingEnd)) : `${esc(date(r.biddingEnd))} – ${esc(date(lastDue))}`
   const payNote = {
-    bidding: 'Startet, wenn das Ziel erreicht ist.',
-    running: `${r.invoiceCount} von ${r.installments} bezahlt.`,
+    bidding: r.mode === 'invoice' ? 'Startet, wenn das Ziel erreicht ist. Die Rechnungen kommen dann automatisch.' : 'Startet, wenn das Ziel erreicht ist.',
+    running: r.mode === 'invoice' ? `${r.invoiceCount} von ${r.installments} Rechnungen verschickt.` : `${r.invoiceCount} von ${r.installments} bezahlt.`,
     completed: r.invoiceCount < r.installments ? 'Vorzeitig beendet. Der Rest ging zurück.' : 'Alle Raten bezahlt.',
     failed: 'Findet nicht statt.'
   }[r.phase]
@@ -125,6 +125,8 @@ const STATUS = {
   paid: () => '<span class="pill-s ok">Bezahlt</span>',
   due: () => '<span class="pill-s due">Fällig</span>',
   scheduled: () => '<span class="pill-s">Geplant</span>',
+  open: () => '<span class="pill-s due">Offen</span>',
+  issued: (x, r) => `<span class="pill-s ${x.paidCount >= r.bidders ? 'ok' : ''}" title="${x.paidCount} von ${r.bidders} haben bezahlt">${x.paidCount}/${r.bidders}</span>`,
   void: () => '<span class="pill-s void">Entfällt</span>'
 }
 
@@ -132,16 +134,28 @@ function plan (ui, r, p) {
   if (r.phase === 'failed' || !r.invoices?.length) return ''
   const organizer = r.role === 'organizer'
   const mine = r.invoices.some((x) => x.mine)
-  const list = fold(r.invoices, r.invoiceCount, ui.showAllInvoices)
+  // Invoice mode, bidder: fold around my last paid invoice, so the open one is right below.
+  const anchor = r.mode === 'invoice' && mine ? r.invoices.filter((x) => x.status === 'paid').length : r.invoiceCount
+  const list = fold(r.invoices, anchor, ui.showAllInvoices)
 
   const rows = list.map((x) => {
-    if (x.more) return `<button class="plan-more" data-action="show-all-invoices">Alle ${r.invoices.length} Raten anzeigen</button>`
-    const clickable = x.status === 'paid' && (organizer || x.mine)
-    const action = organizer ? 'show-invoice' : 'show-receipt'
+    if (x.more) return `<button class="plan-more" data-action="show-all-invoices">Alle ${r.invoices.length} ${r.mode === 'invoice' ? 'Rechnungen' : 'Raten'} anzeigen</button>`
+    // paid → receipt (bidder) or details (organizer); open → pay; issued → who paid (organizer)
+    let action = null
+    if (x.status === 'paid' && (organizer || x.mine)) action = organizer ? 'show-invoice' : 'show-receipt'
+    else if (x.status === 'open') action = 'open-pay'
+    else if (x.status === 'issued' && organizer) action = 'show-invoice'
+    const clickable = !!action
     const attrs = clickable ? ` data-action="${action}" data-index="${x.index}" role="button" tabindex="0"` : ''
+    const when = {
+      paid: esc(shortDate(x.paidAt)) + (clickable ? (organizer ? ' · Details' : ' · Beleg') : ''),
+      open: 'seit ' + esc(shortDate(x.dueAt)) + ' · Bezahlen',
+      issued: esc(shortDate(x.dueAt)) + (clickable ? ' · Details' : '')
+    }[x.status] ?? 'ab ' + esc(shortDate(x.dueAt))
+    const amount = x.status === 'issued' ? fmt(x.paidSum) : fmt(x.amount)
     return `<div class="plan-row ${x.status}${clickable ? ' clickable' : ''}"${attrs}>
-      <div class="plan-left"><strong>Rate ${x.index + 1}</strong><span class="muted small">${x.status === 'paid' ? esc(shortDate(x.paidAt)) + (clickable ? (organizer ? ' · Details' : ' · Beleg') : '') : 'ab ' + esc(shortDate(x.dueAt))}</span></div>
-      <div class="plan-right"><span>${fmt(x.amount)} ${esc(r.symbol)}</span>${STATUS[x.status](x)}${clickable ? '<span class="chev" aria-hidden="true">›</span>' : ''}</div>
+      <div class="plan-left"><strong>${r.mode === 'invoice' ? 'Rechnung' : 'Rate'} ${x.index + 1}</strong><span class="muted small">${when}</span></div>
+      <div class="plan-right"><span>${amount} ${esc(r.symbol)}</span>${STATUS[x.status](x, r)}${clickable ? '<span class="chev" aria-hidden="true">›</span>' : ''}</div>
     </div>`
   }).join('')
 

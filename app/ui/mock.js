@@ -3,6 +3,7 @@
  * (`npm run preview`). Same method names and status shape as the real core
  * (see docs/RPC.md).
  * Scenario via ?s=onboarding|locked|start|fund|newbidder|bidder|organizer|invoice|receipts|completed|failed
+ * Rounds "Per Rechnung": ?s=payg-bidding|payg|payg-organizer
  */
 ;(function () {
   const scenario = new URLSearchParams(window.location.search).get('s') || 'bidder'
@@ -13,8 +14,23 @@
   const link = 'pomona://eyJ2IjoxLCJtIjoiYTdmMGM5ZTQxYjJkNjhmMzBlNWE5Yzc0ZDFiOGUyZjZhMzBjOTRlN2IxZDVmMjhhNmMwZTNiOWQ0ZjdhMmUxYyIsIm4iOiJzZXBvbGlhIiwiciI6IjB4N2E0QjlmMDJjRTFkOEE2ZjMwRTU5YzdEMWI4RTJGNmEzMEM5NEU3YiJ9'
   const wallet = { state: 'unlocked', kind: 'smart', address: '0x5C3e9A0bD41f7E28c6B9a3F1d02E8c7B4a6D9e10', usdt: '2400', symbol: 'USDT' }
 
-  /** Same rules as Pomona._invoices in core/pomona.js. */
+  /** Same rules as Pomona._invoices / _invoicesPayg in core/pomona.js. */
   function plan (r) {
+    if (r.mode === 'invoice') {
+      const mine = Number(r.myPledge) > 0
+      const upcoming = r.phase === 'bidding' || r.phase === 'running'
+      return Array.from({ length: r.installments }, (_, i) => {
+        const dueAt = r.biddingEnd + r.interval * i
+        const issued = i < r.invoiceCount
+        if (mine) {
+          const paid = i < (r.paidMine ?? 0)
+          return { index: i, dueAt, paidAt: paid ? dueAt + 7200 : null, amount: r.myPledge, status: paid ? 'paid' : issued ? 'open' : upcoming ? 'scheduled' : 'void', mine }
+        }
+        if (!issued) return { index: i, dueAt, paidAt: null, amount: r.total, status: upcoming ? 'scheduled' : 'void', mine }
+        const missing = i === r.invoiceCount - 1 ? 3 : i === r.invoiceCount - 2 ? 1 : 0
+        return { index: i, dueAt, paidAt: null, amount: r.total, status: 'issued', paidCount: r.bidders - missing, paidSum: String(Number(r.total) - missing * 100), mine }
+      })
+    }
     return Array.from({ length: r.installments }, (_, i) => {
       const dueAt = r.biddingEnd + r.interval * i
       let status = 'void'
@@ -62,7 +78,13 @@
     r.nextInvoiceAt = r.biddingEnd + r.interval * r.invoiceCount
     r.expiresAt = r.biddingEnd + r.interval * r.installments
     r.invoices = plan(r)
+    openInvoices(r)
     return r
+  }
+  function openInvoices (r) {
+    const open = r.mode === 'invoice' ? r.invoices.filter((x) => x.status === 'open') : []
+    r.openInvoices = open.length
+    r.openAmount = String(open.length * Number(r.myPledge))
   }
 
   const running = {
@@ -94,6 +116,9 @@
     invoice: () => ({ ...base, wallet, round: round({ role: 'organizer', ...running }) }),
     receipts: () => ({ ...base, wallet, round: round({ ...running, canInvoice: false, biddingStart: now - 3 * MONTH, biddingEnd: now - 2 * MONTH - 10 * DAY, ...mine }) }),
     completed: () => ({ ...base, wallet, round: round({ ...running, phase: 'completed', canInvoice: false, ...mine, refundable: '900' }) }),
+    'payg-bidding': () => ({ ...base, wallet: { ...wallet, usdt: '0' }, round: round({ mode: 'invoice' }) }),
+    payg: () => ({ ...base, wallet, round: round({ mode: 'invoice', ...running, canInvoice: false, myPledge: '100', myDeposit: '0', paidMine: 2 }) }),
+    'payg-organizer': () => ({ ...base, wallet, round: round({ mode: 'invoice', role: 'organizer', ...running, canInvoice: false }) }),
     failed: () => ({ ...base, wallet, round: round({ phase: 'failed', total: '2230', progress: 2230 / 4000, biddingEnd: now - DAY, myPledge: '80', myDeposit: '960', refundable: '960' }) })
   }
   const state = (scenarios[scenario] || scenarios.bidder)()
@@ -199,9 +224,10 @@
         case 'quoteBid': {
           const r = state.round
           const n = Number(String(params.amount).replace(/\./g, '').replace(',', '.'))
-          const deposit = n * r.installments
+          const deposit = r.mode === 'invoice' ? 0 : n * r.installments
           const balance = Number(state.wallet.usdt)
           return {
+            mode: r.mode || 'deposit',
             amount: String(n),
             pledgeAfter: String(Number(r.myPledge) + n),
             installments: r.installments,
@@ -225,13 +251,46 @@
           state.busy = null
           state.busyStep = null
           r.myPledge = String(Number(r.myPledge) + n)
-          r.myDeposit = String(Number(r.myPledge) * r.installments)
+          const payg = r.mode === 'invoice'
+          r.myDeposit = payg ? '0' : String(Number(r.myPledge) * r.installments)
           r.total = String(Number(r.total) + n)
           r.progress = Number(r.total) / Number(r.target)
           r.bidders += 1
-          state.wallet.usdt = String(Number(state.wallet.usdt) - n * r.installments)
+          if (!payg) state.wallet.usdt = String(Number(state.wallet.usdt) - n * r.installments)
           r.invoices = plan(r)
           return null
+        }
+        case 'quotePay': {
+          const r = state.round
+          const list = r.invoices.filter((x) => x.status === 'open' && (params.index == null || x.index === params.index))
+          const amount = list.length * Number(r.myPledge)
+          const balance = Number(state.wallet.usdt)
+          return { invoices: list.map((x) => x.index + 1), amount: String(amount), fee: '0.0287', balance: String(balance), enough: balance >= amount, missing: String(Math.max(0, amount - balance)), symbol: 'USDT' }
+        }
+        case 'pay': {
+          const r = state.round
+          const list = r.invoices.filter((x) => x.status === 'open' && (params.index == null || x.index === params.index))
+          await tx('pay')
+          state.wallet.usdt = String(Number(state.wallet.usdt) - list.length * Number(r.myPledge))
+          r.paidMine = Math.max(r.paidMine ?? 0, ...list.map((x) => x.index + 1))
+          r.invoices = plan(r)
+          openInvoices(r)
+          return null
+        }
+        case 'invoiceDetails': {
+          const r = state.round
+          const inv = r.invoices[params.index]
+          const n = r.bidders - inv.paidCount
+          return {
+            index: params.index,
+            dueAt: inv.dueAt,
+            paidCount: inv.paidCount,
+            paidSum: inv.paidSum,
+            total: r.total,
+            bidders: r.bidders,
+            unpaid: Array.from({ length: n }, (_, k) => ({ bidder: ['0x8b1F4c2a90D3e5f7A6b2C9d0E1f3A4b5C6d7E8f9', '0x2C4e6A8b0D1f3E5a7C9b2D4f6A8c0E2b4D6f8A1c', '0xF0e1D2c3B4a5968778695A4b3C2d1E0f9A8b7C6d'][k % 3], amount: '100' })),
+            symbol: 'USDT'
+          }
         }
         // The other transactions, simulated with the same progress steps.
         case 'withdraw': {

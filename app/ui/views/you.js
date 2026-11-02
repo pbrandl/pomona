@@ -23,6 +23,13 @@ export function youCard (ui) {
     title = `${fmt(r.refundable)} ${sym} warten auf dich`
     sub = r.phase === 'failed' ? 'Das Ziel wurde nicht erreicht.' : 'Diese Raten werden nicht mehr abgerechnet.'
     actions = btn(ui, 'refund', 'Zurückholen', 'accent', { busy: 'Wird überwiesen…' })
+  } else if (r.role === 'organizer' && r.mode === 'invoice' && (r.phase === 'running' || r.phase === 'completed')) {
+    const last = (r.invoices || []).filter((x) => x.status === 'issued').at(-1)
+    title = last ? `Rechnung ${last.index + 1}: ${last.paidCount} von ${r.bidders} bezahlt` : 'Ratenzahlung läuft'
+    sub = r.phase === 'running' && r.invoiceCount < r.installments
+      ? `Rechnungen gehen automatisch raus. Nächste am ${esc(date(r.nextInvoiceAt))}.`
+      : `Alle ${r.installments} Rechnungen sind verschickt.`
+    if (last) actions = `<button class="btn ghost" data-action="show-invoice" data-index="${last.index}">Wer hat bezahlt?</button>`
   } else if (r.role === 'organizer') {
     if (r.phase === 'bidding') {
       title = `${fmt(r.progress * 100, 0)} % vom Ziel erreicht`
@@ -46,9 +53,11 @@ export function youCard (ui) {
     if (pledge > 0) {
       tone = 'ok'
       title = `Du bietest ${fmt(r.myPledge)} ${sym} ${p.per}`
-      sub = `${fmt(r.myDeposit)} ${sym} liegen im Treuhandkonto. Änderbar bis ${esc(dayTime(r.biddingEnd))}.`
+      sub = r.mode === 'invoice'
+        ? `Bezahlt wird erst mit jeder Rechnung. Änderbar bis ${esc(dayTime(r.biddingEnd))}.`
+        : `${fmt(r.myDeposit)} ${sym} liegen im Treuhandkonto. Änderbar bis ${esc(dayTime(r.biddingEnd))}.`
       actions = `<button class="btn ghost" data-action="start-bid">Erhöhen</button>${link(ui, 'withdraw', ui.pending === 'withdraw' ? 'Wird zurückgezogen…' : 'Zurückziehen')}`
-    } else if (num(s.wallet.usdt) <= 0) {
+    } else if (num(s.wallet.usdt) <= 0 && r.mode !== 'invoice') {
       tone = 'act'
       title = 'Lade dein Konto auf'
       sub = 'Dann kannst du mitbieten. Bezahlt wird in USDT.'
@@ -59,12 +68,24 @@ export function youCard (ui) {
       sub = r.guide ? `Richtwert ${fmt(r.guide)} ${sym} ${p.per}. Gib, was du kannst.` : `Dein Betrag ${p.per}, ${r.installments} Raten.`
       actions = '<button class="btn accent" data-action="start-bid">Gebot abgeben</button>'
     }
+  } else if (pledge > 0 && r.openInvoices > 0) {
+    tone = 'act'
+    const open = r.invoices.filter((x) => x.status === 'open')
+    title = open.length === 1 ? `Rechnung ${open[0].index + 1}: ${fmt(r.openAmount)} ${sym}` : `${open.length} offene Rechnungen: ${fmt(r.openAmount)} ${sym}`
+    const lacking = num(s.wallet.usdt) < num(r.openAmount)
+    sub = lacking
+      ? `Dir fehlen ${fmt(num(r.openAmount) - num(s.wallet.usdt))} ${sym}. Lade dein Konto auf, dann bezahlst du und bekommst den Beleg.`
+      : 'Bezahlen und Beleg erhalten. Der Betrag geht direkt an den Organisator.'
+    actions = lacking
+      ? '<button class="btn accent" data-action="open-fund">Aufladen</button>'
+      : '<button class="btn accent" data-action="open-pay">Bezahlen</button>'
   } else if (pledge > 0) {
     tone = 'ok'
     const paid = (r.invoices || []).filter((x) => x.status === 'paid' && x.mine)
     title = `Du bist dabei: ${fmt(r.myPledge)} ${sym} ${p.per}`
-    sub = r.phase === 'running'
-      ? `${paid.length} von ${r.installments} Raten bezahlt. Nächste ab ${esc(date(r.nextInvoiceAt))}.`
+    const nextText = r.mode === 'invoice' ? `Nächste Rechnung am ${esc(date(r.nextInvoiceAt))}.` : `Nächste ab ${esc(date(r.nextInvoiceAt))}.`
+    sub = r.phase === 'running' && r.invoiceCount < r.installments
+      ? `${paid.length} von ${r.installments} Raten bezahlt. ${nextText}`
       : `${paid.length} ${paid.length === 1 ? 'Rate' : 'Raten'} bezahlt.`
     if (paid.length) actions = `<button class="btn ghost" data-action="show-receipt" data-index="${paid.at(-1).index}">Letzten Beleg zeigen</button>`
   } else {

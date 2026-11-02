@@ -2,7 +2,11 @@
 
 **Eine dezentrale Bietrunde auf Tethers Stack, nur in USDT.**
 
-Jemand startet eine Bietrunde, zum Beispiel für eine Solawi, und legt drei Dinge fest: das Ziel pro Rate, ob wöchentlich oder monatlich abgerechnet wird, und wie oft. Dann teilt er einen Link. Wer mitmacht, bietet einen Betrag pro Rate und hinterlegt dafür alle Raten in einem Smart Contract.
+Jemand startet eine Bietrunde, zum Beispiel für eine Solawi, und legt fest: das Ziel pro Rate, ob wöchentlich oder monatlich abgerechnet wird, wie oft, und **wie bezahlt wird**. Dann teilt er einen Link. Wer mitmacht, bietet einen Betrag pro Rate.
+
+**Per Rechnung** (Standard, gut für kleine Projekte): Bieten kostet nichts. Ist das Ziel erreicht, kommt jede Woche bzw. jeden Monat automatisch eine Rechnung. Jede bietende Person bezahlt sie mit einer Signatur aus ihrem Konto direkt an den Organisator und bekommt dafür einen Beleg. Ohne Zahlung gibt es keinen Beleg. Der Organisator sieht, wer bezahlt hat.
+
+**Vorab hinterlegen** (Treuhand): Beim Bieten liegen alle Raten in einem Smart Contract.
 
 - **Ziel verfehlt:** Alle bekommen ihr Geld zurück.
 - **Ziel erreicht:** Der Organisator stellt Rate für Rate eine Rechnung, höchstens einmal pro Intervall und höchstens so oft wie festgelegt. Jede Rechnung zahlt eine Rate aus dem Contract an ihn aus.
@@ -43,14 +47,14 @@ Mehr dazu:
 Voraussetzungen: Node.js 22 und die [Pear-CLI](https://docs.pears.com) (`npm i -g pear`, danach einmal `pear` ausführen).
 
 ```bash
-# Contracts bauen und testen (14 Tests)
+# Contracts bauen und testen (19 Tests)
 cd contracts && npm install && npm test
 
 # Lokale Chain (Terminal 1) und Deployment (Terminal 2)
 npm run chain
 node scripts/deploy.js local          # schreibt app/core/config/deployments.js
 
-# App testen (35 Tests) und starten
+# App testen (36 Tests) und starten
 cd ../app && npm install && npm test
 pear run --dev .                      # Organisator
 pear run --dev . --tmp-store          # zweite Instanz als Bieter
@@ -84,15 +88,15 @@ Derselbe Code wie in Pear, nur im Browser und komplett offline. Das Sprachmodell
 cd app && npm run preview   # http://localhost:4173/preview.html?s=bidder
 ```
 
-Szenarien: `onboarding`, `locked`, `start`, `bidder`, `organizer`, `invoice`, `receipts`, `completed`, `failed`.
+Szenarien: `onboarding`, `locked`, `start`, `bidder`, `organizer`, `invoice`, `receipts`, `completed`, `failed`. Per Rechnung: `payg-bidding`, `payg`, `payg-organizer`.
 
 ## Qualität
 
-- `npm test` in `contracts/` umfasst 14 Tests: Zeitplan, nachgeholte Rechnungen, Belege, Erstattung bei Abbruch, Ablauf und verfehltem Ziel, Einladungen (auch Wiederverwendung in einer anderen Runde), Fee-Tokens, Factory-Register und Parameterprüfung.
-- `npm test` in `app/` umfasst 35 Tests:
+- `npm test` in `contracts/` umfasst 19 Tests: beide Bezahlarten (vorab hinterlegen, per Rechnung), Zeitplan, nachgeholte Rechnungen, Belege, Erstattung bei Abbruch, Ablauf und verfehltem Ziel, Einladungen (auch Wiederverwendung in einer anderen Runde), Fee-Tokens, Factory-Register und Parameterprüfung.
+- `npm test` in `app/` umfasst 36 Tests:
   - Unit-Tests: Beträge, Links, Zeitplan, Policy, Tresor, Manifest-Bereinigung, RPC-Validierung, Benachrichtigungen
   - Assistent: Befehle, Wissen, Rollen- und Phasenprüfung jeder Aktion, Prompt Injection, keine Werkzeuge zum Geldbewegen
-  - End-to-End mit echter Chain, WDK und Hyperswarm: Raten-Runde inklusive Beitritt bei offline Organisator, Belege, gefälschte Runden, Policy-Blockade, Senden und Sperren
+  - End-to-End mit echter Chain, WDK und Hyperswarm: Runde „Per Rechnung“ (Zahlung, fehlendes Guthaben, offene Rechnungen), Raten-Runde inklusive Beitritt bei offline Organisator, Belege, gefälschte Runden, Policy-Blockade, Senden und Sperren
   - ein Test, der den Kern **in Bare** ausführt, inklusive QVAC
 - `npm run lint` in `app/` prüft den Code mit [standard](https://standardjs.com).
 

@@ -35,7 +35,7 @@ export function receiptSheet (ui) {
         <dt>Betrag</dt><dd><strong>${fmt(inv.amount)} ${esc(r.symbol)}</strong></dd>
         <dt>Bezahlt am</dt><dd>${esc(dayTime(inv.paidAt))}</dd>
         <dt>Von</dt><dd class="mono">${esc(short(ui.status.wallet.address))}</dd>
-        <dt>Treuhandkonto</dt><dd class="mono">${esc(short(r.address))}</dd>
+        <dt>${r.mode === 'invoice' ? 'An' : 'Treuhandkonto'}</dt><dd class="mono">${esc(short(r.mode === 'invoice' ? r.organizer : r.address))}</dd>
       </dl>
       <div class="qr receipt-qr">${rc.qr || ''}</div>
       ${verdict(rc.verified)}
@@ -46,6 +46,7 @@ export function receiptSheet (ui) {
 
 export function invoiceSheet (ui) {
   const r = ui.status.round
+  if (r.mode === 'invoice') return paygInvoiceSheet(ui)
   const inv = r.invoices[ui.invoiceIndex]
   return sheet(`Rechnung ${ui.invoiceIndex + 1}`, `
     <div class="receipt">
@@ -59,6 +60,30 @@ export function invoiceSheet (ui) {
     </div>
     <p class="small muted">Jede bietende Person hat für diese Rate einen Beleg mit ihrem Anteil. Du kannst ihn per QR-Code prüfen.</p>
     <button class="btn accent block" data-action="open-scan">Beleg prüfen</button>`)
+}
+
+/** Organizer, round "Per Rechnung": who paid this invoice, who has not yet. */
+function paygInvoiceSheet (ui) {
+  const d = ui.invoiceDetails
+  const title = `Rechnung ${ui.invoiceIndex + 1}`
+  if (!d) return sheet(title, `<p class="verify pending">${spinner} Wird geladen…</p>`)
+  const open = d.unpaid.length
+    ? `<div class="card-inset stack">
+        <strong>Noch offen (${d.unpaid.length})</strong>
+        ${d.unpaid.map((u) => `<div class="row"><span class="mono small">${esc(short(u.bidder))}</span><span>${fmt(u.amount)} ${esc(d.symbol)}</span></div>`).join('')}
+        <p class="small muted">Offene Rechnungen können später noch bezahlt werden. Nur du siehst diese Liste in Pomona.</p>
+      </div>`
+    : '<p class="verify ok">✓ Alle haben bezahlt</p>'
+  return sheet(title, `
+    <div class="receipt">
+      <dl>
+        <dt>Verschickt am</dt><dd>${esc(date(d.dueAt))}</dd>
+        <dt>Bezahlt</dt><dd><strong>${d.paidCount} von ${d.bidders}</strong></dd>
+        <dt>Eingegangen</dt><dd><strong>${fmt(d.paidSum)} von ${fmt(d.total)} ${esc(d.symbol)}</strong></dd>
+      </dl>
+    </div>
+    ${open}
+    ${d.paidCount ? '<button class="btn accent block" data-action="open-scan">Beleg prüfen</button>' : ''}`)
 }
 
 export function scanSheet (ui) {

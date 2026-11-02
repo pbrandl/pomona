@@ -35,10 +35,12 @@ async function rejects (p, name) {
 let env, usdt, factory, organizer, alice, bob, mallory
 const addr = (s) => s.getAddress()
 
-async function newRound ({ target = 100, minBid = 10, invite = null, biddingDays = 7, interval = MONTH, installments = 12, from = organizer, fac = factory } = {}) {
+const Mode = { Deposit: 0, Invoice: 1 }
+
+async function newRound ({ mode = Mode.Deposit, target = 100, minBid = 10, invite = null, biddingDays = 7, interval = MONTH, installments = 12, from = organizer, fac = factory } = {}) {
   const biddingEnd = (await env.now()) + biddingDays * DAY
   const signer = invite ? new Wallet(invite).address : ZeroAddress
-  const tx = await fac.connect(from).createRound(USDT(target), USDT(minBid), biddingEnd, interval, installments, signer)
+  const tx = await fac.connect(from).createRound(mode, USDT(target), USDT(minBid), biddingEnd, interval, installments, signer)
   const rcpt = await tx.wait()
   const ev = rcpt.logs.map((l) => { try { return fac.interface.parseLog(l) } catch { return null } }).find((e) => e?.name === 'RoundCreated')
   const round = at('PomonaRound', ev.args.round, organizer)
@@ -240,11 +242,113 @@ describe('PomonaRound', () => {
 
   test('constructor rejects nonsense', async () => {
     const now = await env.now()
-    await rejects(factory.createRound(0, 0, now + DAY, WEEK, 1, ZeroAddress), 'BadParams')
-    await rejects(factory.createRound(1, 0, now - 1, WEEK, 1, ZeroAddress), 'BadParams')
-    await rejects(factory.createRound(1, 0, now + DAY, 3600, 1, ZeroAddress), 'BadParams')
-    await rejects(factory.createRound(1, 0, now + DAY, WEEK, 0, ZeroAddress), 'BadParams')
-    await rejects(factory.createRound(1, 0, now + DAY, WEEK, 521, ZeroAddress), 'BadParams')
+    await rejects(factory.createRound(0, 0, 0, now + DAY, WEEK, 1, ZeroAddress), 'BadParams')
+    await rejects(factory.createRound(0, 1, 0, now - 1, WEEK, 1, ZeroAddress), 'BadParams')
+    await rejects(factory.createRound(0, 1, 0, now + DAY, 3600, 1, ZeroAddress), 'BadParams')
+    await rejects(factory.createRound(0, 1, 0, now + DAY, WEEK, 0, ZeroAddress), 'BadParams')
+    await rejects(factory.createRound(0, 1, 0, now + DAY, WEEK, 521, ZeroAddress), 'BadParams')
     await assert.rejects(deploy('PomonaFactory', organizer, await addr(alice))) // token without code
+  })
+
+  // ------------------------------------------------------------ invoice mode
+
+  /** Approve and pay invoice `index` of `round` from `who`. */
+  async function pay (round, who, index) {
+    const amount = await round.pledgeOf(await addr(who))
+    await (await usdt.connect(who).approve(await round.getAddress(), amount)).wait()
+    return (await round.connect(who).pay(index)).wait()
+  }
+
+  test('invoice mode: bidding locks no money', async () => {
+    const round = await newRound({ mode: Mode.Invoice, target: 100, installments: 3 })
+    const a0 = await bal(alice)
+    await (await round.connect(alice).bid(USDT(60), '0x')).wait()
+    assert.equal(await bal(alice), a0)
+    assert.equal(await usdt.balanceOf(await round.getAddress()), 0n)
+    assert.equal(await round.total(), USDT(60))
+    await (await round.connect(alice).withdraw(USDT(20))).wait()
+    assert.equal(await round.pledgeOf(await addr(alice)), USDT(40))
+    assert.equal(await bal(alice), a0)
+    assert.equal(await round.mode(), BigInt(Mode.Invoice))
+  })
+
+  test('invoice mode: invoices issue themselves, each bidder pays to the organizer and gets a receipt', async () => {
+    const round = await newRound({ mode: Mode.Invoice, target: 100, installments: 3, interval: MONTH })
+    await (await round.connect(alice).bid(USDT(60), '0x')).wait()
+    await (await round.connect(bob).bid(USDT(40), '0x')).wait()
+    await rejects(pay(round, alice, 0), 'NotIssued') // still bidding
+    await warpTo(round.biddingEnd)
+    assert.equal(await round.phase(), Phase.Running)
+    assert.equal(await round.invoiceCount(), 1n)
+    assert.equal(await round.issuedAt(0), BigInt(round.biddingEnd))
+    await rejects(round.invoice(), 'WrongMode')
+
+    const o0 = await bal(organizer)
+    const a0 = await bal(alice)
+    await pay(round, alice, 0)
+    assert.equal(await bal(organizer) - o0, USDT(60))
+    assert.equal(a0 - await bal(alice), USDT(60))
+    const [amount, at] = await round.receipt(await addr(alice), 0)
+    assert.equal(amount, USDT(60))
+    assert.ok(at > 0n)
+    assert.deepEqual([...await round.receipt(await addr(bob), 0)], [0n, 0n]) // no payment, no receipt
+    await rejects(pay(round, alice, 0), 'AlreadyPaid')
+    await rejects(pay(round, alice, 1), 'NotIssued')
+    await rejects(round.connect(mallory).pay(0), 'NotBidder')
+    assert.equal(await round.paidCount(0), 1n)
+    assert.equal(await round.paidSum(0), USDT(60))
+    const [open, amounts] = await round.unpaid(0)
+    assert.deepEqual([...open], [await addr(bob)])
+    assert.deepEqual([...amounts], [USDT(40)])
+
+    await env.warp(MONTH)
+    assert.equal(await round.invoiceCount(), 2n)
+    await env.warp(5 * MONTH)
+    assert.equal(await round.invoiceCount(), 3n) // never more than installments
+    assert.equal(await round.phase(), Phase.Completed)
+    await pay(round, bob, 0) // late payments are fine
+    await pay(round, bob, 2)
+    assert.equal((await round.receipt(await addr(bob), 0))[0], USDT(40))
+    assert.equal((await round.unpaid(0))[0].length, 0)
+    assert.equal(await round.refundable(await addr(bob)), 0n)
+  })
+
+  test('invoice mode: no payment without enough balance (no receipt)', async () => {
+    const round = await newRound({ mode: Mode.Invoice, target: 10, installments: 2, interval: WEEK })
+    const poor = env.signers[4]
+    await (await round.connect(poor).bid(USDT(50), '0x')).wait()
+    await warpTo(round.biddingEnd)
+    await (await usdt.connect(poor).approve(await round.getAddress(), USDT(50))).wait()
+    await assert.rejects(round.connect(poor).pay(0))
+    assert.deepEqual([...await round.receipt(await addr(poor), 0)], [0n, 0n])
+    assert.equal(await round.paidCount(0), 0n)
+  })
+
+  test('invoice mode: terminate stops new invoices, issued ones stay payable; missed target issues none', async () => {
+    const round = await newRound({ mode: Mode.Invoice, target: 100, installments: 6, interval: WEEK })
+    await (await round.connect(alice).bid(USDT(100), '0x')).wait()
+    await warpTo(round.biddingEnd + WEEK)
+    assert.equal(await round.invoiceCount(), 2n)
+    await (await round.terminate()).wait()
+    await env.warp(3 * WEEK)
+    assert.equal(await round.invoiceCount(), 2n)
+    assert.equal(await round.phase(), Phase.Completed)
+    await pay(round, alice, 1)
+    await rejects(pay(round, alice, 2), 'NotIssued')
+
+    const missed = await newRound({ mode: Mode.Invoice, target: 1000, installments: 3 })
+    await (await missed.connect(alice).bid(USDT(100), '0x')).wait()
+    await warpTo(missed.biddingEnd + MONTH)
+    assert.equal(await missed.phase(), Phase.Failed)
+    assert.equal(await missed.invoiceCount(), 0n)
+    await rejects(missed.connect(alice).pay(0), 'NotIssued')
+  })
+
+  test('deposit mode refuses pay()', async () => {
+    const round = await newRound({ target: 10, installments: 2 })
+    await bid(round, alice, 10)
+    await warpTo(round.biddingEnd)
+    await rejects(round.connect(alice).pay(0), 'WrongMode')
+    assert.equal((await round.unpaid(0))[0].length, 0)
   })
 })

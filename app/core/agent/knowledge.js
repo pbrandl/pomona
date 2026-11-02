@@ -18,6 +18,9 @@ import { num, day, until, per } from './words.js'
 
 const pledged = (r) => Number(r?.myPledge) > 0
 
+/** Round paid invoice by invoice (no escrow), see core/schedule.js MODES. */
+const payg = (r) => r?.mode === 'invoice'
+
 /** @type {Record<string, { question: string, keywords: string[], answer: (s: object) => Answer }>} */
 export const TOPICS = {
   how: {
@@ -27,6 +30,13 @@ export const TOPICS = {
       const r = s.round
       const p = per(r?.intervalName)
       const plan = r ? ` In dieser Runde: ${r.installments} Raten, ${p.adj}, ab ${day(r.biddingEnd)}.` : ''
+      if (payg(r)) {
+        return {
+          text: 'Alle sagen in der Bietphase, wie viel sie pro Rate geben möchten. Dabei wird noch kein Geld bewegt. ' +
+            'Ist nach der Bietphase das Ziel erreicht, kommt jede Woche bzw. jeden Monat automatisch eine Rechnung. Du bezahlst sie mit einem Tipp aus deinem Konto direkt an den Organisator und bekommst dafür einen Beleg. ' +
+            'Wird das Ziel nicht erreicht, gibt es keine Rechnungen.' + plan
+        }
+      }
       return {
         text: 'Alle sagen in der Bietphase, wie viel sie pro Rate geben möchten. Das Geld für alle Raten liegt dann in einem Treuhandkonto, nicht beim Organisator. ' +
           'Ist nach der Bietphase das Ziel erreicht, stellt der Organisator Rate für Rate eine Rechnung. Für jede bezahlte Rate bekommst du einen Beleg. ' +
@@ -40,6 +50,7 @@ export const TOPICS = {
     answer: (s) => {
       const r = s.round
       const refund = r && Number(r.refundable) > 0
+      if (payg(r)) return { text: 'Dann findet keine Ratenzahlung statt und es kommen keine Rechnungen. Bezahlt hast du nichts, denn beim Bieten wird in dieser Runde kein Geld hinterlegt.' }
       return {
         text: 'Dann findet keine Ratenzahlung statt, und alle holen ihren hinterlegten Betrag vollständig aus dem Treuhandkonto zurück. Niemand kann das Geld in diesem Fall abbuchen, auch der Organisator nicht.' +
           (refund ? ` Für dich liegen gerade ${num(r.refundable)} ${r.symbol} zum Zurückholen bereit.` : ''),
@@ -59,7 +70,9 @@ export const TOPICS = {
       if (r.guide) text += ` Der Richtwert liegt bei ${num(r.guide)} ${r.symbol} ${p.per}. Gib, was du kannst: Wer mehr kann, gleicht für andere aus.`
       else if (missing > 0) text += ` Es fehlen noch ${num(missing)} ${r.symbol} ${p.per}.`
       if (Number(r.minBid) > 0) text += ` Das Mindestgebot ist ${num(r.minBid)} ${r.symbol}.`
-      text += ` Hinterlegt wird dein Betrag mal ${r.installments} Raten.`
+      text += payg(r)
+        ? ` Hinterlegt wird nichts: Du bezahlst jede der ${r.installments} Rechnungen, wenn sie kommt.`
+        : ` Hinterlegt wird dein Betrag mal ${r.installments} Raten.`
       return { text, actions: r.phase === 'bidding' && r.guide ? [{ type: 'bid', amount: r.guide }] : [] }
     }
   },
@@ -71,7 +84,8 @@ export const TOPICS = {
       if (!r || r.phase !== 'bidding') {
         return { text: 'Nach der Bietphase stehen die Gebote fest. Nur so kann der Organisator mit dem Geld planen.' }
       }
-      const text = `Ja, bis ${day(r.biddingEnd)} (${until(r.biddingEnd, r.now)}) kannst du erhöhen oder dein Gebot ganz zurückziehen. Das Geld geht dann sofort in dein Konto zurück.`
+      const text = `Ja, bis ${day(r.biddingEnd)} (${until(r.biddingEnd, r.now)}) kannst du erhöhen oder dein Gebot ganz zurückziehen.` +
+        (payg(r) ? '' : ' Das Geld geht dann sofort in dein Konto zurück.')
       return { text, actions: pledged(r) ? [{ type: 'withdraw' }] : [] }
     }
   },
@@ -83,6 +97,13 @@ export const TOPICS = {
       if (!r) return { text: 'Du bist noch in keiner Runde.' }
       const p = per(r.intervalName)
       if (r.phase === 'bidding') return { text: `Die Bietphase läuft bis ${day(r.biddingEnd)}. Wird das Ziel erreicht, ist die erste Rate ab dann fällig, danach ${p.adj}, insgesamt ${r.installments}-mal.` }
+      if (r.phase === 'running' && payg(r)) {
+        if (r.role !== 'organizer' && r.openInvoices > 0) {
+          return { text: `Du hast ${r.openInvoices === 1 ? 'eine offene Rechnung' : `${r.openInvoices} offene Rechnungen`} über ${num(r.openAmount)} ${r.symbol}. Bezahlen musst du selbst, dann bekommst du den Beleg.`, actions: [{ type: 'pay' }] }
+        }
+        const next = r.invoiceCount < r.installments ? `Rechnung ${r.invoiceCount + 1} von ${r.installments} kommt am ${day(r.nextInvoiceAt)} automatisch.` : 'Alle Rechnungen sind verschickt.'
+        return { text: next + (r.role === 'organizer' ? ' Die Bietenden bezahlen sie direkt an dich.' : ' Du bezahlst sie dann mit einem Tipp.') }
+      }
       if (r.phase === 'running') {
         const text = r.canInvoice
           ? `Rate ${r.invoiceCount + 1} von ${r.installments} ist jetzt fällig. ${r.role === 'organizer' ? 'Du kannst die Rechnung stellen.' : 'Der Organisator stellt sie, du musst nichts tun: Der Betrag liegt schon im Treuhandkonto.'}`
@@ -99,6 +120,13 @@ export const TOPICS = {
     answer: (s) => {
       const r = s.round
       const paid = (r?.invoices || []).filter((x) => x.status === 'paid' && x.mine)
+      if (payg(r)) {
+        return {
+          text: 'Für jede Rechnung, die du bezahlst, gibt es einen Beleg mit QR-Code. Der Anbieter prüft ihn direkt an der Blockchain. Ohne Zahlung gibt es keinen Beleg.' +
+            (paid.length ? ` Du hast ${paid.length} ${paid.length === 1 ? 'Beleg' : 'Belege'}.` : ''),
+          actions: paid.length ? [{ type: 'receipt', index: paid.at(-1).index }] : []
+        }
+      }
       return {
         text: 'Für jede abgerechnete Rate gibt es einen Beleg mit QR-Code. Der Anbieter prüft ihn direkt an der Blockchain, zum Beispiel bei der Abholung. Er beweist, dass dein Konto diese Rate bezahlt hat.' +
           (paid.length ? ` Du hast ${paid.length} ${paid.length === 1 ? 'Beleg' : 'Belege'}.` : ' Du hast noch keinen, der erste kommt mit der ersten Rechnung.'),
@@ -116,10 +144,25 @@ export const TOPICS = {
   safety: {
     question: 'Ist mein Geld sicher?',
     keywords: ['sicher', 'betrug', 'vertrauen', 'risiko', 'weg'],
-    answer: (s) => ({
-      text: 'Das Geld liegt in einem Treuhandkonto ohne Verwalter (ein Smart Contract). Der Organisator bekommt pro Rechnung nur eine Rate und höchstens einmal pro Intervall. Was nicht abgerechnet wird, geht an dich zurück. Dein Konto ist mit deinem Passwort verschlüsselt und läuft nur auf diesem Gerät. ' +
+    answer: (s) => payg(s.round)
+      ? ({
+          text: 'In dieser Runde liegt kein Geld im Voraus beim Contract. Jede Rechnung bezahlst du selbst, direkt an den Organisator, und nur den Betrag, den du zugesagt hast. Mehr kann niemand abbuchen. Dein Konto ist mit deinem Passwort verschlüsselt und läuft nur auf diesem Gerät. ' +
+            'Ehrlich gesagt: Der Smart Contract ist noch nicht extern geprüft. Diese Version ist ein Prototyp für Testnetze.'
+        })
+      : ({
+          text: 'Das Geld liegt in einem Treuhandkonto ohne Verwalter (ein Smart Contract). Der Organisator bekommt pro Rechnung nur eine Rate und höchstens einmal pro Intervall. Was nicht abgerechnet wird, geht an dich zurück. Dein Konto ist mit deinem Passwort verschlüsselt und läuft nur auf diesem Gerät. ' +
         'Ehrlich gesagt: Der Smart Contract ist noch nicht extern geprüft. Diese Version ist ein Prototyp für Testnetze.'
-    })
+        })
+  },
+  pay: {
+    question: 'Wie bezahle ich eine Rechnung?',
+    keywords: ['bezahl', 'rechnung zahlen', 'offene rechnung', 'zahlen'],
+    answer: (s) => {
+      const r = s.round
+      if (!payg(r)) return { text: 'In dieser Runde musst du keine Rechnung bezahlen: Deine Raten liegen schon im Treuhandkonto.' }
+      if (r.openInvoices > 0) return { text: `Offen: ${num(r.openAmount)} ${r.symbol}. Tippe auf „Bezahlen“, prüfe den Betrag und bestätige. Danach bekommst du den Beleg. Reicht dein Guthaben nicht, lade zuerst dein Konto auf.`, actions: [{ type: 'pay' }] }
+      return { text: 'Gerade ist keine Rechnung offen. Die nächste kommt automatisch, und Pomona sagt dir Bescheid.' }
+    }
   },
   fund: {
     question: 'Wie lade ich mein Konto auf?',
@@ -166,6 +209,10 @@ export const TOPICS = {
     keywords: ['rechnung stellen', 'abrechnen', 'rechnung'],
     answer: (s) => {
       const r = s.round
+      if (payg(r)) {
+        if (r.role !== 'organizer') return TOPICS.pay.answer(s)
+        return { text: 'In dieser Runde musst du keine Rechnungen stellen: Sie gehen am Fälligkeitstag automatisch an alle Bietenden. Wer bezahlt, sieht du in der Ratenliste.' }
+      }
       if (r?.role !== 'organizer') return { text: 'Rechnungen stellt der Organisator. Du musst nichts tun: Deine Rate liegt schon im Treuhandkonto, und du bekommst automatisch einen Beleg.' }
       if (r.canInvoice) return { text: `Rechnung ${r.invoiceCount + 1} ist fällig. Damit gehen ${num(r.total)} ${r.symbol} an dein Konto, und alle Bietenden bekommen ihren Beleg.`, actions: [{ type: 'invoice' }] }
       if (r.phase === 'running') return { text: `Die nächste Rechnung ist ab ${day(r.nextInvoiceAt)} möglich, höchstens eine pro Intervall.` }
@@ -182,6 +229,7 @@ export function suggestions (s) {
   else if (r.role === 'organizer') ids = r.phase === 'running' ? ['status', 'invoice', 'next', 'safety'] : ['status', 'howmuch', 'failed', 'fees']
   else if (r.phase === 'bidding') ids = [pledged(r) ? 'change' : 'howmuch', 'how', 'failed', 'fees']
   else if (Number(r.refundable) > 0) ids = ['refund', 'status', 'receipt']
+  else if (r.openInvoices > 0) ids = ['pay', 'receipt', 'status', 'safety']
   else ids = ['next', 'receipt', 'status', 'safety']
   return ids.map((topic) => ({ topic, question: TOPICS[topic].question }))
 }
@@ -209,7 +257,8 @@ export function matchTopic (text) {
 /** Background knowledge for the language model (compact, factual). */
 export const FACTS = [
   'Pomona ist eine Bietrunde ohne Server: Organisator startet eine Runde, Bietende geben einen Betrag pro Rate an.',
-  'Beim Bieten wird Betrag × Anzahl Raten im Treuhandkonto hinterlegt. Der Organisator kann nicht vorab darauf zugreifen.',
+  'Es gibt zwei Arten von Runden. „Vorab hinterlegen“: Beim Bieten wird Betrag × Anzahl Raten im Treuhandkonto hinterlegt, der Organisator rechnet Rate für Rate ab. „Per Rechnung“: Beim Bieten wird nichts hinterlegt; jede Rechnung kommt automatisch und jede Person bezahlt sie selbst aus ihrem Konto an den Organisator.',
+  'Per Rechnung: Ohne Zahlung gibt es keinen Beleg. Offene Rechnungen kann man später noch bezahlen. Reicht das Guthaben nicht, scheitert die Zahlung.',
   'Bis zum Ende der Bietphase kann man erhöhen oder zurückziehen; danach stehen die Gebote fest.',
   'Ziel erreicht: Der Organisator stellt höchstens einmal pro Intervall (Woche oder Monat) eine Rechnung, höchstens so oft wie Raten vereinbart sind. Jede Rechnung zahlt eine Rate aller Gebote aus.',
   'Ziel verfehlt oder Runde abgebrochen: alle bekommen ihren hinterlegten Betrag vollständig zurück.',

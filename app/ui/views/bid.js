@@ -35,10 +35,13 @@ function amountPage (ui) {
   const p = per(r.intervalName)
   const has = num(r.myPledge) > 0
   const amount = num(ui.draft.amount)
-  const cost = amount * r.installments
+  const payg = r.mode === 'invoice'
+  const cost = payg ? 0 : amount * r.installments
   const balance = num(ui.status.wallet.usdt)
   let hint
-  if (amount > 0 && cost > balance) {
+  if (payg && amount > 0) {
+    hint = `Jetzt wird nichts abgebucht. Ab ${esc(date(r.biddingEnd))} kommt ${esc(p.adj)} eine Rechnung über ${fmt(amount + num(r.myPledge))} ${esc(r.symbol)}, ${r.installments}-mal.`
+  } else if (amount > 0 && cost > balance) {
     hint = `<span class="warn-text">Dafür brauchst du ${fmt(cost)} ${esc(r.symbol)}, dir fehlen ${fmt(cost - balance)}.</span> <button class="link" data-action="open-fund">Aufladen</button>`
   } else if (amount > 0) {
     hint = `${has ? 'Zusätzlich hinterlegst du' : 'Du hinterlegst'} ${r.installments} × ${fmt(amount)} = ${fmt(cost)} ${esc(r.symbol)}.`
@@ -78,6 +81,29 @@ function reviewPage (ui) {
   if (!q) return page('Gebot prüfen', `<p class="verify pending">${spinner} Wird berechnet…</p>`, opts)
 
   const fee = q.fee === null ? 'keine' : `ca. ${fmt(q.fee, 4)} ${esc(q.symbol)}`
+  if (q.mode === 'invoice') {
+    return page('Gebot prüfen', `
+    <div class="receipt">
+      <div class="receipt-head"><span class="small muted">${esc(r.title)}</span><strong>${fmt(q.pledgeAfter)} ${esc(q.symbol)} ${p.per}</strong></div>
+      <dl>
+        <dt>Rechnungen</dt><dd>${q.installments} × ${esc(p.adj)}, ab ${esc(date(r.biddingEnd))}</dd>
+        <dt>Jetzt abgebucht</dt><dd><strong>nichts</strong></dd>
+        <dt>Netzwerkgebühr</dt><dd>${fee}</dd>
+      </dl>
+    </div>
+    ${q.enough
+      ? ''
+      : `<div class="warning"><strong>Dir fehlen ${fmt(q.missing, 4)} ${esc(q.symbol)} für die Netzwerkgebühr</strong><p>Auch eine Zusage ist eine Transaktion. Lade ein paar Cent auf.</p></div>`}
+    <ul class="facts">
+      <li>Du sagst ${fmt(q.pledgeAfter)} ${esc(q.symbol)} pro Rate zu. Abgebucht wird nichts.</li>
+      <li>Wird das Ziel erreicht, kommt jede Rate als Rechnung. Du bezahlst sie mit einem Tipp und bekommst einen Beleg.</li>
+      <li>Bis ${esc(dayTime(r.biddingEnd))} kannst du erhöhen oder zurückziehen.</li>
+    </ul>
+    ${running ? stepper(ui.status.busyStep) : ''}
+    <div class="actions sticky">${q.enough
+      ? `<button class="btn accent block" data-action="confirm-bid" ${running ? 'disabled' : ''}>${running ? 'Bitte warten…' : 'Verbindlich zusagen'}</button>`
+      : '<button class="btn accent block" data-action="open-fund">Konto aufladen</button>'}</div>`, opts)
+  }
   return page('Gebot prüfen', `
     <div class="receipt">
       <div class="receipt-head"><span class="small muted">${esc(r.title)}</span><strong>${fmt(q.amount)} ${esc(q.symbol)} ${p.per}</strong></div>
@@ -111,8 +137,8 @@ function donePage (ui) {
   return page(null, `
     <div class="stack" style="text-align:center;align-items:center">
       <div class="big-check">✓</div>
-      <h1 style="font-size:26px">Dein Gebot liegt im Treuhandkonto</h1>
-      <p class="muted">${fmt(done.pledgeAfter)} ${esc(r.symbol)} ${p.per} · ${fmt(done.deposit)} ${esc(r.symbol)} hinterlegt</p>
+      <h1 style="font-size:26px">${r.mode === 'invoice' ? 'Dein Gebot steht' : 'Dein Gebot liegt im Treuhandkonto'}</h1>
+      <p class="muted">${fmt(done.pledgeAfter)} ${esc(r.symbol)} ${p.per} · ${r.mode === 'invoice' ? 'bezahlt wird mit jeder Rechnung' : `${fmt(done.deposit)} ${esc(r.symbol)} hinterlegt`}</p>
     </div>
     ${stepper(null, true)}
     <p class="small muted">Bis ${esc(dayTime(r.biddingEnd))} kannst du erhöhen oder zurückziehen. Wir melden uns, sobald feststeht, ob das Ziel erreicht ist.</p>

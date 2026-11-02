@@ -44,6 +44,12 @@ export const TOOLS = [
   },
   {
     type: 'function',
+    name: 'show_open_invoices',
+    description: 'Runden „Per Rechnung“: öffnet die Bezahlseite für offene Rechnungen. Die Person prüft und bestätigt selbst.',
+    parameters: { type: 'object', properties: {} }
+  },
+  {
+    type: 'function',
     name: 'prepare_withdraw',
     description: 'Bereitet das Zurückziehen des eigenen Gebots vor (nur in der Bietphase). Die Person bestätigt selbst.',
     parameters: { type: 'object', properties: {} }
@@ -67,6 +73,7 @@ const TO_ACTION = {
   open_page: (a) => ({ type: 'open', page: a.page }),
   show_receipt: (a) => ({ type: 'receipt', index: Number(a.installment) - 1 }),
   prepare_invoice: () => ({ type: 'invoice' }),
+  show_open_invoices: () => ({ type: 'pay' }),
   prepare_withdraw: () => ({ type: 'withdraw' }),
   prepare_refund: () => ({ type: 'refund' }),
   draft_news: (a) => ({ type: 'news', text: a.text })

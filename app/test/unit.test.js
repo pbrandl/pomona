@@ -67,7 +67,8 @@ test('wallet policy: only USDT approvals to the round, the round, and createRoun
   assert.equal(isAllowedCall(call(token, erc20.encodeFunctionData('approve', [attacker, 5n])), t), false)
   assert.equal(isAllowedCall(call(token, erc20.encodeFunctionData('transfer', [attacker, 5n])), t), false)
   assert.equal(isAllowedCall(call(round, rnd.encodeFunctionData('invoice', [])), t), true)
-  assert.equal(isAllowedCall(call(factory, fac.encodeFunctionData('createRound', [1n, 0n, 1n, 1n, 1, attacker])), t), true)
+  assert.equal(isAllowedCall(call(round, rnd.encodeFunctionData('pay', [0])), t), true)
+  assert.equal(isAllowedCall(call(factory, fac.encodeFunctionData('createRound', [1, 1n, 0n, 1n, 1n, 1, attacker])), t), true)
   assert.equal(isAllowedCall(call(factory, '0xdeadbeef'), t), false)
   assert.equal(isAllowedCall(call(attacker, '0x'), t), false)
   assert.equal(isAllowedCall(call(round, '0x', 1n), t), false) // no native value

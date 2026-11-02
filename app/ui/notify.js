@@ -50,7 +50,9 @@ export function changes (prev, next, { own = null } = {}) {
   if (a.phase === 'running' && b.phase === 'completed' && Number(b.refundable) > 0) {
     out.push({ key: 'ended', title: 'Ratenzahlung beendet', body: `${amount(b.refundable)} ${b.symbol} warten auf dich.` })
   }
-  if (b.invoiceCount > a.invoiceCount && !organizer && mine) {
+  if (b.mode === 'invoice' && b.invoiceCount > a.invoiceCount && !organizer && mine) {
+    out.push({ key: 'invoice-' + b.invoiceCount, title: `Rechnung ${b.invoiceCount} ist da`, body: `${amount(b.myPledge)} ${b.symbol} · Bitte in Pomona bezahlen.` })
+  } else if (b.invoiceCount > a.invoiceCount && !organizer && mine) {
     out.push({ key: 'invoice-' + b.invoiceCount, title: `Rate ${b.invoiceCount} abgerechnet`, body: 'Dein Beleg ist da.' })
   }
   if (organizer && b.canInvoice && !a.canInvoice) {

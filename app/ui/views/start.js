@@ -48,7 +48,15 @@ export function createPage (ui) {
       ${field(ui, 'minBid', `Mindestgebot ${p.per} (optional)`, { mode: 'decimal', placeholder: '0' })}`
   } else if (at === 2) {
     const target = num(d.target)
-    body = `<p class="lead">Nach der Bietphase stellst du Rate für Rate eine Rechnung.</p>
+    const mode = (key, title, text) =>
+      `<button class="card choice mode ${d.mode === key ? 'on' : ''}" data-action="mode" data-mode="${key}" aria-pressed="${d.mode === key}"><div><strong>${title}</strong><span class="muted">${text}</span></div><span class="radio" aria-hidden="true"></span></button>`
+    body = `<div>
+        <label>Wie wird bezahlt?</label>
+        <div class="stack">
+          ${mode('invoice', 'Per Rechnung', 'Bieten kostet nichts. Jede Rate kommt automatisch als Rechnung, alle bezahlen sie aus ihrem Konto. Gut für kleine Projekte.')}
+          ${mode('deposit', 'Vorab hinterlegen', 'Beim Bieten liegen alle Raten im Treuhandkonto. Du rechnest Rate für Rate ab. Sicher für dich, aber alle müssen das Geld vorstrecken.')}
+        </div>
+      </div>
       <div>
         <label>Abrechnung</label>
         <div class="tabs">
@@ -72,7 +80,7 @@ export function createPage (ui) {
 }
 
 function titleFor (at) {
-  return ['Deine Runde', 'Bietphase', 'Ratenzahlung'][at]
+  return ['Deine Runde', 'Bietphase', 'Bezahlung und Raten'][at]
 }
 
 function review (ui) {
@@ -88,6 +96,7 @@ function review (ui) {
   return `<div class="receipt">
       <div class="receipt-head"><span class="small muted">Runde</span><strong>${esc(d.title)}</strong>${d.description ? `<span class="small muted">${esc(d.description)}</span>` : ''}</div>
       <dl>
+        <dt>Bezahlung</dt><dd>${d.mode === 'deposit' ? 'Vorab hinterlegen' : 'Per Rechnung'}</dd>
         <dt>Bieten bis</dt><dd>${esc(dayTime(end))}</dd>
         <dt>Ziel</dt><dd><strong>${fmt(num(d.target))} USDT ${p.per}</strong></dd>
         <dt>Rechnungen</dt><dd>${n} × ${p.adj}</dd>
