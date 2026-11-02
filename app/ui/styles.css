@@ -806,3 +806,6 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; justif
 .tk-scroll > .tk-line .tk-col { grid-template-rows: 18px 20px 28px 20px 18px; }
 .tk-col::after { top: 51px; }
 .progress.split .stats .stat.key strong { color: var(--accent); }
+/* Amounts and dates centred on their dot (the dot stays on the headline's line) */
+.card .tk-line { grid-template-columns: repeat(var(--n), minmax(64px, 1fr)); min-width: max(100%, calc(var(--n) * 64px)); }
+.tk-col .tk-top, .tk-col .tk-bottom, .tk-col .tk-date { width: 64px; margin-left: -21px; text-align: center; }
