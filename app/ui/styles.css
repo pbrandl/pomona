@@ -812,3 +812,4 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; justif
 /* ring label in the same type size as the figures beside it */
 .progress.split .ring .big { font-size: 18px; font-weight: 600; letter-spacing: 0; line-height: 1.15; }
 .progress.split .ring .of { font-size: 12px; line-height: 1.3; }
+.progress.split { align-items: flex-start; } /* ring top = top of the figures */
