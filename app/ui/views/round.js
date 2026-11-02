@@ -70,10 +70,10 @@ function progress (r, p) {
   const sym = esc(r.symbol)
   const center = `<div class="big">${fmt(r.progress * 100, 0)}%</div><div class="of">vom Ziel</div>`
   const stat = (value, label) => `<div class="stat"><strong>${value}</strong><span>${label}</span></div>`
-  return `<div class="progress centered">
+  return `<div class="progress split">
     <div class="ring">${ringSvg(r.progress)}<div class="center">${center}</div></div>
-    <p class="muted">${fmt(r.total)} von ${fmt(r.target)} ${sym} ${p.per}</p>
     <div class="stats">
+      ${stat(`${fmt(r.total)} <small>/ ${fmt(r.target)} ${sym}</small>`, `zugesagt ${p.per}`)}
       ${stat(fmt(r.bidders), r.bidders === 1 ? 'Bietende Person' : 'Bietende')}
       ${stat(r.average ? `${fmt(r.average)} <small>${sym}</small>` : '–', 'Durchschnitt')}
       ${stat(r.median ? `${fmt(r.median)} <small>${sym}</small>` : '–', 'Median')}

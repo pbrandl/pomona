@@ -760,3 +760,14 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; justif
 .tk-cap .sw.done { background: var(--accent); }
 .tk-cap .sw.todo { border: 2px solid var(--line); }
 .tk-scroll > .tk-line .tk-col { grid-template-rows: 20px 28px 20px 18px; }
+
+/* Ring left, figures right-aligned in a column beside it */
+.progress.split { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.progress.split .ring { width: 156px; height: 156px; margin: 0; flex: none; }
+.progress.split .ring circle { stroke-width: 13; }
+.progress.split .ring .big { font-size: 30px; }
+.progress.split .stats { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; text-align: right; min-width: 0; }
+.progress.split .stats .stat { padding: 0; border: 0; align-items: flex-end; }
+.progress.split .stats div + div { border-left: 0; }
+.progress.split .stats .stat strong { font-size: 18px; }
+@media (max-width: 360px) { .progress.split .ring { width: 128px; height: 128px; } }
