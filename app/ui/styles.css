@@ -1019,3 +1019,12 @@ main:has(.page.fit) { padding-bottom: 0; }
   .page.fit .chips .chip { padding-block: 4px; }
   .page.fit .amount-unit { font-size: 13px; }
 }
+
+/* Note under the bid: a quiet lead with icon, one detail line */
+.bid-hint { display: grid; justify-items: center; gap: 2px; margin: 0; text-align: center; font-size: 13px; }
+.bid-hint .note-lead { display: inline-flex; align-items: center; gap: 6px; color: var(--ink); font-weight: 500; }
+.bid-hint .note-lead .ic { width: 15px; height: 15px; color: var(--accent); }
+.bid-hint .note-detail { color: var(--muted); }
+.bid-hint .note-detail strong { color: var(--ink); font-weight: 600; }
+.bid-hint.warn .note-lead, .bid-hint.warn .note-lead .ic { color: var(--danger); }
+@media (max-height: 620px) { .page.fit .bid-hint { display: grid; font-size: 12px; } }

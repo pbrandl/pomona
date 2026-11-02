@@ -9,6 +9,7 @@ export const ICON = {
   qr: svg('<rect x="3.5" y="3.5" width="6" height="6" rx="1"/><rect x="14.5" y="3.5" width="6" height="6" rx="1"/><rect x="3.5" y="14.5" width="6" height="6" rx="1"/><path d="M14.5 14.5h2.5v2.5M20.5 14.5v.01M14.5 20.5h.01M17.5 20.5h3v-3"/>'),
   share: svg('<path d="M12 15V3.5M7.5 8 12 3.5 16.5 8"/><path d="M5 12v6.5A2 2 0 0 0 7 20.5h10a2 2 0 0 0 2-2V12"/>'),
   web: svg('<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.4 3.5 5.3 3.5 8.5s-1.1 6.1-3.5 8.5c-2.4-2.4-3.5-5.3-3.5-8.5s1.1-6.1 3.5-8.5z"/>'),
+  info: svg('<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 7.8v.01"/>'),
   check: svg('<path d="m5 12.5 4.5 4.5L19 7.5"/>'),
   alert: svg('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5M12 16.2v.01"/>')
 }

@@ -5,6 +5,7 @@
  */
 import { esc, fmt, num, per, dayTime, date } from '../format.js'
 import { page, spinner } from './parts.js'
+import { ICON } from './icons.js'
 
 export const BID_STEPS = ['Betrag', 'Prüfen', 'Fertig']
 
@@ -42,20 +43,22 @@ function amountPage (ui) {
   const cost = payg ? 0 : amount * r.installments
   const balance = num(ui.status.wallet.usdt)
   const touch = isTouch() // touch: keypad; desktop: a focused text field with a blinking caret
-  // The note is always there; without an amount it speaks of "deinen Betrag".
-  const what = amount > 0 ? `${fmt(amount + num(r.myPledge))} ${esc(r.symbol)}` : 'deinen Betrag'
-  const min = num(r.minBid) > 0 && !has ? ` Mindestgebot ${fmt(r.minBid)} ${esc(r.symbol)}.` : ''
-  let hint
+  // The note is always there: one quiet line, one detail line.
+  const sym = esc(r.symbol)
+  const day = esc(new Date(r.biddingEnd * 1000).toLocaleDateString('de-DE'))
+  const what = amount > 0 ? `<strong>${fmt(amount + num(r.myPledge))} ${sym}</strong>` : 'dein Betrag'
+  const min = num(r.minBid) > 0 && !has && !(amount > 0) ? ` · Mindestgebot ${fmt(r.minBid)} ${sym}` : ''
+  let note
   if (payg) {
-    hint = `Jetzt wird nichts abgebucht. Ab ${esc(new Date(r.biddingEnd * 1000).toLocaleDateString('de-DE'))} kommt ${esc(p.adj)} eine Rechnung über ${what}.${min}`
+    note = { lead: 'Heute wird nichts abgebucht', detail: `Ab ${day} ${esc(p.adj)} ${what} per Rechnung${min}` }
   } else if (amount > 0 && cost > balance) {
-    hint = `<span class="warn-text">Dafür brauchst du ${fmt(cost)} ${esc(r.symbol)}, dir fehlen ${fmt(cost - balance)}.</span> <button class="link" data-action="open-fund">Aufladen</button>`
+    note = { lead: `Dir fehlen ${fmt(cost - balance)} ${sym}`, detail: `Hinterlegt werden ${r.installments} × ${fmt(amount)} = ${fmt(cost)} ${sym} · <button class="link" data-action="open-fund">Aufladen</button>`, warn: true }
   } else if (amount > 0) {
-    hint = `${has ? 'Zusätzlich hinterlegst du' : 'Du hinterlegst'} ${r.installments} × ${fmt(amount)} = ${fmt(cost)} ${esc(r.symbol)}.`
+    note = { lead: `${has ? 'Zusätzlich hinterlegt' : 'Hinterlegt'}: ${fmt(cost)} ${sym}`, detail: `${r.installments} × ${fmt(amount)} ${sym} im Treuhandkonto` }
   } else {
-    hint = `Du hinterlegst ${r.installments} × deinen Betrag im Treuhandkonto.${min}`
+    note = { lead: 'Hinterlegt wird alles vorab', detail: `${r.installments} × dein Betrag im Treuhandkonto${min}` }
   }
-  // Touch: the figure is shown, the keypad below types into it (no system keyboard).
+  const hint = `<span class="note-lead">${ICON.info}${note.lead}</span><span class="note-detail">${note.detail}</span>`
   const unit = `<span class="amount-unit">${esc(r.symbol)} ${p.per}</span>`
   const display = touch
     ? `<div class="amount-display ${amount > 0 ? '' : 'empty'}" aria-live="polite"><strong>${typed(ui.draft.amount)}</strong>${unit}</div>`
@@ -68,7 +71,7 @@ function amountPage (ui) {
     ${has ? `<p class="lead">Du bietest bisher ${fmt(r.myPledge)} ${esc(r.symbol)} ${p.per}.</p>` : ''}
     ${display}
     ${!has && r.guide ? guideChips(ui, r, p) : ''}
-    <p class="small muted bid-hint">${hint}</p>
+    <p class="bid-hint ${note.warn ? 'warn' : ''}">${hint}</p>
     ${touch ? keypad() : ''}
     <div class="actions sticky"><button class="btn accent block" data-action="review-bid" ${amount > 0 ? '' : 'disabled'}>Weiter</button></div>`,
   { steps: BID_STEPS, at: 0, cls: touch ? 'fit' : 'fit desk' })
