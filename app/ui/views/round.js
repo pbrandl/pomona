@@ -69,11 +69,11 @@ function ringSvg (value) {
 function progress (r, p) {
   const sym = esc(r.symbol)
   const center = `<div class="big">${fmt(r.progress * 100, 0)}%</div><div class="of">vom Ziel</div>`
-  const stat = (value, label) => `<div class="stat"><strong>${value}</strong><span>${label}</span></div>`
+  const stat = (value, label, cls = '') => `<div class="stat ${cls}"><strong>${value}</strong><span>${label}</span></div>`
   return `<div class="progress split">
     <div class="ring">${ringSvg(r.progress)}<div class="center">${center}</div></div>
     <div class="stats">
-      ${stat(`${fmt(r.total, 0)} <small>/ ${fmt(r.target, 0)} ${sym}</small>`, `zugesagt ${p.per}`)}
+      ${stat(`${fmt(r.total, 0)} <small>/ ${fmt(r.target, 0)} ${sym}</small>`, `zugesagt ${p.per}`, 'key')}
       ${stat(fmt(r.bidders), r.bidders === 1 ? 'Bietende Person' : 'Bietende')}
       ${stat(r.average ? `${fmt(r.average, 0)} <small>${sym}</small>` : '–', 'Durchschnitt')}
       ${stat(r.median ? `${fmt(r.median, 0)} <small>${sym}</small>` : '–', 'Median')}
