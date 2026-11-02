@@ -146,6 +146,11 @@ function render () {
   const where = ui.sheet + ':' + ui.createStep + ':' + ui.bidStep
   if (where !== lastPage) { lastPage = where; window.scrollTo(0, 0) }
 
+  // Bid step "Betrag" on desktop: the field is focused right away, caret blinking.
+  if (!focusId && ui.sheet === 'bid' && ui.bidStep === 'amount') {
+    const input = document.getElementById('amount')
+    if (input) { input.focus(); const n = input.value.length; try { input.setSelectionRange(n, n) } catch {} }
+  }
   if (focusId) {
     const el = document.getElementById(focusId)
     if (el) {

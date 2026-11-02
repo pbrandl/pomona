@@ -41,7 +41,7 @@ function amountPage (ui) {
   const payg = r.mode === 'invoice'
   const cost = payg ? 0 : amount * r.installments
   const balance = num(ui.status.wallet.usdt)
-  const touch = true // same three-step layout everywhere; desktop also types on the keyboard
+  const touch = isTouch() // touch: keypad; desktop: a focused text field with a blinking caret
   let hint
   if (payg && amount > 0) {
     hint = `Jetzt wird nichts abgebucht. Ab ${esc(date(r.biddingEnd))} kommt ${esc(p.adj)} eine Rechnung über ${fmt(amount + num(r.myPledge))} ${esc(r.symbol)}.`
@@ -53,21 +53,22 @@ function amountPage (ui) {
     hint = num(r.minBid) > 0 ? `Mindestgebot ${fmt(r.minBid)} ${esc(r.symbol)} ${p.per}.` : `${r.installments} Raten, ${esc(p.adj)}.`
   }
   // Touch: the figure is shown, the keypad below types into it (no system keyboard).
+  const unit = `<span class="amount-unit">${esc(r.symbol)} ${p.per}</span>`
   const display = touch
-    ? `<div class="amount-display ${amount > 0 ? '' : 'empty'}" aria-live="polite"><strong>${typed(ui.draft.amount)}</strong><span>${esc(r.symbol)} ${p.per}</span></div>`
-    : `<div class="amount big">
-      <input id="amount" data-draft="amount" inputmode="decimal" placeholder="0" value="${esc(ui.draft.amount)}" autocomplete="off" autofocus>
-      <span class="unit">${esc(r.symbol)} ${p.per}</span>
-    </div>`
-  return page(has ? 'Um wie viel erhöhen?' : `Wie viel ${p.per}?`, `
+    ? `<div class="amount-display ${amount > 0 ? '' : 'empty'}" aria-live="polite"><strong>${typed(ui.draft.amount)}</strong>${unit}</div>`
+    : `<label class="amount-display desktop" for="amount">
+        <input id="amount" data-draft="amount" inputmode="decimal" placeholder="0" value="${esc(ui.draft.amount)}" autocomplete="off" autofocus aria-label="Dein Gebot ${p.per} in ${esc(r.symbol)}">
+        ${unit}
+      </label>`
+  return page(null, `
     ${has ? `<p class="lead">Du bietest bisher ${fmt(r.myPledge)} ${esc(r.symbol)} ${p.per}.</p>` : ''}
     ${display}
     ${!has && r.guide ? guideChips(ui, r, p) : ''}
-    ${progressBar(r, amount)}
+    <div class="bid-progress-box">${progressBar(r, amount)}</div>
     <p class="small muted bid-hint">${hint}</p>
     ${touch ? keypad() : ''}
     <div class="actions sticky"><button class="btn accent block" data-action="review-bid" ${amount > 0 ? '' : 'disabled'}>Weiter</button></div>`,
-  { steps: BID_STEPS, at: 0, cls: touch ? 'fit' : '' })
+  { steps: BID_STEPS, at: 0, cls: touch ? 'fit' : 'fit desk' })
 }
 
 /** Where the round stands, and how far your bid moves it toward the target. */

@@ -988,3 +988,19 @@ main:has(.page.fit) { padding-bottom: 0; }
 @media (max-width: 520px) { .bid-box .you-actions { width: 100%; } .bid-box .you-actions .btn { flex: 1; } }
 /* the amount step on desktop: same layout, centred and not wider than a phone */
 @media (pointer: fine) { .page.fit { max-width: 440px; margin-inline: auto; } }
+
+/* Bid step "Betrag": unit under the figure; desktop types into a large field */
+.amount-display { flex-direction: column; align-items: center; gap: 4px; }
+.amount-unit { color: var(--muted); font-size: 15px; }
+.amount-display.desktop { cursor: text; padding: 12px 0 4px; }
+.amount-display.desktop input {
+  width: 100%; border: 0; outline: 0; background: transparent; text-align: center;
+  font-size: 56px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.1; caret-color: var(--accent);
+  font-variant-numeric: tabular-nums; color: var(--ink);
+}
+.amount-display.desktop input::placeholder { color: var(--faint); }
+.page.fit.desk { height: auto; overflow: visible; }
+.page.fit.desk > .stack-lg { gap: 18px; }
+/* The progress bar sits in a light, highlighted box */
+.bid-progress-box { background: var(--accent-soft); border-radius: 14px; padding: 14px 16px; }
+.bid-progress-box .bp-track { background: var(--surface); }
