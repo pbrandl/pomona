@@ -791,3 +791,7 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; justif
 .tk-col .tk-dot { z-index: 1; }
 .tk-col.clickable:hover { background: none; }
 .tk-col.clickable:hover .tk-dot { box-shadow: 0 0 0 4px var(--accent-soft); }
+/* label sits close to its figure */
+.progress.split .stats .stat { gap: 0; }
+.progress.split .stats .stat strong { line-height: 1.15; }
+.progress.split .stats .stat span { line-height: 1.3; }
