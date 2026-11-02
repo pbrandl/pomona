@@ -1029,4 +1029,9 @@ main:has(.page.fit) { padding-bottom: 0; }
 .bid-hint.warn .note-lead, .bid-hint.warn .note-lead .ic { color: var(--danger); }
 @media (max-height: 620px) { .page.fit .bid-hint { display: grid; font-size: 12px; } }
 .bp-track { height: 6px; border-radius: 6px; } /* slimmer bar */
-h1 .brand { color: var(--accent); }
+h1 .hl { color: var(--accent); }
+/* Welcome headline: exactly two lines, each kept whole, scaled to the screen */
+h1.welcome { font-size: clamp(26px, 8.2vw, 44px); line-height: 1.12; text-wrap: balance; }
+h1.welcome > span { display: block; white-space: nowrap; }
+h1.welcome { font-size: clamp(22px, 7.6vw, 44px); }
+.center-screen .row { flex-wrap: wrap; } /* buttons stack on very narrow phones */
