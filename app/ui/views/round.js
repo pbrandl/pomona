@@ -73,10 +73,10 @@ function progress (r, p) {
   return `<div class="progress split">
     <div class="ring">${ringSvg(r.progress)}<div class="center">${center}</div></div>
     <div class="stats">
-      ${stat(`${fmt(r.total)} <small>/ ${fmt(r.target)} ${sym}</small>`, `zugesagt ${p.per}`)}
+      ${stat(`${fmt(r.total, 0)} <small>/ ${fmt(r.target, 0)} ${sym}</small>`, `zugesagt ${p.per}`)}
       ${stat(fmt(r.bidders), r.bidders === 1 ? 'Bietende Person' : 'Bietende')}
-      ${stat(r.average ? `${fmt(r.average)} <small>${sym}</small>` : '–', 'Durchschnitt')}
-      ${stat(r.median ? `${fmt(r.median)} <small>${sym}</small>` : '–', 'Median')}
+      ${stat(r.average ? `${fmt(r.average, 0)} <small>${sym}</small>` : '–', 'Durchschnitt')}
+      ${stat(r.median ? `${fmt(r.median, 0)} <small>${sym}</small>` : '–', 'Median')}
     </div>
   </div>`
 }
