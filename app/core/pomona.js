@@ -43,6 +43,8 @@ const TRANSFER = topicOf('Transfer(address,address,uint256)')
  * @property {object} [dht] - custom HyperDHT instance (tests)
  * @property {number} [pollMs] - how often to emit 'change' for chain updates
  * @property {() => import('./agent/qvac.js').Engine} [assistantEngine] - language model engine (tests inject a fake)
+ * @property {string} [modelsDir] - folder with hand-downloaded model files (checked by SHA-256, see agent/qvac.js)
+ * @property {boolean} [modelsLocalOnly] - use only files from modelsDir, never download
  */
 
 /**
@@ -56,7 +58,7 @@ const TRANSFER = topicOf('Transfer(address,address,uint256)')
 
 export class Pomona extends EventEmitter {
   /** @param {PomonaOptions} opts */
-  constructor ({ storage, defaultNetwork = 'local', networkOverrides = {}, allowDev = false, bootstrap, dht, pollMs, assistantEngine } = {}) {
+  constructor ({ storage, defaultNetwork = 'local', networkOverrides = {}, allowDev = false, bootstrap, dht, pollMs, assistantEngine, modelsDir = null, modelsLocalOnly = false } = {}) {
     super()
     this.p2p = new P2PNode(storage, { bootstrap, dht })
     this.defaultNetwork = defaultNetwork
@@ -85,7 +87,7 @@ export class Pomona extends EventEmitter {
       getStatus: () => this.status(),
       quoteBid: (p) => this.quoteBid(p),
       settings: { get: (k) => this.p2p.getSetting(k), set: (k, v) => this.p2p.setSetting(k, v) },
-      engine: assistantEngine ?? (() => new QvacEngine({ cacheDir: storage + '/models' })),
+      engine: assistantEngine ?? (() => new QvacEngine({ cacheDir: storage + '/models', localDir: modelsDir, localOnly: modelsLocalOnly })),
       onChange: () => this._changed()
     })
     this._timer = null

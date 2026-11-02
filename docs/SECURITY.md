@@ -83,7 +83,12 @@ Verbleibend: Ein Beleg kann innerhalb seiner 10 Minuten weitergegeben werden (Sc
 | Falsche Antworten (Halluzination) | Knopf-Vorschläge und Befehle laufen ohne Modell über geprüfte Texte. Antworten des Modells sind sichtbar gekennzeichnet („Lokale KI · kann sich irren“). Zahlen kommen aus dem Status, nicht aus dem Modell. |
 | Privatsphäre | Das Modell läuft lokal (QVAC, llama.cpp). Fragen verlassen das Gerät nicht. Das Gespräch wird nicht gespeichert und beim Sperren gelöscht. |
 | Manipuliertes Modell | QVAC prüft heruntergeladene Modelle gegen die SHA-256-Prüfsumme aus seinem Katalog. Der Katalog kommt mit dem npm-Paket, dessen Version über den Lockfile fixiert ist. |
+| Modelldatei von Hand (Entwicklermodus, `modelsDir`) | Pomona nimmt eine selbst heruntergeladene Datei nur, wenn Größe und SHA-256 zum QVAC-Katalog passen (`core/agent/qvac.js`). Das Ergebnis wird mit Größe und Änderungszeit gemerkt, eine ausgetauschte Datei wird neu geprüft. |
 | Download | Das Modell wird peer-to-peer aus der QVAC-Registry geladen. Dabei sind wie bei Hyperswarm IP-Adressen für die Gegenstellen sichtbar. |
+
+## Entwicklermodus ohne Pear (`npm run dev`)
+
+Im Browser liegt zwischen Oberfläche und Kern ein lokaler HTTP-Server statt der `pear-pipe`. Er lauscht nur auf 127.0.0.1. Jeder Aufruf braucht ein Token, das bei jedem Start zufällig neu erzeugt wird und mit `timingSafeEqual` geprüft wird. Ein eigener Header erzwingt bei fremden Seiten eine CORS-Vorabprüfung, die nie beantwortet wird. Fremde `Host`-Header (DNS-Rebinding) werden abgelehnt. Ausgeliefert werden nur `index.html` und `ui/`. Es gelten dieselbe CSP wie in Pear und zusätzlich `frame-ancestors 'none'`. Der Modus nutzt immer die lokale Chain mit Testgeld. Details in [DEV.md](DEV.md).
 
 ## Vor einem Mainnet-Einsatz
 

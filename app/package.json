@@ -7,11 +7,12 @@
   "main": "index.js",
   "license": "MIT",
   "scripts": {
-    "dev": "pear run --dev .",
+    "dev": "node scripts/dev.js",
     "test": "node --test test/*.test.js",
     "preview": "node scripts/preview.js",
     "lint": "standard",
-    "lint:fix": "standard --fix"
+    "lint:fix": "standard --fix",
+    "pear": "pear run --dev ."
   },
   "pear": {
     "name": "pomona",

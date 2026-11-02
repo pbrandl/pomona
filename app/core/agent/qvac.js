@@ -25,9 +25,20 @@ export const MODELS = {
 
 /** @implements {Engine} */
 export class QvacEngine {
-  /** @param {{ cacheDir: string }} opts - absolute directory for model files */
-  constructor ({ cacheDir }) {
+  /**
+   * @param {Object} opts
+   * @param {string} opts.cacheDir - absolute directory for downloaded model files
+   * @param {string} [opts.localDir] - folder with model files downloaded by hand
+   *   (e.g. from Hugging Face in a browser). A file named like the registry's
+   *   model file is used instead of the peer-to-peer download, but only after
+   *   its SHA-256 matches the registry's checksum.
+   * @param {boolean} [opts.localOnly] - never download; a missing file is an error
+   *   that says where to put it (networks that block peer-to-peer traffic)
+   */
+  constructor ({ cacheDir, localDir = null, localOnly = false }) {
     this.cacheDir = cacheDir
+    this.localDir = localDir
+    this.localOnly = localOnly
     this.api = null
     this.modelId = null
   }
@@ -54,13 +65,48 @@ export class QvacEngine {
     const spec = MODELS[key]
     if (!spec) throw new Error('Unbekanntes Modell: ' + key)
     if (this.modelId) await q.unloadModel({ modelId: this.modelId }).catch(() => {})
+    const descriptor = q.models[spec.id]
+    const local = await this._localFile(descriptor, onProgress)
     this.modelId = await q.loadModel({
-      modelSrc: q.models[spec.id],
+      ...(local ? { modelSrc: local, modelType: descriptor.engine } : { modelSrc: descriptor }),
       onProgress: (p) => {
         const ratio = Number.isFinite(p?.percentage) ? p.percentage / 100 : p?.total ? p.downloaded / p.total : null
         if (ratio !== null) onProgress(Math.max(0, Math.min(1, ratio)))
       }
     })
+  }
+
+  /**
+   * @private Path of a hand-downloaded model file in `localDir`, or null.
+   * Hashes the file once (progress 0…1) and remembers the result by size and
+   * modification time, so a swapped file is checked again.
+   */
+  async _localFile (descriptor, onProgress) {
+    if (!this.localDir) return null
+    const fs = await import('fs')
+    const path = this.localDir + '/' + descriptor.modelId
+    let st
+    try { st = fs.statSync(path) } catch {
+      if (this.localOnly) throw new Error(`Modelldatei fehlt. Bitte ${descriptor.modelId} herunterladen und in ${this.localDir} ablegen (siehe docs/DEV.md).`)
+      return null
+    }
+    if (st.size !== descriptor.expectedSize) {
+      throw new Error(`${descriptor.modelId} in ${this.localDir} hat die falsche Größe (${st.size} statt ${descriptor.expectedSize} Bytes). Bitte die Datei neu herunterladen.`)
+    }
+    const stamp = `${descriptor.sha256Checksum}:${st.size}:${Math.floor(st.mtimeMs)}`
+    const marker = this.cacheDir + '/verified-' + descriptor.modelId + '.txt'
+    let known = null
+    try { known = fs.readFileSync(marker, 'utf8') } catch {}
+    if (known !== stamp) {
+      const sha = await sha256File(fs, path, st.size, onProgress)
+      if (sha !== descriptor.sha256Checksum) {
+        throw new Error(`${descriptor.modelId} in ${this.localDir} hat eine falsche Prüfsumme. Die Datei ist beschädigt oder nicht das erwartete Modell.`)
+      }
+      fs.mkdirSync(this.cacheDir, { recursive: true })
+      fs.writeFileSync(marker, stamp)
+    }
+    onProgress(1)
+    return path
   }
 
   async chat ({ messages, tools }) {
@@ -80,4 +126,23 @@ export class QvacEngine {
     await this.api.close().catch(() => {})
     this.api = null
   }
+}
+
+/** Streams a file through SHA-256 (works in Node and Bare). */
+async function sha256File (fs, path, size, onProgress) {
+  const { createHash } = await import('crypto')
+  const hash = createHash('sha256')
+  let done = 0
+  let last = 0
+  await new Promise((resolve, reject) => {
+    const s = fs.createReadStream(path)
+    s.on('data', (chunk) => {
+      hash.update(chunk)
+      done += chunk.length
+      if (done - last > 32 * 1024 * 1024) { last = done; onProgress(Math.min(0.99, done / size)) }
+    })
+    s.on('error', reject)
+    s.on('end', resolve)
+  })
+  return hash.digest('hex')
 }

@@ -113,6 +113,18 @@ Die Pear-Doku (docs.pears.com) war in der Entwicklungsumgebung nicht erreichbar.
 
 Beim ersten echten Start mit `pear run --dev .` sollte das gegen die aktuelle Doku geprüft werden.
 
+## Zwei Startwege, ein Code
+
+Kern (`core/`) und Oberfläche (`ui/`, `index.html`) kennen Pear nicht direkt. Sie sprechen nur über `window.pomona` (`call`, `on`, `copy`, `cameraAccess`, `restart`) bzw. über das RPC-Protokoll miteinander. Diese Hülle gibt es zweimal:
+
+| | Oberfläche | Kern |
+|---|---|---|
+| Pear (`pear run`) | `ui/pear.js` (`pear-run`, `pear-pipe`) | `worker/index.js` |
+| Entwicklermodus (`npm run dev`) | `ui/dev.js` (HTTP, Server-Sent Events) | `worker/dev.js` (stdin/stdout), gestartet von `scripts/dev.js` |
+| Design-Vorschau (`npm run preview`) | `ui/mock.js` (simuliert) | – |
+
+Neue Funktionen kommen also in `core/` und `ui/` und laufen auf allen Wegen. Siehe [DEV.md](DEV.md).
+
 ## Live-Updates
 
 `RoundContract.watch()` abonniert alle Events der Runde (Bid, Invoiced, …) per `eth_getLogs`-Polling im Takt `pollMs` des Netzwerks (Arbitrum 1 s, Ethereum 4 s, lokal 0,1 s). Jedes Event löst `change` aus; die UI lädt den Status neu. Ein 15-s-Timer hält Countdowns aktuell. Auf Arbitrum sehen alle ein neues Gebot so etwa 1–3 s nach dem Absenden.

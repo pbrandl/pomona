@@ -118,3 +118,27 @@ test('rpc: unknown methods and bad params are rejected', async () => {
   assert.equal(replies.find((r) => r.id === 4).error.code, 'BAD_PARAMS')
   assert.equal(calls.length, 0)
 })
+
+test('QVAC: hand-downloaded model file is used only with the right size and SHA-256', async () => {
+  const { mkdtempSync, writeFileSync, rmSync } = await import('node:fs')
+  const { tmpdir } = await import('node:os')
+  const { join } = await import('node:path')
+  const { createHash } = await import('node:crypto')
+  const { QvacEngine } = await import('../core/agent/qvac.js')
+  const dir = mkdtempSync(join(tmpdir(), 'pomona-models-'))
+  try {
+    const data = Buffer.from('gguf-test-model')
+    const good = { modelId: 'm.gguf', expectedSize: data.length, sha256Checksum: createHash('sha256').update(data).digest('hex') }
+    const engine = new QvacEngine({ cacheDir: join(dir, 'cache'), localDir: dir })
+    assert.equal(await engine._localFile(good, () => {}), null) // missing: fall back to the registry
+    const strict = new QvacEngine({ cacheDir: join(dir, 'cache'), localDir: dir, localOnly: true })
+    await assert.rejects(strict._localFile(good, () => {}), /Modelldatei fehlt/)
+    writeFileSync(join(dir, 'm.gguf'), data)
+    assert.equal(await engine._localFile(good, () => {}), join(dir, 'm.gguf'))
+    assert.equal(await engine._localFile(good, () => {}), join(dir, 'm.gguf')) // cached check
+    await assert.rejects(engine._localFile({ ...good, sha256Checksum: '00'.repeat(32) }, () => {}), /Prüfsumme/)
+    await assert.rejects(engine._localFile({ ...good, expectedSize: 999 }, () => {}), /falsche Größe/)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})

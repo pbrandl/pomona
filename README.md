@@ -35,6 +35,7 @@ Mehr dazu:
 - [docs/CONTRACT.md](docs/CONTRACT.md): Phasen, Funktionen und Invarianten der Contracts
 - [docs/SECURITY.md](docs/SECURITY.md): Bedrohungsmodell, Prüfungsergebnisse und offene Risiken
 - [docs/RPC.md](docs/RPC.md): Schnittstelle zwischen UI und Worker, Format des Status
+- [docs/DEV.md](docs/DEV.md): Entwicklermodus ohne Pear, Sprachmodell als Datei
 - [docs/ASSISTANT.md](docs/ASSISTANT.md): der Assistent „Frag Pomona“ (QVAC), Werkzeuge, Grenzen, Sicherheit
 
 ## Loslegen
@@ -49,13 +50,22 @@ cd contracts && npm install && npm test
 npm run chain
 node scripts/deploy.js local          # schreibt app/core/config/deployments.js
 
-# App testen (16 Tests) und starten
+# App testen (35 Tests) und starten
 cd ../app && npm install && npm test
 pear run --dev .                      # Organisator
 pear run --dev . --tmp-store          # zweite Instanz als Bieter
 ```
 
 Im Entwicklermodus läuft die App gegen die lokale Chain. In der Wallet gibt es einen **Faucet** für Test-USDT. Die Gebühren in ETH füllt die App dort unsichtbar auf, weil es lokal weder Bundler noch Paymaster gibt.
+
+### Ohne Pear (z. B. hinter einer Firmen-Firewall)
+
+```bash
+cd contracts && npm install && cd ../app && npm install
+npm run dev     # lokale Chain, lokales P2P-Netz, Kern in Bare, zwei Profile im Browser
+```
+
+Derselbe Code wie in Pear, nur im Browser und komplett offline. Das Sprachmodell kommt dort als Datei aus `~/pomona-models`. Anleitung: [docs/DEV.md](docs/DEV.md).
 
 ### Testnet und Mainnet
 
@@ -79,7 +89,7 @@ Szenarien: `onboarding`, `locked`, `start`, `bidder`, `organizer`, `invoice`, `r
 ## Qualität
 
 - `npm test` in `contracts/` umfasst 14 Tests: Zeitplan, nachgeholte Rechnungen, Belege, Erstattung bei Abbruch, Ablauf und verfehltem Ziel, Einladungen (auch Wiederverwendung in einer anderen Runde), Fee-Tokens, Factory-Register und Parameterprüfung.
-- `npm test` in `app/` umfasst 34 Tests:
+- `npm test` in `app/` umfasst 35 Tests:
   - Unit-Tests: Beträge, Links, Zeitplan, Policy, Tresor, Manifest-Bereinigung, RPC-Validierung, Benachrichtigungen
   - Assistent: Befehle, Wissen, Rollen- und Phasenprüfung jeder Aktion, Prompt Injection, keine Werkzeuge zum Geldbewegen
   - End-to-End mit echter Chain, WDK und Hyperswarm: Raten-Runde inklusive Beitritt bei offline Organisator, Belege, gefälschte Runden, Policy-Blockade, Senden und Sperren

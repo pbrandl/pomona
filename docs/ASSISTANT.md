@@ -49,6 +49,7 @@ Texte anderer Peers (Titel, Beschreibung, Neuigkeiten) werden bereinigt und als 
 
 - **Download:** einmalig, peer-to-peer aus der QVAC-Registry, nach `Pear.app.storage/models`. QVAC prüft die SHA-256-Prüfsumme.
 - **Danach** läuft alles offline im Bare-Worker (`@qvac/inference`, llama.cpp). Das Gespräch verlässt das Gerät nicht, wird nicht gespeichert und beim Sperren gelöscht.
+- **Ohne Peer-to-Peer** (Firmennetz, Entwicklermodus): Die Modelldatei lässt sich auch von Hand herunterladen und in `modelsDir` legen (`~/pomona-models` in `npm run dev`). Pomona nimmt sie nur, wenn Größe und SHA-256 zum QVAC-Katalog passen, und lädt sie dann mit `modelType: llamacpp-completion` direkt. Siehe [DEV.md](DEV.md).
 - **Andere Modelle:** In `MODELS` in `core/agent/qvac.js` lässt sich jede QVAC-Konstante eintragen, z. B. Qwen 3.5.
 
 ## Erweitern
