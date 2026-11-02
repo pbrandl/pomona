@@ -47,7 +47,7 @@ function amountPage (ui) {
   const sym = esc(r.symbol)
   const day = esc(new Date(r.biddingEnd * 1000).toLocaleDateString('de-DE'))
   const what = amount > 0 ? `<strong>${fmt(amount + num(r.myPledge))} ${sym}</strong>` : 'dein Betrag'
-  const min = num(r.minBid) > 0 && !has && !(amount > 0) ? ` · Mindestgebot ${fmt(r.minBid)} ${sym}` : ''
+  const min = '' // the minimum bid sits under the figure, always visible
   let note
   if (payg) {
     note = { lead: 'Heute wird nichts abgebucht', detail: `Ab ${day} ${esc(p.adj)} ${what} per Rechnung${min}` }
@@ -59,7 +59,7 @@ function amountPage (ui) {
     note = { lead: 'Hinterlegt wird alles vorab', detail: `${r.installments} × dein Betrag im Treuhandkonto${min}` }
   }
   const hint = `<span class="note-lead">${ICON.info}${note.lead}</span><span class="note-detail">${note.detail}</span>`
-  const unit = `<span class="amount-unit">${esc(r.symbol)} ${p.per}</span>`
+  const unit = `<span class="amount-unit">${esc(r.symbol)} ${p.per}${num(r.minBid) > 0 && !has ? ` · mindestens ${fmt(r.minBid)}` : ''}</span>`
   const display = touch
     ? `<div class="amount-display ${amount > 0 ? '' : 'empty'}" aria-live="polite"><strong>${typed(ui.draft.amount)}</strong>${unit}</div>`
     : `<label class="amount-display desktop" for="amount">
