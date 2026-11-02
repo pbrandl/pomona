@@ -221,7 +221,29 @@ function focusTrack () {
     trackKey = key
   }
   el.scrollLeft = trackLeft
-  el.addEventListener('scroll', () => { trackLeft = el.scrollLeft }, { passive: true })
+  // Scroll indicator on the card's bottom edge instead of the native scrollbar.
+  const bar = $app.querySelector('[data-track-bar]')
+  const thumb = bar?.firstElementChild
+  const paint = () => {
+    if (!bar) return
+    const ratio = el.clientWidth / el.scrollWidth
+    bar.hidden = ratio >= 0.999
+    thumb.style.width = ratio * 100 + '%'
+    thumb.style.left = (el.scrollLeft / el.scrollWidth) * 100 + '%'
+  }
+  paint()
+  el.addEventListener('scroll', () => { trackLeft = el.scrollLeft; paint() }, { passive: true })
+  // Drag or tap the indicator (mouse users have no swipe).
+  bar?.addEventListener('pointerdown', (e) => {
+    const move = (ev) => {
+      const r = bar.getBoundingClientRect()
+      el.scrollLeft = ((ev.clientX - r.left) / r.width) * el.scrollWidth - el.clientWidth / 2
+    }
+    move(e)
+    bar.setPointerCapture(e.pointerId)
+    bar.onpointermove = move
+    bar.onpointerup = () => { bar.onpointermove = null }
+  })
 }
 
 let toastTimer = null

@@ -143,13 +143,14 @@ function track (ui, r, p) {
     : `Deine Raten, ${esc(p.adj)}`
   const summary = mine && !organizer ? `${paid} von ${r.installments} bezahlt` : `${fmt(got)} ${sym} erhalten`
 
-  return `<div class="card">
+  return `<div class="card tk-card">
     <div class="row tk-head"><h2>${title}</h2><span class="small muted">${summary}</span></div>
     <p class="tk-cap small"><i class="sw done"></i>${words.top} · ${fmt(got)} ${sym}</p>
     <div class="tk-scroll" data-track>
       <div class="tk-line" style="--n:${cols.length}">${cols.map((c) => c.html).join('')}</div>
     </div>
     <p class="tk-cap small"><i class="sw todo"></i>${words.bottom} · ${fmt(due)} ${sym}</p>
+    <div class="tk-bar" data-track-bar aria-hidden="true"><i></i></div>
   </div>`
 }
 
