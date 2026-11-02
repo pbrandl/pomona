@@ -30,6 +30,13 @@ export const TOPICS = {
       const r = s.round
       const p = per(r?.intervalName)
       const plan = r ? ` In dieser Runde: ${r.installments} Raten, ${p.adj}, ab ${day(r.biddingEnd)}.` : ''
+      if (!r) {
+        return {
+          text: 'Jemand startet eine Runde für ein Projekt, zum Beispiel eine Solawi, mit einem Ziel pro Woche oder Monat. Alle sagen zu, wie viel sie pro Rate geben möchten. ' +
+            'Es gibt zwei Arten: Per Rechnung kommt nach erreichtem Ziel jede Rate als Rechnung, die du mit einem Tipp bezahlst. Bei Vorab hinterlegen liegen alle Raten gleich im Treuhandkonto. ' +
+            'Für jede bezahlte Rate gibt es einen Beleg. Wird das Ziel verfehlt, zahlt niemand etwas bzw. bekommt alles zurück.'
+        }
+      }
       if (payg(r)) {
         return {
           text: 'Alle sagen in der Bietphase, wie viel sie pro Rate geben möchten. Dabei wird noch kein Geld bewegt. ' +

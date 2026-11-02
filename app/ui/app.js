@@ -106,7 +106,7 @@ const SHEETS = {
   pay: (u) => (u.status?.round ? payPage(u) : ''),
   create: (u) => (u.status?.wallet.state === 'unlocked' ? createPage(u) : ''),
   join: (u) => (u.status?.wallet.state === 'unlocked' ? joinPage(u) : ''),
-  assistant: (u) => (u.status?.wallet.state === 'unlocked' ? assistantPage(u) : ''),
+  assistant: (u) => (u.status?.assistant ? assistantPage(u) : ''),
   news: (u) => (u.status?.round?.role === 'organizer' ? newsPage(u) : ''),
   invite: (u) => (u.status?.round ? invitePage(u) : ''),
   wallet: (u) => (u.status?.wallet.state === 'unlocked' ? walletSheet(u) : '')
@@ -115,9 +115,10 @@ const SHEETS = {
 function topbar () {
   const w = ui.status?.wallet
   const ask = `<button class="pill ask-pill" data-action="open-assistant" title="Frag Pomona">${SPARK}<span>Frag Pomona</span></button>`
+  // "Frag Pomona" is there from the first start on, also before a wallet exists.
   const right = w?.state === 'unlocked'
     ? `<div class="bar-right">${ask}<button class="pill" data-action="open-sheet" data-sheet="wallet"><span class="dot ${ui.status.peers > 0 ? 'on' : ''}" title="${ui.status.peers} Peers"></span>${fmt(w.usdt)} ${esc(w.symbol)}<span class="muted mono">${short(w.address)}</span></button></div>`
-    : ''
+    : ui.status ? `<div class="bar-right">${ask}</div>` : ''
   const update = ui.update
     ? `<div class="update-bar" role="status"><span>Neue Version von Pomona ist bereit.</span><button class="btn accent small" data-action="restart" ${ui.status?.busy ? 'disabled title="Nach der laufenden Transaktion"' : ''}>Neu starten</button></div>`
     : ''

@@ -176,7 +176,7 @@
       switch (method) {
         case 'status': {
           const { K } = await loadAgent()
-          state.assistant = state.wallet.state === 'unlocked' ? { ...ai, models: ai.manual ? MODELS.filter((m) => m.url) : MODELS, suggestions: K.suggestions(state) } : null
+          state.assistant = { ...ai, models: ai.manual ? MODELS.filter((m) => m.url) : MODELS, suggestions: K.suggestions(state) }
           return structuredClone(state)
         }
         case 'assistantAsk': {

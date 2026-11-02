@@ -28,6 +28,8 @@ const PAGES = { fund: 'Konto aufladen', wallet: 'Konto öffnen', scan: 'Beleg pr
  */
 export function validateAction (a, s) {
   if (!a || typeof a !== 'object') return null
+  // Without an unlocked wallet (first start, locked) the assistant only explains.
+  if (s?.wallet && s.wallet.state !== 'unlocked' && a.type !== 'install') return null
   const r = s?.round
   const organizer = r?.role === 'organizer'
   switch (a.type) {
