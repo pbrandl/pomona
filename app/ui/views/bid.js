@@ -54,7 +54,7 @@ function amountPage (ui) {
   }
   // Touch: the figure is shown, the keypad below types into it (no system keyboard).
   const display = touch
-    ? `<div class="amount-display ${amount > 0 ? '' : 'empty'}" aria-live="polite"><strong>${amount > 0 ? fmt(amount) : '0'}</strong><span>${esc(r.symbol)} ${p.per}</span></div>`
+    ? `<div class="amount-display ${amount > 0 ? '' : 'empty'}" aria-live="polite"><strong>${typed(ui.draft.amount)}</strong><span>${esc(r.symbol)} ${p.per}</span></div>`
     : `<div class="amount big">
       <input id="amount" data-draft="amount" inputmode="decimal" placeholder="0" value="${esc(ui.draft.amount)}" autocomplete="off" autofocus>
       <span class="unit">${esc(r.symbol)} ${p.per}</span>
@@ -71,7 +71,7 @@ function amountPage (ui) {
 }
 
 /** Where the round stands, and how far your bid moves it toward the target. */
-function progressBar (r, amount) {
+export function progressBar (r, amount) {
   const target = num(r.target)
   if (!(target > 0)) return ''
   const before = num(r.total)
@@ -89,17 +89,24 @@ function progressBar (r, amount) {
   </div>`
 }
 
-/** Digits, delete; amounts are whole USDT here (decimals via the desktop field). */
+/** What was typed on the keypad, with thousands dots and a trailing comma kept ("1.200,5"). */
+function typed (raw) {
+  const [int, dec] = String(raw || '').split(',')
+  const n = int ? Number(int).toLocaleString('de-DE') : '0'
+  return dec === undefined ? n : `${n},${dec}`
+}
+
+/** Digits, comma (cents, as in franzwerk), delete. */
 function keypad () {
-  const key = (k, label = k) => `<button class="key" data-action="key" data-key="${k}" aria-label="${k === 'del' ? 'Löschen' : k}">${label}</button>`
+  const key = (k, label = k, aria = k) => `<button class="key" data-action="key" data-key="${k}" aria-label="${aria}">${label}</button>`
   return `<div class="keypad" role="group" aria-label="Ziffernblock">
     ${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => key(String(n))).join('')}
-    <span></span>${key('0')}${key('del', '⌫')}
+    ${key(',', ',', 'Komma')}${key('0')}${key('del', '⌫', 'Löschen')}
   </div>`
 }
 
 /** Quick picks around the organizer's guide value ("Richtwert"). */
-function guideChips (ui, r, p) {
+export function guideChips (ui, r, p) {
   const g = num(r.guide)
   const min = num(r.minBid)
   const values = [...new Set([Math.round(g * 0.8), g, Math.round(g * 1.2)])].filter((v) => v > 0 && v >= min)

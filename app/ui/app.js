@@ -14,7 +14,7 @@
  *
  * @module ui/app
  */
-import { esc, short, fmt, isoDay, endOfDay } from './format.js'
+import { esc, short, fmt, isoDay, endOfDay, num } from './format.js'
 import { PEAR } from './views/parts.js'
 import { onboarding, locked, createWalletSheet, restoreSheet, revealSheet, seedSheet } from './views/onboarding.js'
 import { start, createPage, joinPage, createStepError } from './views/start.js'
@@ -428,9 +428,17 @@ const actions = {
   /** Keypad on touch screens: whole USDT, at most 6 digits, no leading zero. */
   key: (el) => {
     const k = el.dataset.key
-    let v = String(ui.draft.amount ?? '').replace(/\D/g, '')
-    if (k === 'del') v = v.slice(0, -1)
-    else if (v.length < 6 && !(v === '' && k === '0')) v += k
+    let v = String(ui.draft.amount ?? '').replace(/[^\d,]/g, '')
+    const [int, dec] = v.split(',')
+    if (k === 'del') {
+      v = v.slice(0, -1)
+    } else if (k === ',') {
+      if (dec === undefined) v = (int || '0') + ',' // one comma
+    } else if (dec !== undefined) {
+      if (dec.length < 2) v += k // cents: two digits
+    } else if (int.length < 6 && !(int === '' && k === '0')) {
+      v += k
+    }
     ui.draft.amount = v
   },
 
@@ -529,6 +537,8 @@ const actions = {
   },
   /** Opens the confirmation with deposit, fee and balance check. */
   async 'review-bid' () {
+    if (!(num(ui.draft.amount) > 0)) throw new Error('Bitte einen Betrag eingeben.')
+    ui.sheet = 'bid' // also when started from the inline field on the round page
     ui.quote = null
     ui.bidDone = null
     ui.bidStep = 'review'

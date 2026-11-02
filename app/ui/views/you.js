@@ -6,6 +6,7 @@
  */
 import { esc, fmt, num, per, date, dayTime } from '../format.js'
 import { btn, link } from './parts.js'
+import { isTouch, progressBar, guideChips } from './bid.js'
 
 export function youCard (ui) {
   const s = ui.status
@@ -55,7 +56,9 @@ export function youCard (ui) {
       sub = r.mode === 'invoice'
         ? `Bezahlt wird erst mit jeder Rechnung. Änderbar bis ${esc(dayTime(r.biddingEnd))}.`
         : `${fmt(r.myDeposit)} ${sym} liegen im Treuhandkonto. Änderbar bis ${esc(dayTime(r.biddingEnd))}.`
-      actions = `<button class="btn ghost" data-action="start-bid">Erhöhen</button>${link(ui, 'withdraw', ui.pending === 'withdraw' ? 'Wird zurückgezogen…' : 'Zurückziehen')}`
+      actions = isTouch()
+        ? `<button class="btn ghost" data-action="start-bid">Erhöhen</button>${link(ui, 'withdraw', ui.pending === 'withdraw' ? 'Wird zurückgezogen…' : 'Zurückziehen')}`
+        : `${inlineBid(ui, r, p, 'Erhöhen um', 'Erhöhen')}${link(ui, 'withdraw', ui.pending === 'withdraw' ? 'Wird zurückgezogen…' : 'Zurückziehen')}`
     } else if (num(s.wallet.usdt) <= 0 && r.mode !== 'invoice') {
       tone = 'act'
       title = 'Lade dein Konto auf'
@@ -65,7 +68,7 @@ export function youCard (ui) {
       tone = 'act'
       title = 'Mitbieten'
       sub = r.guide ? `Richtwert ${fmt(r.guide)} ${sym} ${p.per}. Gib, was du kannst.` : `Dein Betrag ${p.per}, ${r.installments} Raten.`
-      actions = '<button class="btn accent" data-action="start-bid">Gebot abgeben</button>'
+      actions = isTouch() ? '<button class="btn accent" data-action="start-bid">Gebot abgeben</button>' : inlineBid(ui, r, p, `Dein Gebot ${p.per}`, 'Bieten')
     }
   } else if (pledge > 0 && r.openInvoices > 0) {
     tone = 'act'
@@ -95,5 +98,22 @@ export function youCard (ui) {
   return `<div class="you ${tone}" role="status">
     <div><p class="you-title">${title}</p>${sub ? `<p class="small muted">${sub}</p>` : ''}</div>
     ${actions ? `<div class="you-actions">${actions}</div>` : ''}
+  </div>`
+}
+
+/**
+ * Desktop: bid right here, as in franzwerk. Type the amount, Enter or the
+ * button opens the "Prüfen" page (fee, balance, confirmation).
+ */
+function inlineBid (ui, r, p, placeholder, label) {
+  const amount = num(ui.draft.amount)
+  return `<div class="inline-bid">
+    ${!(num(r.myPledge) > 0) && r.guide ? guideChips(ui, r, p) : ''}
+    <div class="amount inline">
+      <span class="prefix">${esc(r.symbol)}</span>
+      <input id="amount" data-draft="amount" inputmode="decimal" placeholder="${esc(placeholder)}" value="${esc(ui.draft.amount)}" autocomplete="off" aria-label="${esc(placeholder)}">
+      <button class="btn accent" data-action="review-bid" ${amount > 0 ? '' : 'disabled'}>${label} →</button>
+    </div>
+    ${progressBar(r, amount)}
   </div>`
 }

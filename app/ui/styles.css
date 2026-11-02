@@ -959,3 +959,20 @@ main:has(.page.fit) { padding-bottom: 0; }
   .page.fit .bid-progress p { font-size: 12px; }
   .page.fit .stepbar { margin-bottom: 0.6dvh; }
 }
+
+/* Desktop: inline bid in the "you" card (franzwerk style) */
+.you .you-actions:has(.inline-bid) { flex: 1 1 100%; display: grid; gap: 12px; }
+.inline-bid { display: grid; gap: 12px; width: 100%; }
+.amount.inline { height: 56px; padding: 0 6px 0 16px; gap: 10px; background: var(--surface); }
+.amount.inline .prefix { color: var(--muted); font-size: 14px; font-weight: 500; }
+.amount.inline input { font-size: 20px; font-weight: 600; }
+.amount.inline input::placeholder { font-weight: 400; font-size: 15px; color: var(--faint); }
+.amount.inline .btn { height: 44px; padding: 0 18px; white-space: nowrap; }
+.inline-bid .chips { justify-content: flex-start; }
+.inline-bid .bid-progress p { text-align: left; }
+.inline-bid .guide-text { display: none; }
+.amount.inline { min-width: 0; width: 100%; overflow: hidden; }
+.amount.inline input { flex: 1; min-width: 0; width: auto; }
+.amount.inline .btn { flex: none; }
+.you .you-actions:has(.inline-bid) { justify-items: start; }
+.you .you-actions:has(.inline-bid) > .inline-bid { justify-self: stretch; }
