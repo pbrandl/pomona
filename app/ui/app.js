@@ -249,6 +249,10 @@ function fitToScreen () {
   }
   const el = $app.querySelector('.chat-page, .home.chatting')
   if (!el) return
+  // Field and example questions float over the messages: the last message
+  // stops just above them (CSS --dock-h).
+  const dock = el.querySelector('.home-dock, .chat-foot')
+  if (dock) el.style.setProperty('--dock-h', `${Math.ceil(dock.getBoundingClientRect().height)}px`)
   // With the phone keyboard open, only the visual viewport is visible: size the
   // chat to it and keep the page at the top, so head, field and back link stay
   // reachable (iOS would otherwise push the page up under the keyboard).

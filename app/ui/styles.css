@@ -1165,3 +1165,10 @@ main:has(.home) { padding-bottom: 0; }
 /* nothing behind the chat field: no shadow cloud, no strip, no line */
 .home-dock .amount.ask { box-shadow: none; border: 1px solid var(--line); background: var(--surface); }
 .chat-foot { background: none; border-top: 0; }
+
+/* Chat: the messages run on behind the example questions and the field, which
+   float on top with nothing behind them; the last message stops just above. */
+.home.chatting, .chat-page { position: relative; }
+.home.chatting .home-dock, .chat-page .chat-foot { position: absolute; left: 0; right: 0; bottom: 0; margin: 0 auto; background: none; border: 0; pointer-events: none; }
+.home.chatting .home-dock > *, .chat-page .chat-foot > * { pointer-events: auto; }
+.home.chatting .home-chat, .chat-page .chat-scroll { padding-bottom: calc(var(--dock-h, 130px) + 8px); }
