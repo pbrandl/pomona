@@ -1176,3 +1176,6 @@ main:has(.home) { padding-bottom: 0; }
 /* keypad: digits on the page background, a soft tint only while pressed */
 .keypad .key { background: none; }
 .keypad .key:active { background: var(--accent-soft); color: var(--ink); }
+
+/* example questions: no fade at the edge */
+.home-chips { -webkit-mask-image: none; mask-image: none; }
