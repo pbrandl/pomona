@@ -213,11 +213,24 @@ let chatSeen = 0 // messages already shown; newer ones glide in once
  */
 function fitToScreen () {
   const vv = window.visualViewport
+  // The page may already keep the home-bar inset itself (the artifact frame
+  // does): remember it, so the chat field does not add the same space again.
+  const root = document.documentElement
+  if (!root.classList.contains('kb-open')) {
+    root.style.setProperty('--root-inset', (parseFloat(window.getComputedStyle(root).paddingBottom) || 0) + 'px')
+  }
   // Keyboard open: the field sits right on it, no room for the home-bar inset.
   // Detected by the visual viewport, or (inside frames, where that does not
   // change) by a focused text field on a touch screen.
   const typing = window.matchMedia?.('(pointer: coarse)').matches && document.activeElement?.matches?.('input:not([type=checkbox]):not([type=radio]), textarea')
   document.documentElement.classList.toggle('kb-open', !!typing || (!!vv && vv.height < window.innerHeight - 80))
+  // Start screen before chatting: exactly one screen high, field at the bottom.
+  const home = $app.querySelector('.home:not(.chatting)')
+  if (home) {
+    const top = home.getBoundingClientRect().top + window.scrollY
+    const inset = parseFloat(window.getComputedStyle(root).paddingBottom) || 0
+    home.style.minHeight = `calc(100dvh - ${Math.ceil(top + inset)}px)`
+  }
   const el = $app.querySelector('.chat-page, .home.chatting')
   if (!el) return
   // With the phone keyboard open, only the visual viewport is visible: size the

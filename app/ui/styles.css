@@ -1153,3 +1153,13 @@ button.brand { background: none; border: 0; padding: 0; color: inherit; font: in
 .kb-open .home-dock, .kb-open .chat-foot { padding-bottom: 4px; }
 /* the box around the start-screen field is see-through */
 .home-dock { background: none; }
+
+/* keyboard closed: the home-bar inset once, not twice (page inset + field inset) */
+.home-dock { padding-bottom: max(8px, calc(env(safe-area-inset-bottom, 0px) - var(--root-inset, 0px))); }
+.chat-foot { padding-bottom: max(8px, calc(env(safe-area-inset-bottom, 0px) - var(--root-inset, 0px))); }
+.kb-open .home-dock, .kb-open .chat-foot { padding-bottom: 4px; }
+.home:not(.chatting) { min-height: 0; }
+/* start screen: hero fills the space above the field, page is one screen high */
+main:has(.home) { padding-bottom: 0; }
+.home:not(.chatting) .home-hero { flex: 1; display: flex; flex-direction: column; }
+.home .home-hero > .center-screen { flex: 1; min-height: 0; }
