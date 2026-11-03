@@ -38,7 +38,7 @@ export function onboarding (ui) {
 function onboardingHero (ui) {
   return `<div class="center-screen stack-lg">
     <div class="stack">
-      <h1 class="welcome"><span class="hl">Pomona</span> <span>Public Financing</span></h1>
+      <h1 class="welcome"><span class="hl">Pomona</span> <span>Common Financing</span></h1>
       <p class="lead">Pomona ist eine Bietrunde, die auf euren Rechnern läuft, ohne Mittelsmann. Alle sagen in USDT zu, was sie pro Woche oder Monat geben. Ist das Ziel erreicht, wird Rate für Rate bezahlt, und für jede Rate gibt es einen Beleg.</p>
     </div>
     <div class="row" style="justify-content:flex-start">
