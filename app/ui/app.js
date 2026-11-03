@@ -154,6 +154,7 @@ function render () {
   // field you type in keeps focus (and the phone keyboard stays open).
   Idiomorph.morph($app, topbar() + `<main>${flow || body()}</main>` + toast, { morphStyle: 'innerHTML' })
   chatSeen = ui.chat.length
+  fitToScreen()
   const box = document.getElementById('chat-scroll')
   if (box && atBottom) box.scrollTop = box.scrollHeight
   focusTrack()
@@ -196,7 +197,7 @@ async function askAssistant (params) {
  * area (instantly on open, smoothly for new messages); the start screen
  * scrolls the window.
  */
-function scrollChat (smooth = true) {
+function scrollChat (smooth = false) {
   window.requestAnimationFrame(() => {
     const box = document.getElementById('chat-scroll')
     const behavior = smooth ? 'smooth' : 'auto'
@@ -205,6 +206,18 @@ function scrollChat (smooth = true) {
   })
 }
 let chatSeen = 0 // messages already shown; newer ones glide in once
+
+/**
+ * Chat views fill exactly the rest of the screen below their top edge, so the
+ * window itself never scrolls (only the message area does).
+ */
+function fitToScreen () {
+  const el = $app.querySelector('.chat-page, .home.chatting')
+  if (!el) return
+  const top = el.getBoundingClientRect().top + window.scrollY
+  el.style.height = `calc(100dvh - ${Math.ceil(top)}px)`
+}
+window.addEventListener('resize', fitToScreen)
 
 /** Camera scanner, alive only while the scan page is open. */
 let scanner = null

@@ -23,7 +23,7 @@ export function home (ui, hero) {
   const close = on ? '<button class="icon-btn home-close" data-action="home-chat-close" aria-label="Chat schließen">×</button>' : ''
   return `<div class="home ${on ? 'chatting' : ''} ${fresh ? 'fresh' : ''}">
     <div class="home-hero" ${on ? 'aria-hidden="true"' : ''}>${hero}</div>
-    ${on ? `<div class="home-chat">${chatBody(ui, { compact: true })}</div>` : ''}
+    ${on ? `<div class="home-chat chat-scroll" id="chat-scroll">${chatBody(ui, { compact: true })}</div>` : ''}
     <div class="home-dock">
       ${on ? homeChips(ui) : ''}
       <div class="home-dock-row">${close}${chatInput(ui, 'Frag Pomona …')}</div>

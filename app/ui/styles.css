@@ -1124,3 +1124,15 @@ main:has(.chat-page) { padding-bottom: 0; }
 .chat-scroll .chat > .msg.user, .chat-scroll > .msg.user { justify-self: end; }
 .chat-scroll .chat > .msg.bot, .chat-scroll > .msg.bot { justify-self: start; }
 .chat-scroll .msg { max-width: 86%; }
+
+/* Start screen while chatting: like the chat page, only the messages scroll,
+   the window stays put (no page flying past on every answer). */
+main:has(.home.chatting) { padding-bottom: 0; }
+.home.chatting { height: calc(100dvh - 76px); min-height: 0; }
+.home.chatting .home-chat { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; align-content: start; padding: 8px 2px 12px; }
+.home.chatting .home-dock { position: static; margin: 0 auto; background: none; }
+/* no grey/teal flash under the finger on phones */
+button, a, [data-action] { -webkit-tap-highlight-color: transparent; }
+/* opening the start-screen chat: the hero is gone before the chat arrives (no overlap) */
+.home.chatting.fresh .home-hero { animation: home-out 0.2s ease-in forwards; }
+.home.chatting.fresh .home-chat, .home.chatting.fresh .home-chips { animation: home-in 0.32s 0.18s cubic-bezier(.2,.8,.2,1) both; }
