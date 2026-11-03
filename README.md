@@ -41,6 +41,7 @@ Mehr dazu:
 - [docs/RPC.md](docs/RPC.md): Schnittstelle zwischen UI und Worker, Format des Status
 - [docs/DEV.md](docs/DEV.md): Entwicklermodus ohne Pear, Sprachmodell als Datei
 - [docs/ASSISTANT.md](docs/ASSISTANT.md): der Assistent „Frag Pomona“ (QVAC), Werkzeuge, Grenzen, Sicherheit
+- [docs/CONCEPT.md](docs/CONCEPT.md): Konzept (noch nicht umgesetzt): Rundentypen, Wallet-Dienst, Swap-Dienst
 
 ## Loslegen
 
