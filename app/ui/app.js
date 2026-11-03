@@ -212,9 +212,11 @@ let chatSeen = 0 // messages already shown; newer ones glide in once
  * window itself never scrolls (only the message area does).
  */
 function fitToScreen () {
+  const vv = window.visualViewport
+  // Keyboard open: the field sits right on it, no room for the home-bar inset.
+  document.documentElement.classList.toggle('kb-open', !!vv && vv.height < window.innerHeight - 80)
   const el = $app.querySelector('.chat-page, .home.chatting')
   if (!el) return
-  const vv = window.visualViewport
   // With the phone keyboard open, only the visual viewport is visible: size the
   // chat to it and keep the page at the top, so head, field and back link stay
   // reachable (iOS would otherwise push the page up under the keyboard).

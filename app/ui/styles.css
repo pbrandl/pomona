@@ -1143,3 +1143,7 @@ button.brand { background: none; border: 0; padding: 0; color: inherit; font: in
 .home-chat-top { padding: 2px 0 6px; }
 .home-chat-top .back { font-size: 14px; }
 .home.chatting.fresh .home-chat-top { animation: home-in 0.32s 0.18s cubic-bezier(.2,.8,.2,1) both; }
+
+/* keyboard open: field directly above the keyboard (no home-bar inset) */
+.kb-open .home-dock { padding-bottom: 6px; padding-top: 8px; }
+.kb-open .chat-foot { padding-bottom: 6px; }
