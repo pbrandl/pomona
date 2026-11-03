@@ -89,6 +89,10 @@ test('commands without a model: bid, top up, receipt, invoice', () => {
   assert.deepEqual(matchIntent('Rechnung stellen', running('organizer')).actions, [{ type: 'invoice' }])
   assert.deepEqual(matchIntent('Ich will 50 bieten', running()).actions, []) // bidding is over
   assert.equal(matchIntent('Wie viel soll ich bieten?', status()), null) // a question, not a command
+  // anyone with a wallet bids, the organizer too, and then pays own invoices like everyone
+  const org = status({}, { role: 'organizer', mode: 'invoice', phase: 'running', myPledge: '100', openInvoices: 1, openAmount: '100' })
+  assert.deepEqual(matchIntent('Rechnung bezahlen', org).actions, [{ type: 'pay' }])
+  assert.deepEqual(matchIntent('Ich biete 100 im Monat', status({}, { role: 'organizer' })).actions, [{ type: 'bid', amount: '100' }])
   // "Per Rechnung": nothing is deposited, so the reply must not say so
   const payg = matchIntent('Ich biete 100 im Monat', status({}, { mode: 'invoice' })).text
   assert.match(payg, /Hinterlegt wird nichts/)

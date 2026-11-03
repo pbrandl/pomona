@@ -105,7 +105,7 @@ export const TOPICS = {
       const p = per(r.intervalName)
       if (r.phase === 'bidding') return { text: `Die Bietphase läuft bis ${day(r.biddingEnd)}. Wird das Ziel erreicht, ist die erste Rate ab dann fällig, danach ${p.adj}, insgesamt ${r.installments}-mal.` }
       if (r.phase === 'running' && payg(r)) {
-        if (r.role !== 'organizer' && r.openInvoices > 0) {
+        if (r.openInvoices > 0) { // own open invoices, also an organizer who bid
           return { text: `Du hast ${r.openInvoices === 1 ? 'eine offene Rechnung' : `${r.openInvoices} offene Rechnungen`} über ${num(r.openAmount)} ${r.symbol}. Bezahlen musst du selbst, dann bekommst du den Beleg.`, actions: [{ type: 'pay' }] }
         }
         const next = r.invoiceCount < r.installments ? `Rechnung ${r.invoiceCount + 1} von ${r.installments} kommt am ${day(r.nextInvoiceAt)} automatisch.` : 'Alle Rechnungen sind verschickt.'

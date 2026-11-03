@@ -69,7 +69,7 @@ export function matchIntent (text, s) {
     return { text: 'Gerade ist keine Rechnung fällig.', actions: [] }
   }
 
-  if (/(rechnung|rate) (be)?zahlen|bezahlen/.test(t) && r?.mode === 'invoice' && r.role !== 'organizer') {
+  if (/(rechnung|rate) (be)?zahlen|bezahlen/.test(t) && r?.mode === 'invoice') {
     if (r.openInvoices > 0) return { text: `Offen sind ${num(r.openAmount)} ${r.symbol}. Prüfen und bestätigen musst du selbst, danach bekommst du den Beleg.`, actions: [{ type: 'pay' }] }
     return { text: 'Gerade ist keine Rechnung offen.', actions: [] }
   }

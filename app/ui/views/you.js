@@ -23,6 +23,19 @@ export function youCard (ui) {
     title = `${fmt(r.refundable)} ${sym} warten auf dich`
     sub = r.phase === 'failed' ? 'Das Ziel wurde nicht erreicht.' : 'Diese Raten werden nicht mehr abgerechnet.'
     actions = btn(ui, 'refund', 'Zurückholen', 'accent', { busy: 'Wird überwiesen…' })
+  } else if (r.phase === 'bidding') {
+    return yourBid(ui, r, p) // everyone with a wallet can bid, the organizer too
+  } else if (pledge > 0 && r.openInvoices > 0) {
+    tone = 'act'
+    const open = r.invoices.filter((x) => x.status === 'open')
+    title = open.length === 1 ? `Rechnung ${open[0].index + 1}: ${fmt(r.openAmount)} ${sym}` : `${open.length} offene Rechnungen: ${fmt(r.openAmount)} ${sym}`
+    const lacking = num(s.wallet.usdt) < num(r.openAmount)
+    sub = lacking
+      ? `Dir fehlen ${fmt(num(r.openAmount) - num(s.wallet.usdt))} ${sym}. Lade dein Konto auf, dann bezahlst du und bekommst den Beleg.`
+      : 'Bezahlen und Beleg erhalten. Der Betrag geht direkt an den Organisator.'
+    actions = lacking
+      ? '<button class="btn accent" data-action="open-fund">Aufladen</button>'
+      : '<button class="btn accent" data-action="open-pay">Bezahlen</button>'
   } else if (r.role === 'organizer' && r.mode === 'invoice' && (r.phase === 'running' || r.phase === 'completed')) {
     const last = (r.invoices || []).filter((x) => x.status === 'issued').at(-1)
     title = last ? `Rechnung ${last.index + 1}: ${last.paidCount} von ${r.bidders} bezahlt` : 'Ratenzahlung läuft'
@@ -31,9 +44,7 @@ export function youCard (ui) {
       : `Alle ${r.installments} Rechnungen sind verschickt.`
     if (last) actions = `<button class="btn ghost" data-action="show-invoice" data-index="${last.index}">Wer hat bezahlt?</button>`
   } else if (r.role === 'organizer') {
-    if (r.phase === 'bidding') {
-      return '' // progress and deadline are in the header and the ring
-    } else if (r.phase === 'running' && r.canInvoice) {
+    if (r.phase === 'running' && r.canInvoice) {
       tone = 'act'
       title = `Rechnung ${r.invoiceCount + 1} ist fällig`
       sub = `${fmt(r.total)} ${sym} gehen an dein Konto. Alle Bietenden bekommen einen Beleg.`
@@ -48,19 +59,6 @@ export function youCard (ui) {
       title = 'Ziel nicht erreicht'
       sub = 'Die Bietenden holen ihr Geld zurück.'
     }
-  } else if (r.phase === 'bidding') {
-    return yourBid(ui, r, p)
-  } else if (pledge > 0 && r.openInvoices > 0) {
-    tone = 'act'
-    const open = r.invoices.filter((x) => x.status === 'open')
-    title = open.length === 1 ? `Rechnung ${open[0].index + 1}: ${fmt(r.openAmount)} ${sym}` : `${open.length} offene Rechnungen: ${fmt(r.openAmount)} ${sym}`
-    const lacking = num(s.wallet.usdt) < num(r.openAmount)
-    sub = lacking
-      ? `Dir fehlen ${fmt(num(r.openAmount) - num(s.wallet.usdt))} ${sym}. Lade dein Konto auf, dann bezahlst du und bekommst den Beleg.`
-      : 'Bezahlen und Beleg erhalten. Der Betrag geht direkt an den Organisator.'
-    actions = lacking
-      ? '<button class="btn accent" data-action="open-fund">Aufladen</button>'
-      : '<button class="btn accent" data-action="open-pay">Bezahlen</button>'
   } else if (pledge > 0) {
     tone = 'ok'
     const paid = (r.invoices || []).filter((x) => x.status === 'paid' && x.mine)

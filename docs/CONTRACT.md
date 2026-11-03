@@ -64,8 +64,8 @@ Die Phase wird nie gespeichert, sondern immer aus Zeit und Zustand berechnet (`p
 
 | Funktion | Wer | Phase | Wirkung |
 |---|---|---|---|
-| `bid(amount, invite)` | Bieter | Bidding | Gebot pro Rate erhöhen. Zieht `amount × installments` ein. Beim ersten Gebot wird die Einladung geprüft. |
-| `withdraw(amount)` | Bieter | Bidding | Gebot senken und `amount × installments` zurückzahlen. Der Rest muss 0 oder ≥ `minBid` sein. |
+| `bid(amount, invite)` | jeder mit Wallet, auch der Organisator | Bidding | Gebot pro Rate erhöhen. Deposit: zieht `amount × installments` ein. Invoice: nur die Zusage, bezahlt wird je Rechnung. Beim ersten Gebot wird die Einladung geprüft. |
+| `withdraw(amount)` | Bieter | Bidding | Gebot senken (Deposit: `amount × installments` zurückzahlen). Der Rest muss 0 oder ≥ `minBid` sein. |
 | `invoice()` | Organisator | Running | Nur Deposit: Zahlt `total` an den Organisator, ab `biddingEnd + invoiceCount × interval` |
 | `pay(i)` | Bieter | Running / Completed | Nur Invoice: Zahlt das eigene Gebot für die gestellte Rechnung `i` an den Organisator (braucht `approve`). Einmal pro Rechnung. |
 | `invoiceCount() → n` | alle | – | Gestellte Rechnungen. Deposit: vom Organisator abgerechnet. Invoice: nach Zeit, begrenzt durch `installments` und `terminate()`. |
