@@ -176,6 +176,12 @@ function render () {
   const where = ui.sheet + ':' + ui.createStep + ':' + ui.bidStep
   if (where !== lastPage) { lastPage = where; window.scrollTo(0, 0) }
 
+  // Desktop start screen: the question field is focused right away. The start
+  // text stays; the chat opens with the first question (openHomeChat).
+  const ask = !ui.sheet && !ui.homeChat ? $app.querySelector('.home-dock #ask') : null
+  if (ask && !homeShown && !focusId && finePointer()) ask.focus({ preventScroll: true })
+  homeShown = !!ask
+
   // Bid step "Betrag" on desktop: the field is focused right away, caret blinking.
   if (!focusId && ui.sheet === 'bid' && ui.bidStep === 'amount') {
     const input = document.getElementById('amount')
@@ -192,7 +198,35 @@ function render () {
 }
 
 let lastPage = ''
+let homeShown = false
 let receiptTimer = null
+const finePointer = () => window.matchMedia?.('(pointer: fine)').matches === true
+
+/**
+ * Start screen → chat in place. The start text flies up out of the window and
+ * the field glides to its place at the bottom, both from where they are now
+ * (measured before and after the switch, so nothing jumps).
+ */
+function openHomeChat () {
+  const rect = (sel) => $app.querySelector(sel)?.getBoundingClientRect()
+  const from = { text: rect('.home-hero > *'), field: rect('.home-dock-row') }
+  ui.homeChat = true
+  ui.homeChatFresh = true
+  render()
+  const done = () => { ui.homeChatFresh = false; render() }
+  const hero = $app.querySelector('.home-hero')
+  const to = { text: rect('.home-hero > *'), field: rect('.home-dock-row') }
+  if (!hero || !from.text || !to.text || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return done()
+  const dy = from.text.top - to.text.top
+  const easing = 'cubic-bezier(.4,0,.2,1)'
+  hero.animate([
+    { transform: `translateY(${dy}px)`, opacity: 1 },
+    { transform: `translateY(${dy - from.text.bottom - 24}px)`, opacity: 0 }
+  ], { duration: 420, easing, fill: 'forwards' }).onfinish = done
+  const field = $app.querySelector('.home-dock-row')
+  const fy = from.field && to.field ? from.field.top - to.field.top : 0
+  if (field && Math.abs(fy) > 1) field.animate([{ transform: `translateY(${fy}px)` }, { transform: 'none' }], { duration: 420, easing })
+}
 
 /** Sends a question (or a suggestion topic) and appends the answer. */
 async function askAssistant (params) {
@@ -492,6 +526,7 @@ const actions = {
   async 'agent-send' () {
     const text = ui.draft.ask.trim()
     if (!text) return
+    if (!ui.homeChat && !ui.sheet && $app.querySelector('.home')) openHomeChat() // desktop: the first question opens the chat
     ui.draft.ask = ''
     ui.chat.push({ role: 'user', text })
     render()
@@ -842,13 +877,12 @@ document.addEventListener('keydown', (e) => {
   render()
 })
 
-// Start screen: the first focus on the docked question field opens the chat in place.
+// Start screen on phones: the first focus on the docked question field opens
+// the chat in place (the keyboard needs the room). On desktop the field is
+// focused from the start and the chat opens with the first question.
 $app.addEventListener('focusin', (e) => {
-  if (e.target.id !== 'ask' || ui.sheet || ui.homeChat || !e.target.closest('.home')) return
-  ui.homeChat = true
-  ui.homeChatFresh = true
-  render()
-  ui.homeChatFresh = false // later renders show the final state, no replayed animation
+  if (e.target.id !== 'ask' || ui.sheet || ui.homeChat || !e.target.closest('.home') || finePointer()) return
+  openHomeChat()
 })
 
 const syncDraft = (e) => {
