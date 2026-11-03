@@ -1136,3 +1136,10 @@ button, a, [data-action] { -webkit-tap-highlight-color: transparent; }
 /* opening the start-screen chat: the hero is gone before the chat arrives (no overlap) */
 .home.chatting.fresh .home-hero { animation: home-out 0.2s ease-in forwards; }
 .home.chatting.fresh .home-chat, .home.chatting.fresh .home-chips { animation: home-in 0.32s 0.18s cubic-bezier(.2,.8,.2,1) both; }
+
+/* logo is a button back to the start */
+button.brand { background: none; border: 0; padding: 0; color: inherit; font: inherit; font-weight: 600; cursor: pointer; }
+/* start chat: back link on top (stays above the keyboard) */
+.home-chat-top { padding: 2px 0 6px; }
+.home-chat-top .back { font-size: 14px; }
+.home.chatting.fresh .home-chat-top { animation: home-in 0.32s 0.18s cubic-bezier(.2,.8,.2,1) both; }

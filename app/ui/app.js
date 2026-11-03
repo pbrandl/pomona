@@ -127,7 +127,7 @@ function topbar () {
   const update = ui.update
     ? `<div class="update-bar" role="status"><span>Neue Version von Pomona ist bereit.</span><button class="btn accent small" data-action="restart" ${ui.status?.busy ? 'disabled title="Nach der laufenden Transaktion"' : ''}>Neu starten</button></div>`
     : ''
-  return `${update}<header class="bar"><div class="brand">${PEAR}Pomona</div>${right}</header>`
+  return `${update}<header class="bar"><button class="brand" data-action="go-home" aria-label="Pomona, zum Start">${PEAR}Pomona</button>${right}</header>`
 }
 
 function body () {
@@ -214,10 +214,22 @@ let chatSeen = 0 // messages already shown; newer ones glide in once
 function fitToScreen () {
   const el = $app.querySelector('.chat-page, .home.chatting')
   if (!el) return
+  const vv = window.visualViewport
+  // With the phone keyboard open, only the visual viewport is visible: size the
+  // chat to it and keep the page at the top, so head, field and back link stay
+  // reachable (iOS would otherwise push the page up under the keyboard).
+  if (vv && vv.height < window.innerHeight - 1) {
+    if (window.scrollY) window.scrollTo(0, 0)
+    const top = el.getBoundingClientRect().top
+    el.style.height = `${Math.floor(vv.height - top)}px`
+    return
+  }
   const top = el.getBoundingClientRect().top + window.scrollY
   el.style.height = `calc(100dvh - ${Math.ceil(top)}px)`
 }
 window.addEventListener('resize', fitToScreen)
+window.visualViewport?.addEventListener('resize', () => { fitToScreen(); scrollChat() })
+window.visualViewport?.addEventListener('scroll', () => { if ($app.querySelector('.chat-page, .home.chatting')) fitToScreen() })
 
 /** Camera scanner, alive only while the scan page is open. */
 let scanner = null
@@ -417,7 +429,14 @@ const actions = {
 
   // "Frag Pomona"
   'open-assistant': () => { ui.sheet = 'assistant'; chatSeen = ui.chat.length; setTimeout(() => scrollChat(false)) },
-  'home-chat-close': () => { ui.homeChat = false; document.activeElement?.blur?.() },
+  'home-chat-close': () => { document.activeElement?.blur?.(); ui.homeChat = false },
+  /** The logo always leads back to the start view (closes pages and the chat). */
+  'go-home': () => {
+    document.activeElement?.blur?.()
+    ui.homeChat = false
+    if (ui.sheet && !ui.status?.busy) actions['close-sheet']()
+    window.scrollTo(0, 0)
+  },
   async 'agent-send' () {
     const text = ui.draft.ask.trim()
     if (!text) return
