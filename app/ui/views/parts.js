@@ -51,16 +51,15 @@ export function field (ui, key, label, { type = 'text', placeholder = '', mode =
  * @param {string[]} [o.steps] - labels of all steps of the flow, shown on top
  * @param {number} [o.at]      - index of the current step
  * @param {string|false} [o.back] - action of the back button, false hides it
- * @param {string} [o.backLabel]
  */
-export function page (title, body, { steps = null, at = 0, back = 'close-sheet', backLabel = 'Zurück', cls = '' } = {}) {
+export function page (title, body, { steps = null, at = 0, back = 'close-sheet', cls = '' } = {}) {
   const bar = steps
     ? `<ol class="stepbar" aria-label="Schritt ${at + 1} von ${steps.length}">${steps.map((label, i) =>
         `<li class="${i < at ? 'done' : i === at ? 'now' : 'todo'}" ${i === at ? 'aria-current="step"' : ''}><span>${i < at ? '✓' : i + 1}</span>${esc(label)}</li>`).join('')}</ol>`
     : ''
   return `<section class="page ${cls}">
     <div class="page-top">
-      ${back ? `<button class="link back" data-action="${back}">← ${esc(backLabel)}</button>` : '<span></span>'}
+      ${back ? `<button class="link back" data-action="${back}">← Zurück</button>` : '<span></span>'}
     </div>
     ${bar}
     ${title ? `<h1 class="page-title">${esc(title)}</h1>` : ''}
