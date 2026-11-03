@@ -151,15 +151,20 @@ export const TOPICS = {
   safety: {
     question: 'Ist mein Geld sicher?',
     keywords: ['sicher', 'betrug', 'vertrauen', 'risiko', 'weg'],
-    answer: (s) => payg(s.round)
+    answer: (s) => !s.round
       ? ({
-          text: 'In dieser Runde liegt kein Geld im Voraus beim Contract. Jede Rechnung bezahlst du selbst, direkt an den Organisator, und nur den Betrag, den du zugesagt hast. Mehr kann niemand abbuchen. Dein Konto ist mit deinem Passwort verschlüsselt und läuft nur auf diesem Gerät. ' +
+          text: 'Pomona hat keinen Verwalter: Die Regeln stehen in einem Smart Contract. Per Rechnung bezahlst du jede Rate selbst und nur den zugesagten Betrag. Bei Vorab hinterlegen liegt das Geld im Treuhandkonto, und der Organisator bekommt pro Intervall höchstens eine Rate. Dein Konto ist mit deinem Passwort verschlüsselt und läuft nur auf diesem Gerät. ' +
             'Ehrlich gesagt: Der Smart Contract ist noch nicht extern geprüft. Diese Version ist ein Prototyp für Testnetze.'
         })
-      : ({
-          text: 'Das Geld liegt in einem Treuhandkonto ohne Verwalter (ein Smart Contract). Der Organisator bekommt pro Rechnung nur eine Rate und höchstens einmal pro Intervall. Was nicht abgerechnet wird, geht an dich zurück. Dein Konto ist mit deinem Passwort verschlüsselt und läuft nur auf diesem Gerät. ' +
+      : payg(s.round)
+        ? ({
+            text: 'In dieser Runde liegt kein Geld im Voraus beim Contract. Jede Rechnung bezahlst du selbst, direkt an den Organisator, und nur den Betrag, den du zugesagt hast. Mehr kann niemand abbuchen. Dein Konto ist mit deinem Passwort verschlüsselt und läuft nur auf diesem Gerät. ' +
+            'Ehrlich gesagt: Der Smart Contract ist noch nicht extern geprüft. Diese Version ist ein Prototyp für Testnetze.'
+          })
+        : ({
+            text: 'Das Geld liegt in einem Treuhandkonto ohne Verwalter (ein Smart Contract). Der Organisator bekommt pro Rechnung nur eine Rate und höchstens einmal pro Intervall. Was nicht abgerechnet wird, geht an dich zurück. Dein Konto ist mit deinem Passwort verschlüsselt und läuft nur auf diesem Gerät. ' +
         'Ehrlich gesagt: Der Smart Contract ist noch nicht extern geprüft. Diese Version ist ein Prototyp für Testnetze.'
-        })
+          })
   },
   pay: {
     question: 'Wie bezahle ich eine Rechnung?',

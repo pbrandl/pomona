@@ -44,7 +44,7 @@ const ui = {
   verified: null, // result of verifyReceipt in the scan sheet
   scanError: null, // camera unavailable → paste only
   homeChat: false, // start screen: chat opened in place (hero flew out)
-  homeChatAt: 0,
+  homeChatFresh: false,
   joinScan: false, // "Einer Runde beitreten": camera open for the invite QR
   showAllInvoices: false,
   showAllNews: false,
@@ -715,9 +715,9 @@ $app.addEventListener('click', async (e) => {
 $app.addEventListener('focusin', (e) => {
   if (e.target.id !== 'ask' || ui.sheet || ui.homeChat || !e.target.closest('.home')) return
   ui.homeChat = true
-  ui.homeChatAt = Date.now()
+  ui.homeChatFresh = true
   render()
-  setTimeout(render, 720) // settle after the fly animations
+  ui.homeChatFresh = false // later renders show the final state, no replayed animation
 })
 
 const syncDraft = (e) => {

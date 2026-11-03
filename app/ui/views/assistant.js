@@ -6,10 +6,9 @@
 import { esc } from '../format.js'
 import { page, spinner } from './parts.js'
 
-/** "Frag Pomona": a round speech bubble with a small sparkle (local AI). */
+/** "Frag Pomona": a plain round speech bubble. */
 export const SPARK = `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-  <path d="M20.5 11.5a8 8 0 0 1-11.9 7l-4.6 1.4 1.4-4.4a8 8 0 1 1 15.1-4z"/>
-  <path d="M12.5 7.2l1 2.3 2.3 1-2.3 1-1 2.3-1-2.3-2.3-1 2.3-1z" fill="currentColor" stroke="none"/></svg>`
+  <path d="M20.5 11.5a8 8 0 0 1-11.9 7l-4.6 1.4 1.4-4.4a8 8 0 1 1 15.1-4z"/></svg>`
 
 /** Model setup / download state; quiet once the model is there. */
 function modelCard (ui) {
@@ -85,7 +84,8 @@ function bubble (m, i) {
 const isThinking = (ui) => ui.pending === 'agent-send' || ui.pending === 'agent-topic'
 
 /** Model setup, conversation and suggestion chips (page and start screen). */
-export function chatBody (ui, { intro = true } = {}) {
+export function chatBody (ui, { intro = true, compact = false } = {}) {
+  if (compact) return compactBody(ui)
   const a = ui.status.assistant
   const chat = ui.chat
   const thinking = isThinking(ui)
@@ -101,6 +101,39 @@ export function chatBody (ui, { intro = true } = {}) {
       ${thinking ? `<div class="msg bot thinking">${spinner}<span>${a?.state === 'ready' || a?.state === 'installed' ? 'Denkt nach…' : 'Einen Moment…'}</span></div>` : ''}
     </div>
     <div class="chips">${chips}</div>`
+}
+
+/**
+ * Start screen: only the conversation and one quiet line about the model.
+ * Example questions sit as one swipeable row above the field (homeChips).
+ */
+function compactBody (ui) {
+  const a = ui.status.assistant
+  const thinking = isThinking(ui)
+  let model = ''
+  if (a?.state === 'downloading' || a?.state === 'loading') {
+    model = `<p class="model-line">${spinner}<span>Sprachmodell wird ${a.state === 'loading' ? 'vorbereitet' : `geladen · ${Math.round((a.progress ?? 0) * 100)} %`}</span></p>`
+  } else if (a?.manual && (a.state === 'none' || a.state === 'error')) {
+    model = modelCard(ui) // manual download needs its three steps
+  } else if (a?.state === 'none' || a?.state === 'error') {
+    const small = (a.models || []).find((m) => m.key === 'small')
+    model = `<p class="model-line">${a.state === 'error' ? `<span class="warn-text">${esc(a.error)}</span>` : '<span>Für freie Fragen läuft ein Sprachmodell lokal auf deinem Gerät.</span>'}
+      <button class="link" data-action="agent-install" data-model="small">Laden${small ? ` (${esc(small.size)})` : ''}</button></p>`
+  }
+  return `${model}
+    <div class="chat" id="chat">
+      ${ui.chat.map(bubble).join('')}
+      ${thinking ? `<div class="msg bot thinking">${spinner}<span>${a?.state === 'ready' || a?.state === 'installed' ? 'Denkt nach…' : 'Einen Moment…'}</span></div>` : ''}
+    </div>`
+}
+
+/** Example questions as one row that scrolls sideways. */
+export function homeChips (ui) {
+  const thinking = isThinking(ui)
+  const list = ui.status.assistant?.suggestions || []
+  if (!list.length) return ''
+  return `<div class="home-chips" role="list">${list.map((s) =>
+    `<button class="chip question" role="listitem" data-action="agent-topic" data-topic="${esc(s.topic)}" ${thinking ? 'disabled' : ''}>${esc(s.question)}</button>`).join('')}</div>`
 }
 
 /** The question field with the send button inside, on the right. */

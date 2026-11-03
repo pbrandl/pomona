@@ -4,7 +4,7 @@
  */
 import { esc } from '../format.js'
 import { btn, field, sheet, page } from './parts.js'
-import { chatBody, chatInput } from './assistant.js'
+import { chatBody, chatInput, homeChips } from './assistant.js'
 
 /** First start: three pages. */
 export const WALLET_STEPS = ['Passwort', 'Notfall-Wörter', 'Aufladen']
@@ -19,16 +19,15 @@ export const WALLET_STEPS = ['Passwort', 'Notfall-Wörter', 'Aufladen']
 export function home (ui, hero) {
   if (!ui.status?.assistant) return hero
   const on = !!ui.homeChat
-  const fresh = on && Date.now() - (ui.homeChatAt || 0) < 700 // animate only right after opening
+  const fresh = on && ui.homeChatFresh // animate once, on the render that opens it
+  const close = on ? '<button class="icon-btn home-close" data-action="home-chat-close" aria-label="Chat schließen">×</button>' : ''
   return `<div class="home ${on ? 'chatting' : ''} ${fresh ? 'fresh' : ''}">
     <div class="home-hero" ${on ? 'aria-hidden="true"' : ''}>${hero}</div>
-    ${on
-      ? `<div class="home-chat">
-          <div class="row home-chat-top"><strong>Frag Pomona</strong><button class="link small" data-action="home-chat-close">Schließen</button></div>
-          ${chatBody(ui, { intro: false })}
-        </div>`
-      : ''}
-    <div class="home-dock">${chatInput(ui, 'Frag Pomona …')}</div>
+    ${on ? `<div class="home-chat">${chatBody(ui, { compact: true })}</div>` : ''}
+    <div class="home-dock">
+      ${on ? homeChips(ui) : ''}
+      <div class="home-dock-row">${close}${chatInput(ui, 'Frag Pomona …')}</div>
+    </div>
   </div>`
 }
 

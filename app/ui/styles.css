@@ -1062,3 +1062,39 @@ h1.welcome > span:last-child { font-size: 0.78em; } /* subtitle: smaller, but no
 @media (prefers-reduced-motion: reduce) { .home.chatting.fresh .home-hero, .home.chatting.fresh .home-chat { animation: none; } .home.chatting.fresh .home-hero { display: none; } }
 body:has(.home-dock) .toast { bottom: 96px; }
 .ask-pill .ic, .bar .ask-pill svg { width: 18px; height: 18px; }
+
+/* ----------------------------- start-screen chat, calm and light (v2) */
+/* The dock lives in the page flow and sticks to the bottom: no jumping with the keyboard. */
+.home { display: flex; flex-direction: column; min-height: calc(100dvh - 120px); padding-bottom: 0; }
+.home-dock {
+  position: sticky; left: auto; transform: none; width: 100%; max-width: 560px; margin: auto auto 0;
+  bottom: 0; padding: 12px 0 max(12px, env(safe-area-inset-bottom, 0px)); z-index: 20;
+  background: linear-gradient(to top, var(--bg) 70%, transparent);
+  display: grid; gap: 10px;
+}
+.home-dock-row { display: flex; align-items: center; gap: 8px; }
+.home-dock-row .amount.ask { flex: 1; min-width: 0; }
+.home-close { flex: none; width: 44px; height: 44px; font-size: 22px; line-height: 1; color: var(--muted); }
+.home-chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 2px 0; -webkit-mask-image: linear-gradient(90deg, #000 85%, transparent); mask-image: linear-gradient(90deg, #000 85%, transparent); }
+.home-chips::-webkit-scrollbar { display: none; }
+.home-chips .chip { flex: none; white-space: nowrap; }
+.home-chat { display: grid; gap: 12px; padding-top: 8px; }
+.home-chat .chat:empty { display: none; }
+.model-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0; font-size: 13px; color: var(--muted); }
+.model-line .link { font-size: 13px; }
+.home.chatting .home-hero { display: none; }
+.home.chatting.fresh .home-hero { display: block; position: absolute; inset: 0 0 auto; animation: home-out 0.35s ease-in forwards; pointer-events: none; }
+.home.chatting.fresh .home-chat, .home.chatting.fresh .home-chips { animation: home-in 0.4s 0.1s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes home-out { to { transform: translateY(-40px); opacity: 0; } }
+@keyframes home-in { from { transform: translateY(24px); opacity: 0; } }
+body:has(.home-dock) .toast { bottom: 110px; }
+@media (max-width: 520px) {
+  .home { min-height: calc(100dvh - 96px); }
+  .home-dock .amount.ask { height: 52px; }
+}
+/* the field never pushes the send button off screen */
+.home-dock, .home-dock-row { min-width: 0; max-width: min(560px, 100%); }
+.home-dock .amount.ask { overflow: hidden; display: flex; align-items: center; gap: 8px; }
+.home-dock .amount.ask input { flex: 1; width: auto; min-width: 0; }
+.home-dock .amount.ask .btn { flex: none; }
+.home-chat .model-line { padding: 0 2px; }
