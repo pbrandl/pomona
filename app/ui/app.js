@@ -119,7 +119,10 @@ function topbar () {
   const w = ui.status?.wallet
   // On the start screens the chat sits at the bottom; no second entry up here.
   const onHome = !ui.sheet && !!ui.status?.assistant && (w?.state === 'none' || (w?.state === 'unlocked' && !ui.status.round))
-  const ask = onHome ? '' : `<button class="pill ask-pill" data-action="open-assistant" title="Frag Pomona">${SPARK}<span>Frag Pomona</span></button>`
+  // In overlays (chat, bid flow and every other page on top) the "Pomona" label
+  // goes; they have their own way back. The chat button goes inside the chat.
+  const overlay = !!ui.sheet || !!ui.homeChat
+  const ask = onHome || ui.sheet === 'assistant' ? '' : `<button class="pill ask-pill" data-action="open-assistant" title="Frag Pomona">${SPARK}<span>Frag Pomona</span></button>`
   // "Frag Pomona" is there from the first start on, also before a wallet exists.
   const right = w?.state === 'unlocked'
     ? `<div class="bar-right">${ask}<button class="pill" data-action="open-sheet" data-sheet="wallet"><span class="dot ${ui.status.peers > 0 ? 'on' : ''}" title="${ui.status.peers} Peers"></span>${fmt(w.usdt)} ${esc(w.symbol)}<span class="muted mono">${short(w.address)}</span></button></div>`
@@ -127,7 +130,9 @@ function topbar () {
   const update = ui.update
     ? `<div class="update-bar" role="status"><span>Neue Version von Pomona ist bereit.</span><button class="btn accent small" data-action="restart" ${ui.status?.busy ? 'disabled title="Nach der laufenden Transaktion"' : ''}>Neu starten</button></div>`
     : ''
-  return `${update}<header class="bar"><button class="brand" data-action="go-home" aria-label="Pomona, zum Start">${PEAR}Pomona</button>${right}</header>`
+  const brand = overlay ? '<span></span>' : `<button class="brand" data-action="go-home" aria-label="Pomona, zum Start">${PEAR}Pomona</button>`
+  const empty = overlay && !/<button/.test(right)
+  return `${update}${empty ? '' : `<header class="bar">${brand}${right}</header>`}`
 }
 
 function body () {
