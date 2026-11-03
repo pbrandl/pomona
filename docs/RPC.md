@@ -1,6 +1,6 @@
 # RPC zwischen UI und Worker
 
-Das Protokoll ist JSON, eine Nachricht pro Zeile, über die `pear-pipe` zwischen Renderer und Bare-Worker. Implementiert ist es in `app/core/rpc/server.js` und `app/ui/pear.js`. Erreichbar sind **nur** die Methoden unten (`app/core/rpc/methods.js`). Jeder Parameter wird gegen ein Schema geprüft.
+Das Protokoll ist JSON, eine Nachricht pro Zeile, zwischen Renderer und Bare-Worker (Electron-IPC über `electron/preload.cjs` und `electron/main.cjs`, dann `Bare.IPC`). Implementiert ist es in `app/core/rpc/server.js` und `app/ui/electron.js`. Erreichbar sind **nur** die Methoden unten (`app/core/rpc/methods.js`). Jeder Parameter wird gegen ein Schema geprüft.
 
 ```json
 → {"id":1,"method":"bid","params":{"amount":"100"}}

@@ -27,7 +27,7 @@ Pomona ist der Nachfolger von [Contrib](https://github.com/pbrandl/contrib) (Flu
 
 | Schicht | Technik | Aufgabe |
 |---|---|---|
-| Desktop-App | [Pear](https://pears.com) (`pear-electron`, `pear-run`, `pear-pipe`) | Oberfläche im Renderer. Wallet, P2P und Chain laufen in einem Bare-Worker. |
+| Desktop-App | [Pear](https://pears.com) 3: Electron mit `pear-runtime` | Oberfläche im abgeschotteten Renderer. Wallet, P2P und Chain laufen in einem Bare-Worker, den `pear-runtime` startet. |
 | P2P | Hyperswarm, Corestore, Hyperbee | Der Organisator veröffentlicht das Manifest (Titel, Website, Neuigkeiten). Alle Teilnehmer replizieren und seeden es mit. |
 | Wallet | [WDK](https://docs.wdk.tether.io): `wdk`, `wdk-wallet-evm-erc-4337` | Self-custodial Smart Account (Safe). Gebühren werden in USDT über einen Paymaster bezahlt, eine WDK-Policy begrenzt die Rechte. |
 | Tresor | libsodium: Argon2id + XSalsa20-Poly1305 | Die Seed-Phrase wird nur verschlüsselt gespeichert. |
@@ -45,7 +45,7 @@ Mehr dazu:
 
 ## Loslegen
 
-Voraussetzungen: Node.js 22 und die [Pear-CLI](https://docs.pears.com) (`npm i -g pear`, danach einmal `pear` ausführen).
+Voraussetzungen: Node.js 22. Seit Pear 3 ist die App eine normale Electron-App mit `pear-runtime` (Vorlage: [hello-pear-electron](https://github.com/holepunchto/hello-pear-electron)); `pear run` gibt es nicht mehr. Die Pear-CLI braucht es erst zum Veröffentlichen.
 
 ```bash
 # Contracts bauen und testen (20 Tests)
@@ -57,9 +57,11 @@ node scripts/deploy.js local          # schreibt app/core/config/deployments.js
 
 # App testen (39 Tests) und starten
 cd ../app && npm install && npm test
-pear run --dev .                      # Organisator
-pear run --dev . --tmp-store          # zweite Instanz als Bieter
+npm start                             # Electron-Fenster gegen die lokale Chain
+npm run start:second                  # zweite Instanz mit eigener Wallet (z. B. als Bieter)
 ```
+
+`npm install` lädt dabei Electron herunter. Scheitert das hinter einer Firmen-Firewall mit einem Zertifikatsfehler, hilft `NODE_EXTRA_CA_CERTS=/pfad/zum/firmen-zertifikat.pem npm install`. Die Entwicklerwerkzeuge im Fenster öffnet ⌥⌘I (macOS) bzw. Strg+Umschalt+I.
 
 Im Entwicklermodus läuft die App gegen die lokale Chain. In der Wallet gibt es einen **Faucet** für Test-USDT. Die Gebühren in ETH füllt die App dort unsichtbar auf, weil es lokal weder Bundler noch Paymaster gibt.
 
@@ -106,7 +108,8 @@ Szenarien: `onboarding`, `locked`, `start`, `bidder`, `organizer`, `invoice`, `r
 - [x] Contracts mit Raten, Rechnungen, Belegen und Factory-Register
 - [x] Nur USDT: ERC-4337 Smart Account mit Gebühren über den Paymaster (WDK)
 - [x] Tresor, Sperre, WDK-Policy, CSP und Sicherheitsprüfung ([SECURITY.md](docs/SECURITY.md))
-- [ ] Erster Start in Pear auf einem Desktop und Abgleich mit der aktuellen Pear-Doku
+- [x] Desktop-App auf Pear 3 (Electron + `pear-runtime`), Ablauf Konto → Runde → Gebot im echten Fenster geprüft
+- [ ] Paketieren (electron-forge) und P2P-Updates über `pear-runtime` mit Release-Link
 - [ ] Sepolia: Bundler und Paymaster eintragen und den kompletten Ablauf testen
 - [ ] Automatische Sperre bei Inaktivität, stärkere Argon2id-Parameter
 - [x] Assistent „Frag Pomona“ auf QVAC (lokal, nur vorbereitend)
@@ -120,14 +123,4 @@ MIT. Die Schrift Inter steht unter der SIL Open Font License.
 
 ## Updates verteilen
 
-Pear verteilt neue Versionen peer-to-peer unter demselben `pear://`-Link:
-
-```bash
-cd app
-# vorher: Version in package.json und core/version.js erhöhen
-pear stage production      # gleicher Link, neue Version
-pear release production    # ab jetzt bekommen alle diese Version
-pear seed production       # mindestens ein Rechner hält die App verfügbar
-```
-
-Laufende Apps laden das Update im Hintergrund und zeigen oben „Neue Version von Pomona ist bereit · Neu starten“ (`pear-updates`, `pear-restart`). Während einer laufenden Transaktion ist der Neustart gesperrt. Wallet, Runde und Belege bleiben erhalten, Contracts sind von App-Updates nie betroffen. Die Version steht im Konto-Bereich. Den Release-Schlüssel (im Pear-Verzeichnis) sicher verwahren: Wer ihn hat, kann allen Updates einspielen. Die Befehle bitte einmal gegen die aktuelle Pear-Doku prüfen.
+Mit Pear 3 kommen Updates über `pear-runtime`: Die paketierte App (electron-forge) prüft unter ihrem `pear://`-Link peer-to-peer auf neue Versionen und spielt sie ein. Das ist noch nicht eingerichtet. Der Weg steht in der Vorlage [hello-pear-electron](https://github.com/holepunchto/hello-pear-electron): Link mit `pear touch` anlegen, im `upgrade`-Feld der `package.json` eintragen, App paketieren, Ordner mit `pear stage` veröffentlichen und mit `pear seed` verfügbar halten. Die Oberfläche hat die Anzeige „Neue Version von Pomona ist bereit · Neu starten“ schon; sie wird mit dem Updater verbunden. Den Release-Schlüssel sicher verwahren: Wer ihn hat, kann allen Updates einspielen.

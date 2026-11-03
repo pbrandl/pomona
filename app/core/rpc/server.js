@@ -1,5 +1,5 @@
 /**
- * Newline-delimited JSON-RPC over a duplex stream (the pear-pipe between the
+ * Newline-delimited JSON-RPC over a duplex stream (Bare.IPC between the
  * UI and the worker).
  *
  *   request  {"id":1,"method":"bid","params":{"amount":"100"}}

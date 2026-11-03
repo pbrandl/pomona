@@ -1,20 +1,23 @@
 /**
- * Background worker (Bare). Owns the encrypted seed, the Hyperswarm and the
- * chain connection. The UI reaches it only through the whitelisted RPC methods
- * in core/rpc/methods.js.
+ * Background worker (Bare). The Electron main process starts it through
+ * pear-runtime (electron/main.cjs). It owns the encrypted seed, the Hyperswarm
+ * and the chain connection. The UI reaches it only through the whitelisted RPC
+ * methods in core/rpc/methods.js: newline-delimited JSON over `Bare.IPC`.
+ *
+ * Started with one JSON argument: { storage, dev }
+ *   storage  directory for wallet vault and Corestore
+ *   dev      local Hardhat chain with its public dev key (npm start)
  */
-import pearPipe from 'pear-pipe'
+import goodbye from 'graceful-goodbye'
 import { Pomona, serve, METHODS } from '../core/bare.js'
 
-const pipe = pearPipe()
-const app = Pear.app ?? Pear.config
-const dev = !!app.dev
+const env = JSON.parse(Bare.argv[Bare.argv.length - 1])
+const pipe = Bare.IPC
 
 const pomona = new Pomona({
-  storage: app.storage,
-  // The local Hardhat chain (with its public dev key) exists only in `pear run --dev`.
-  allowDev: dev,
-  defaultNetwork: dev ? 'local' : 'arbitrum-sepolia'
+  storage: env.storage,
+  allowDev: !!env.dev,
+  defaultNetwork: env.dev ? 'local' : 'arbitrum-sepolia'
 })
 
 await pomona.ready()
@@ -28,4 +31,7 @@ pomona.on('change', () => {
 pomona.on('error', (e) => rpc.emit('error', e?.message || String(e)))
 rpc.emit('ready')
 
-Pear.teardown(() => pomona.close())
+// The main process stops the worker with SIGTERM when the app quits (and the
+// worker ends when the pipe does): close swarm and storage cleanly first.
+goodbye(() => pomona.close())
+pipe.on('end', () => goodbye.exit())

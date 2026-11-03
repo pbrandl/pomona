@@ -32,7 +32,7 @@ import deployments from './deployments.js'
  * @property {number} chainId
  * @property {string} rpc
  * @property {string|null} explorer
- * @property {boolean} dev - local chain: dev account + faucet, only in `pear run --dev`
+ * @property {boolean} dev - local chain: dev account + faucet, only with `--dev` (npm start)
  * @property {number} pollMs - how often to look for new contract events (live updates)
  * @property {AccountAbstraction|null} aa
  * @property {string|null} factory - PomonaFactory address

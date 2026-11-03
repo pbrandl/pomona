@@ -23,7 +23,7 @@ const ENC = { keyEncoding: 'utf-8', valueEncoding: 'json' }
 
 export class P2PNode {
   /**
-   * @param {string} storage - directory (Pear: `Pear.app.storage`)
+   * @param {string} storage - directory (desktop: `<userData>/storage`)
    * @param {{ bootstrap?: Array<{host: string, port: number}>, dht?: object }} [opts]
    *   Tests pass a local testnet; production uses the public HyperDHT.
    */

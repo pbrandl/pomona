@@ -36,10 +36,10 @@ const TRANSFER = topicOf('Transfer(address,address,uint256)')
 
 /**
  * @typedef {Object} PomonaOptions
- * @property {string} storage - directory for Corestore (Pear: Pear.app.storage)
+ * @property {string} storage - directory for Corestore and vault (desktop: <userData>/storage)
  * @property {string} [defaultNetwork] - network used before a round exists
  * @property {Object<string, object>} [networkOverrides] - per-network config overrides (tests, local setups)
- * @property {boolean} [allowDev] - enable the local dev chain (only in `pear run --dev`)
+ * @property {boolean} [allowDev] - enable the local dev chain (only with `npm start` / `--dev`)
  * @property {Array<{host: string, port: number}>} [bootstrap] - HyperDHT bootstrap (tests)
  * @property {object} [dht] - custom HyperDHT instance (tests)
  * @property {number} [pollMs] - how often to emit 'change' for chain updates

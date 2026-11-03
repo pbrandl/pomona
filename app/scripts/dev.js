@@ -8,7 +8,7 @@
  *   2. a local HyperDHT on loopback (replaces the public Holepunch DHT)
  *   3. one Bare worker per profile: the same core as in Pear (worker/dev.js)
  *   4. one HTTP server per profile on 127.0.0.1 that serves the UI
- *      (index.html with ui/dev.js instead of ui/pear.js) and relays RPC
+ *      (index.html with ui/dev.js instead of ui/electron.js) and relays RPC
  *
  * Two profiles by default, so one person can organize and another can bid.
  * Wallets and rounds live in a temporary folder and are gone after Ctrl+C,
@@ -241,7 +241,7 @@ function listen (name, worker, token, port) {
       let body = await readFile(file)
       if (path === '/index.html') {
         body = body.toString('utf8')
-          .replace('./ui/pear.js', './ui/dev.js')
+          .replace('./ui/electron.js', './ui/dev.js')
           .replace('<title>Pomona</title>', `<title>Pomona · ${name}</title>`)
       }
       res.writeHead(200, { ...headers, 'content-type': TYPES[extname(file)] || 'application/octet-stream' }).end(body)

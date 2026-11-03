@@ -5,3 +5,4 @@ contracts/artifacts/
 *.log
 .DS_Store
 .ui-check/
+.instances/

@@ -29,7 +29,7 @@ Stand: Version 0.2. Dieses Dokument enthält das Bedrohungsmodell, die Ergebniss
 | 4 | **Ungeprüfte Daten von Peers** (Titel, Website, Neuigkeiten): beliebig groß, beliebige Typen. | Mittel | **Behoben.** Schema-Prüfung und Längenlimits (`p2p/manifest.js`, `config/limits.js`). Angezeigt werden die Daten nur escaped, und Beträge sowie der Organisator kommen immer vom Contract. |
 | 5 | **Keine CSP** im Renderer. | Mittel | **Behoben.** CSP mit `script-src 'self'`, ohne Remote-Code, `object-src 'none'`. Alles, was in HTML landet, läuft durch `esc()`. |
 | 6 | **RPC ohne Parameterprüfung.** | Niedrig | **Behoben.** Whitelist mit Schema (`rpc/methods.js`), `Object.hasOwn` statt Prototyp-Lookup, Größenlimit pro Nachricht. |
-| 7 | **Faucet mit dem öffentlichen Hardhat-Key** wäre in jeder Version verfügbar gewesen. | Niedrig | **Behoben.** Die lokale Chain ist nur im Entwicklermodus erreichbar (`Pear.app.dev`). |
+| 7 | **Faucet mit dem öffentlichen Hardhat-Key** wäre in jeder Version verfügbar gewesen. | Niedrig | **Behoben.** Die lokale Chain ist nur im Entwicklermodus erreichbar (`--dev`). |
 | 8 | **Gebühren-Token (ETH) nötig.** | – | **Behoben.** Mit ERC-4337 und USDT-Paymaster gibt es eine Gebührenobergrenze von 5 USDT pro Transaktion (`transactionMaxFee`). |
 | 9 | Geld konnte im Contract hängen bleiben, wenn der Organisator verschwindet. | Mittel | **Behoben.** Ab `expiresAt` gilt die Runde als abgeschlossen, und die Bietenden holen den Rest zurück. |
 | 10 | „Wiederherstellen“ hätte eine bestehende Wallet überschreiben können. | Mittel | **Behoben.** Ist bereits ein Tresor vorhanden, wird das abgelehnt. |
@@ -89,9 +89,17 @@ Verbleibend: Ein Beleg kann innerhalb seiner 10 Minuten weitergegeben werden (Sc
 | Modelldatei von Hand (Entwicklermodus, `modelsDir`) | Pomona nimmt eine selbst heruntergeladene Datei nur, wenn Größe und SHA-256 zum QVAC-Katalog passen (`core/agent/qvac.js`). Das Ergebnis wird mit Größe und Änderungszeit gemerkt, eine ausgetauschte Datei wird neu geprüft. |
 | Download | Das Modell wird peer-to-peer aus der QVAC-Registry geladen. Dabei sind wie bei Hyperswarm IP-Adressen für die Gegenstellen sichtbar. |
 
+## Desktop-App (Electron + pear-runtime)
+
+- **Renderer abgeschottet:** `sandbox`, `contextIsolation`, kein Node (`nodeIntegration: false`), dieselbe CSP wie bisher (kein fremder Code, keine Inline-Skripte).
+- **Eine Tür:** Der Renderer erreicht den Hauptprozess nur über `window.bridge` aus `electron/preload.cjs`. Der Hauptprozess nimmt IPC nur von der eigenen Seite (`index.html`) an und startet nur den einen Worker, keinen Pfad aus dem Renderer.
+- **Keine Navigation:** Das Fenster kann die eigene Seite nicht verlassen. Web-Links (die Website eines Projekts, aus dem bereinigten Manifest, nur http/https) öffnen im Standard-Browser.
+- **Rechte:** nur die Kamera (QR-Codes scannen); alles andere wird abgelehnt. macOS fragt einmal nach.
+- **Schlüssel nur im Worker:** Der Hauptprozess reicht RPC-Zeilen durch und hält keine Geheimnisse.
+
 ## Entwicklermodus ohne Pear (`npm run dev`)
 
-Im Browser liegt zwischen Oberfläche und Kern ein lokaler HTTP-Server statt der `pear-pipe`. Er lauscht nur auf 127.0.0.1. Jeder Aufruf braucht ein Token, das bei jedem Start zufällig neu erzeugt wird und mit `timingSafeEqual` geprüft wird. Ein eigener Header erzwingt bei fremden Seiten eine CORS-Vorabprüfung, die nie beantwortet wird. Fremde `Host`-Header (DNS-Rebinding) werden abgelehnt. Ausgeliefert werden nur `index.html` und `ui/`. Es gelten dieselbe CSP wie in Pear und zusätzlich `frame-ancestors 'none'`. Der Modus nutzt immer die lokale Chain mit Testgeld. Details in [DEV.md](DEV.md).
+Im Browser liegt zwischen Oberfläche und Kern ein lokaler HTTP-Server statt der Electron-IPC. Er lauscht nur auf 127.0.0.1. Jeder Aufruf braucht ein Token, das bei jedem Start zufällig neu erzeugt wird und mit `timingSafeEqual` geprüft wird. Ein eigener Header erzwingt bei fremden Seiten eine CORS-Vorabprüfung, die nie beantwortet wird. Fremde `Host`-Header (DNS-Rebinding) werden abgelehnt. Ausgeliefert werden nur `index.html` und `ui/`. Es gelten dieselbe CSP wie in Pear und zusätzlich `frame-ancestors 'none'`. Der Modus nutzt immer die lokale Chain mit Testgeld. Details in [DEV.md](DEV.md).
 
 ## Modus „Per Rechnung“ (`pay`)
 

@@ -3,7 +3,7 @@
 Pomona besteht aus drei Teilen, die sich klar voneinander trennen lassen:
 
 ```
-┌──────────────────────────── Pear-Desktop-App ─────────────────────────────┐
+┌──────────────── Desktop-App (Electron + pear-runtime) ────────────────────┐
 │                                                                           │
 │  UI (Electron-Renderer)          Worker (Bare)                            │
 │  app/ui/*                        app/worker/index.js → app/core/*         │
@@ -12,7 +12,7 @@ Pomona besteht aus drei Teilen, die sich klar voneinander trennen lassen:
 │  │ app.js   (State,   │ ◀────── │ pomona.js Anwendungsdienst           │  │
 │  │          Actions)  │ events  │   ├─ wallet/  WDK-Accounts, Tresor,  │  │
 │  └────────────────────┘         │   │           Policy                  │  │
-│        pear-run / pear-pipe     │   ├─ chain/   Contracts lesen,       │  │
+│  Preload ↔ Main ↔ Bare.IPC      │   ├─ chain/   Contracts lesen,       │  │
 │                                 │   │           Calls kodieren          │  │
 │                                 │   ├─ p2p/     Hyperswarm, Manifest   │  │
 │                                 │   └─ links, schedule, units, config  │  │
@@ -39,8 +39,9 @@ Pomona besteht aus drei Teilen, die sich klar voneinander trennen lassen:
 | `contracts/src/PomonaRound.sol` | Escrow und Raten-Abrechnung einer Runde, siehe [CONTRACT.md](CONTRACT.md) |
 | `contracts/src/PomonaFactory.sol` | Legt Runden an und ist das Register `isRound` gegen gefälschte Contracts |
 | `contracts/scripts/` | `build` (solc-js, erzeugt auch `app/core/chain/abi.js`), `devchain`, `deploy` |
-| `app/index.js` | Pear-Einstieg (Bare): öffnet die Electron-UI |
-| `app/worker/index.js` | Startet den Kern und bedient RPC auf der pear-pipe |
+| `app/electron/main.cjs` | Electron-Hauptprozess: Fenster, startet den Worker mit `pear-runtime`, reicht RPC zwischen UI und Worker durch (hält keine Schlüssel) |
+| `app/electron/preload.cjs` | Einzige Tür zwischen abgeschottetem Renderer und Hauptprozess (`window.bridge`) |
+| `app/worker/index.js` | Startet den Kern und bedient RPC über `Bare.IPC` |
 | `app/core/pomona.js` | **Anwendungsdienst.** Alle Geschäftsregeln, Vorprüfungen, Status |
 | `app/core/wallet/` | `account.js` (Interface), `smart-account.js` (ERC-4337), `dev-account.js` (lokal), `vault.js` (Argon2id + secretbox), `policy.js` (WDK-Policy) |
 | `app/core/chain/` | `contracts.js` (lesen + Calls kodieren), `reverts.js` (Fehlertexte), `provider.js`, `abi.js` (generiert) |
@@ -103,15 +104,16 @@ Die UI hält keinen eigenen Geschäftszustand. Bei jedem `change`-Event des Work
 - Jede Geschäftsregel steht genau einmal im Contract. `schedule.js` spiegelt sie nur für die Anzeige.
 - Tests: `contracts/test` (Contract), `app/test/unit.test.js` (ohne Netz), `app/test/flow.test.js` (End-to-End), `app/test/bare.test.js` (Bare).
 
-## Grundlage für die Pear-Integration
+## Pear 3: Electron mit pear-runtime
 
-Die Pear-Doku (docs.pears.com) war in der Entwicklungsumgebung nicht erreichbar. Die Integration folgt deshalb den Quellen und READMEs der Pakete `pear-electron@1.7.28`, `pear-bridge@1.2.5`, `pear-run@2.0.0`, `pear-pipe@1.0.6` und `pear-api@1.30.0`:
-- `pear-electron/pre` und `runtime.start({ bridge })` im Einstieg
-- `pear-run` im Renderer, um den Worker zu starten (der Nachfolger von `Pear.worker.run`)
-- `pear-pipe` im Worker
-- `Pear.app.storage` und `Pear.app.dev`
+Seit Pear 3 startet Pear keine Apps mehr (`pear run` entfällt). Eine Pear-App ist eine normale Electron-App, die `pear-runtime` einbindet: Bare-Worker, Speicher und P2P-Updates. Pomona folgt der Vorlage [hello-pear-electron](https://github.com/holepunchto/hello-pear-electron):
 
-Beim ersten echten Start mit `pear run --dev .` sollte das gegen die aktuelle Doku geprüft werden.
+- **Hauptprozess** (`electron/main.cjs`): öffnet das Fenster, startet `worker/index.js` mit `PearRuntime.run()` (die Bare-Laufzeit bringt `bare-sidecar` für jede Plattform mit) und reicht die RPC-Zeilen durch. Er hält keine Schlüssel und kennt keine Geschäftsregeln.
+- **Preload** (`electron/preload.cjs`): stellt `window.bridge` bereit (Worker starten, Zeilen schreiben und empfangen, Kopieren, Kamera, Neustart). Der Renderer läuft mit `sandbox`, `contextIsolation` und ohne Node.
+- **Renderer**: `index.html` mit `ui/electron.js`, das daraus `window.pomona` macht.
+- **Worker** (`worker/index.js`): Kern und RPC über `Bare.IPC`. Beim Beenden schickt der Hauptprozess SIGTERM; `graceful-goodbye` schließt Swarm und Speicher sauber.
+- **Speicher**: `<userData>/dev` mit `--dev` (lokale Chain), sonst `<userData>/storage`. `--storage <dir>` setzt einen eigenen Ordner und erlaubt damit eine zweite Instanz.
+- **Updates**: noch nicht eingerichtet; kommen mit dem Paketieren (siehe README).
 
 ## Zwei Startwege, ein Code
 
@@ -119,7 +121,7 @@ Kern (`core/`) und Oberfläche (`ui/`, `index.html`) kennen Pear nicht direkt. S
 
 | | Oberfläche | Kern |
 |---|---|---|
-| Pear (`pear run`) | `ui/pear.js` (`pear-run`, `pear-pipe`) | `worker/index.js` |
+| Desktop (`npm start`) | `ui/electron.js` über `electron/preload.cjs` und `electron/main.cjs` | `worker/index.js` (über `pear-runtime`) |
 | Entwicklermodus (`npm run dev`) | `ui/dev.js` (HTTP, Server-Sent Events) | `worker/dev.js` (stdin/stdout), gestartet von `scripts/dev.js` |
 | Design-Vorschau (`npm run preview`) | `ui/mock.js` (simuliert) | – |
 

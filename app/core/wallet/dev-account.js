@@ -2,7 +2,7 @@
  * Account for the local development chain only. There is no bundler or
  * paymaster on Hardhat, so this is a plain WDK EVM account whose gas (ETH) is
  * topped up invisibly from Hardhat's public dev key. The UI still only shows
- * USDT. Never enabled outside `pear run --dev` (see Pomona `allowDev`).
+ * USDT. Never enabled without `--dev` (see Pomona `allowDev`).
  * @module core/wallet/dev-account
  */
 import WDK from '@tetherto/wdk'

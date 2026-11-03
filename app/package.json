@@ -4,41 +4,17 @@
   "version": "0.3.0",
   "description": "Dezentrale Bietrunde: Pears + WDK + Escrow-Contract",
   "type": "module",
-  "main": "index.js",
+  "main": "electron/main.cjs",
   "license": "MIT",
   "scripts": {
+    "start": "electron . --dev",
+    "start:second": "electron . --dev --storage .instances/second",
     "dev": "node scripts/dev.js",
     "test": "node --test test/*.test.js",
     "preview": "node scripts/preview.js",
+    "ui-check": "node scripts/ui-check.js",
     "lint": "standard",
-    "lint:fix": "standard --fix",
-    "pear": "pear run --dev .",
-    "ui-check": "node scripts/ui-check.js"
-  },
-  "pear": {
-    "name": "pomona",
-    "type": "desktop",
-    "pre": "pear-electron/pre",
-    "gui": {
-      "main": "index.html",
-      "width": 1040,
-      "height": 720,
-      "minWidth": 720,
-      "minHeight": 560,
-      "backgroundColor": "#F7F6F2"
-    },
-    "stage": {
-      "ignore": [
-        ".git",
-        "test",
-        "scripts",
-        "preview.html",
-        ".ui-check"
-      ],
-      "entrypoints": [
-        "/worker/index.js"
-      ]
-    }
+    "lint:fix": "standard --fix"
   },
   "dependencies": {
     "@qvac/inference": "^0.22.0",
@@ -51,27 +27,23 @@
     "bare-node-runtime": "^1.5.3",
     "corestore": "^7.16.1",
     "ethers": "^6.17.0",
+    "graceful-goodbye": "^1.3.3",
     "hyperbee": "^2.27.3",
     "hyperswarm": "^4.17.2",
     "idiomorph": "^0.7.3",
-    "pear-bridge": "^1.2.5",
-    "pear-electron": "^1.7.28",
-    "pear-pipe": "^1.0.6",
-    "pear-restart": "^1.0.0",
-    "pear-run": "^2.0.0",
-    "pear-updates": "^1.1.0",
+    "pear-runtime": "^1.3.1",
     "qrcode-generator": "^2.0.4",
     "sodium-universal": "^5.0.1"
   },
   "devDependencies": {
     "bare-runtime": "^1.36.0",
+    "electron": "42.0.1",
     "hyperdht": "^6.35.0",
     "playwright": "1.63.0",
     "standard": "^17.1.2"
   },
   "standard": {
     "globals": [
-      "Pear",
       "Bare"
     ],
     "ignore": [

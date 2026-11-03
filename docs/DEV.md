@@ -8,12 +8,12 @@ Es läuft **derselbe Code** wie in Pear. Nur der Startweg ist ein anderer:
 |---|---|---|
 | Kern (Wallet, Runde, Belege, Assistent) | `core/` in Bare | `core/` in Bare |
 | Oberfläche | `index.html` und `ui/` im Pear-Fenster | `index.html` und `ui/` im Browser |
-| Verbindung UI ↔ Kern | `pear-pipe` (`ui/pear.js`, `worker/index.js`) | HTTP auf 127.0.0.1 (`ui/dev.js`, `scripts/dev.js`, `worker/dev.js`) |
+| Verbindung UI ↔ Kern | Electron-IPC und `Bare.IPC` (`ui/electron.js`, `electron/`, `worker/index.js`) | HTTP auf 127.0.0.1 (`ui/dev.js`, `scripts/dev.js`, `worker/dev.js`) |
 | Chain | Arbitrum Sepolia o. a. | lokale Hardhat-Chain mit Test-USDT |
 | P2P | öffentliches Holepunch-DHT | lokales DHT auf 127.0.0.1 |
 | Sprachmodell | Download peer-to-peer über QVAC | Datei aus `~/pomona-models` |
 
-Was hier gebaut oder geändert wird, läuft danach unverändert mit `pear run`.
+Was hier gebaut oder geändert wird, läuft danach unverändert in der Desktop-App (`npm start`).
 
 ## Einrichten (einmalig)
 
@@ -107,4 +107,4 @@ Der Kern hält die Wallet, deshalb ist der lokale Server abgesichert:
 
 1. `scripts/dev.js` baut die Contracts, startet Hardhat, deployt Factory und Test-USDT und startet ein HyperDHT-Testnetz auf 127.0.0.1.
 2. Pro Profil startet es `worker/dev.js` mit `bare` (aus `bare-runtime`). Der Worker erzeugt `Pomona` mit lokalem DHT, lokaler Chain und `modelsDir` und spricht das RPC-Protokoll aus [RPC.md](RPC.md) über stdin/stdout.
-3. Pro Profil läuft ein HTTP-Server. `POST /rpc` reicht Aufrufe an den Worker weiter, `GET /events` liefert Events als Server-Sent Events, und `index.html` wird mit `ui/dev.js` statt `ui/pear.js` ausgeliefert.
+3. Pro Profil läuft ein HTTP-Server. `POST /rpc` reicht Aufrufe an den Worker weiter, `GET /events` liefert Events als Server-Sent Events, und `index.html` wird mit `ui/dev.js` statt `ui/electron.js` ausgeliefert.
