@@ -35,8 +35,7 @@ const $app = document.getElementById('app')
 /** All UI state. The backend status is the source of truth; the rest is view state. */
 const ui = {
   status: null,
-  tab: 'create', // start screen: 'create' | 'join'
-  sheet: null, // 'wallet' | 'create-wallet' | 'restore' | 'reveal' | 'seed' | 'receipt' | 'invoice' | 'scan'
+  sheet: null, // the open page (a key of SHEETS), null = the main view
   seed: null, // shown once after creating, or after re-entering the password
   invite: null, // { link, qr }
   addressQr: null,
@@ -47,7 +46,6 @@ const ui = {
   homeChat: false, // start screen: chat opened in place (hero flew out)
   homeChatFresh: false,
   joinScan: false, // "Einer Runde beitreten": camera open for the invite QR
-  showAllInvoices: false,
   showAllNews: false,
   quote: null, // quoteBid result while the bid confirmation is open
   bidDone: null, // { pledgeAfter, deposit } after a successful bid
@@ -67,7 +65,6 @@ const ui = {
   pending: null, // action currently running in the UI
   draft: {
     title: '',
-    description: '',
     website: '',
     target: '',
     installments: '12',
@@ -208,17 +205,11 @@ async function askAssistant (params) {
   scrollChat()
 }
 
-/**
- * Keeps the newest message in view. The chat page scrolls its own message
- * area (instantly on open, smoothly for new messages); the start screen
- * scrolls the window.
- */
-function scrollChat (smooth = false) {
+/** Keeps the newest message in view (only the message area scrolls). */
+function scrollChat () {
   window.requestAnimationFrame(() => {
     const box = document.getElementById('chat-scroll')
-    const behavior = smooth ? 'smooth' : 'auto'
-    if (box) box.scrollTo({ top: box.scrollHeight, behavior })
-    else window.scrollTo({ top: document.body.scrollHeight, behavior })
+    if (box) box.scrollTop = box.scrollHeight
   })
 }
 let chatSeen = 0 // messages already shown; newer ones glide in once
@@ -355,57 +346,75 @@ function focusTrack () {
     trackKey = key
   }
   el.scrollLeft = trackLeft
-  // Scroll indicator on the card's bottom edge instead of the native scrollbar.
-  const bar = $app.querySelector('[data-track-bar]')
-  const thumb = bar?.firstElementChild
-  const paint = () => {
-    if (!bar) return
-    const ratio = el.clientWidth / el.scrollWidth
-    bar.hidden = ratio >= 0.999
-    thumb.style.width = ratio * 100 + '%'
-    thumb.style.left = (el.scrollLeft / el.scrollWidth) * 100 + '%'
-  }
-  paint()
-  el.addEventListener('scroll', () => { trackLeft = el.scrollLeft; paint() }, { passive: true })
+  paintTrack()
+  // render() runs often and keeps the nodes (idiomorph): bind each element once.
+  once(el, () => el.addEventListener('scroll', () => { trackLeft = el.scrollLeft; paintTrack() }, { passive: true }))
   // The whole card scrolls the timeline: sideways wheel/trackpad (or Shift +
   // wheel) and dragging with finger or mouse. Vertical scrolling stays the page's.
   const card = el.closest('.tk-card')
-  card?.addEventListener('wheel', (e) => {
-    if (el.contains(e.target)) return // the timeline scrolls natively
-    const dx = e.shiftKey ? e.deltaY || e.deltaX : e.deltaX
-    if (!dx || (!e.shiftKey && Math.abs(e.deltaX) < Math.abs(e.deltaY))) return
-    el.style.scrollBehavior = 'auto'
-    el.scrollLeft += dx
-    e.preventDefault()
-  }, { passive: false })
-  card?.addEventListener('pointerdown', (e) => {
-    if (e.button !== 0 || bar?.contains(e.target) || e.target.closest('button, a, [data-action]')) return
-    const x0 = e.clientX
-    const left0 = el.scrollLeft
-    let dragging = false
-    const move = (ev) => {
-      const dx = ev.clientX - x0
-      if (!dragging && Math.abs(dx) < 6) return // a tap stays a tap
-      dragging = true
-      el.style.scrollBehavior = 'auto'
-      el.scrollLeft = left0 - dx
-    }
-    const up = () => { card.removeEventListener('pointermove', move); el.style.scrollBehavior = '' }
-    card.addEventListener('pointermove', move)
-    card.addEventListener('pointerup', up, { once: true })
-    card.addEventListener('pointercancel', up, { once: true })
+  once(card, () => {
+    const track = () => card.querySelector('[data-track]')
+    card.addEventListener('wheel', (e) => {
+      const t = track()
+      if (!t || t.contains(e.target)) return // the timeline scrolls natively
+      const dx = e.shiftKey ? e.deltaY || e.deltaX : e.deltaX
+      if (!dx || (!e.shiftKey && Math.abs(e.deltaX) < Math.abs(e.deltaY))) return
+      t.style.scrollBehavior = 'auto'
+      t.scrollLeft += dx
+      e.preventDefault()
+    }, { passive: false })
+    card.addEventListener('pointerdown', (e) => {
+      const t = track()
+      if (!t || e.button !== 0 || e.target.closest('[data-track-bar], button, a, [data-action]')) return
+      const x0 = e.clientX
+      const left0 = t.scrollLeft
+      let dragging = false
+      const move = (ev) => {
+        const dx = ev.clientX - x0
+        if (!dragging && Math.abs(dx) < 6) return // a tap stays a tap
+        dragging = true
+        t.style.scrollBehavior = 'auto'
+        t.scrollLeft = left0 - dx
+      }
+      const up = () => { card.removeEventListener('pointermove', move); t.style.scrollBehavior = '' }
+      card.addEventListener('pointermove', move)
+      card.addEventListener('pointerup', up, { once: true })
+      card.addEventListener('pointercancel', up, { once: true })
+    })
   })
   // Drag or tap the indicator (mouse users have no swipe).
-  bar?.addEventListener('pointerdown', (e) => {
+  const bar = $app.querySelector('[data-track-bar]')
+  once(bar, () => bar.addEventListener('pointerdown', (e) => {
     const move = (ev) => {
+      const t = $app.querySelector('[data-track]')
+      if (!t) return
       const r = bar.getBoundingClientRect()
-      el.scrollLeft = ((ev.clientX - r.left) / r.width) * el.scrollWidth - el.clientWidth / 2
+      t.scrollLeft = ((ev.clientX - r.left) / r.width) * t.scrollWidth - t.clientWidth / 2
     }
     move(e)
     bar.setPointerCapture(e.pointerId)
     bar.onpointermove = move
     bar.onpointerup = () => { bar.onpointermove = null }
-  })
+  }))
+}
+
+/** Scroll indicator on the card's bottom edge instead of the native scrollbar. */
+function paintTrack () {
+  const el = $app.querySelector('[data-track]')
+  const bar = $app.querySelector('[data-track-bar]')
+  if (!el || !bar) return
+  const ratio = el.clientWidth / el.scrollWidth
+  bar.hidden = ratio >= 0.999
+  bar.firstElementChild.style.width = ratio * 100 + '%'
+  bar.firstElementChild.style.left = (el.scrollLeft / el.scrollWidth) * 100 + '%'
+}
+
+const bound = new WeakSet()
+/** Runs `bind` for an element only the first time it is seen. */
+function once (el, bind) {
+  if (!el || bound.has(el)) return
+  bound.add(el)
+  bind()
 }
 
 let toastTimer = null
@@ -444,7 +453,6 @@ const clearPasswords = () => { ui.draft.password = ''; ui.draft.password2 = ''; 
 
 /** Every `data-action` in the views maps to one entry here. */
 const actions = {
-  tab: (el) => { ui.tab = el.dataset.tab },
   interval: (el) => { ui.draft.interval = el.dataset.interval },
   mode: (el) => { ui.draft.mode = el.dataset.mode },
   'open-sheet': (el) => { ui.sheet = el.dataset.sheet },
@@ -468,7 +476,7 @@ const actions = {
   'open-create': () => { ui.createStep = 0; ui.sheet = 'create' },
 
   // "Frag Pomona"
-  'open-assistant': () => { ui.sheet = 'assistant'; chatSeen = ui.chat.length; setTimeout(() => scrollChat(false)) },
+  'open-assistant': () => { ui.sheet = 'assistant'; chatSeen = ui.chat.length; setTimeout(scrollChat) },
   'home-chat-close': () => { document.activeElement?.blur?.(); ui.homeChat = false },
   /** The logo always leads back to the start view (closes pages and the chat). */
   'go-home': () => {
@@ -550,7 +558,7 @@ const actions = {
   'create-wallet-start': () => { ui.onboarding = true; ui.sheet = 'create-wallet' },
   'toggle-send': () => { ui.showSend = !ui.showSend },
   'pick-amount': (el) => { ui.draft.amount = el.dataset.amount },
-  /** Keypad on touch screens: whole USDT, at most 6 digits, no leading zero. */
+  /** Keypad: at most 6 digits, no leading zero, one comma with two decimals. */
   key: (el) => {
     const k = el.dataset.key
     let v = String(ui.draft.amount ?? '').replace(/[^\d,]/g, '')
@@ -567,7 +575,6 @@ const actions = {
     ui.draft.amount = v
   },
 
-  'show-all-invoices': () => { ui.showAllInvoices = true },
   'toggle-news': () => { ui.showAllNews = !ui.showAllNews },
 
   // wallet
@@ -787,8 +794,6 @@ const actions = {
 $app.addEventListener('click', async (e) => {
   const el = e.target.closest('[data-action]')
   if (!el || el.disabled) return
-  // Clicks inside a sheet must not reach the backdrop's close action.
-  if (el.classList.contains('sheet-backdrop') && e.target.closest('[data-stop]')) return
   const fn = Object.hasOwn(actions, el.dataset.action) ? actions[el.dataset.action] : null
   if (!fn) return
   ui.pending = el.dataset.action

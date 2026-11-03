@@ -7,7 +7,7 @@ import { esc, fmt, num, per, dayTime, date } from '../format.js'
 import { page, spinner } from './parts.js'
 import { ICON } from './icons.js'
 
-export const BID_STEPS = ['Betrag', 'Prüfen', 'Fertig']
+const BID_STEPS = ['Betrag', 'Prüfen', 'Fertig']
 
 const TX_STEPS = [
   ['prepare', 'Wird vorbereitet'],
@@ -32,7 +32,7 @@ export function bidPage (ui) {
 }
 
 /** Touch screens get a keypad instead of the system keyboard (see Contrib). */
-export const isTouch = () => typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches
+const isTouch = () => typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches
 
 function amountPage (ui) {
   const r = ui.status.round
@@ -77,7 +77,7 @@ function amountPage (ui) {
 }
 
 /** Where the round stands, and how far your bid moves it toward the target. */
-export function progressBar (r, amount) {
+function progressBar (r, amount) {
   const target = num(r.target)
   if (!(target > 0)) return ''
   const before = num(r.total)
@@ -112,7 +112,7 @@ function keypad () {
 }
 
 /** Quick picks around the organizer's guide value ("Richtwert"). */
-export function guideChips (ui, r, p) {
+function guideChips (ui, r, p) {
   const g = num(r.guide)
   const min = num(r.minBid)
   const values = [...new Set([Math.round(g * 0.8), g, Math.round(g * 1.2)])].filter((v) => v > 0 && v >= min)

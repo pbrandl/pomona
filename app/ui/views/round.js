@@ -1,8 +1,8 @@
 /**
  * The round on one page, lean:
  *
- *   header    phase · deadline, title with QR and share icons, description
- *   progress  ring in the middle, bidders · average · median below
+ *   header    phase · deadline, title with website and invite, pledged total
+ *   progress  ring beside bidders · average · median (below it on phones)
  *   you       your situation and the single next action (views/you.js)
  *   track     the installments as dots on a line: received above, outstanding
  *             below, paid ones ticked. Tap a dot for receipt, payment or details.
@@ -12,7 +12,7 @@
  * @module ui/views/round
  */
 import { esc, fmt, num, per, shortDate, dateTime, short } from '../format.js'
-import { link, sheet } from './parts.js'
+import { link, page } from './parts.js'
 import { youCard } from './you.js'
 import { ICON } from './icons.js'
 
@@ -32,12 +32,9 @@ export function round (ui) {
 
 // ------------------------------------------------------------------- header
 
-/** Unix seconds → "29.11.2026, 12:00" */
-const deadline = (t) => new Date(t * 1000).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-
 function header (r, p) {
   const eyebrow = {
-    bidding: `Bietphase · bis ${deadline(r.biddingEnd)}`,
+    bidding: `Bietphase · bis ${dateTime(r.biddingEnd * 1000)}`,
     running: r.mode === 'invoice' ? `Ratenzahlung · Rechnung ${r.invoiceCount} von ${r.installments}` : `Ratenzahlung · ${r.invoiceCount} von ${r.installments} abgerechnet`,
     completed: 'Abgeschlossen',
     failed: 'Ziel nicht erreicht'
@@ -72,7 +69,7 @@ function ringSvg (value) {
 function progress (r, p) {
   const sym = esc(r.symbol)
   const center = `<div class="big">${fmt(r.progress * 100, 0)}%</div><div class="of">vom Ziel</div>`
-  const stat = (value, label, cls = '') => `<div class="stat ${cls}"><strong>${value}</strong><span>${label}</span></div>`
+  const stat = (value, label) => `<div class="stat"><strong>${value}</strong><span>${label}</span></div>`
   return `<div class="progress split">
     <div class="ring">${ringSvg(r.progress)}<div class="center">${center}</div></div>
     <div class="stats">
@@ -193,7 +190,7 @@ function manage (ui, r) {
 export function invitePage (ui) {
   const r = ui.status.round
   const inv = ui.invite
-  return sheet('Einladen', `
+  return page('Einladen', `
     <div class="invite-qr">
       <div class="qr">${inv ? inv.qr : ''}</div>
       <strong>${esc(r.title)}</strong>

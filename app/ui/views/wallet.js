@@ -3,7 +3,7 @@
  * @module ui/views/wallet
  */
 import { esc, fmt, short } from '../format.js'
-import { btn, link, field, sheet } from './parts.js'
+import { btn, link, field, page } from './parts.js'
 
 export function walletSheet (ui) {
   const s = ui.status
@@ -11,7 +11,7 @@ export function walletSheet (ui) {
   const account = w.kind === 'smart'
     ? 'Netzwerkgebühren bezahlst du in USDT. Du brauchst keinen anderen Token.'
     : 'Entwicklungs-Konto auf der lokalen Test-Chain.'
-  return sheet('Konto', `
+  return page('Konto', `
     <div class="stack">
       <div class="balance"><span class="muted small">Guthaben</span><strong>${fmt(w.usdt)} <span>${esc(w.symbol)}</span></strong></div>
       <p class="small muted">${account}</p>

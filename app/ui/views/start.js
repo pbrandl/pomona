@@ -8,7 +8,7 @@ import { btn, field, page } from './parts.js'
 import { ICON } from './icons.js'
 import { home } from './onboarding.js'
 
-export const CREATE_STEPS = ['Runde', 'Bietphase', 'Raten', 'Prüfen']
+const CREATE_STEPS = ['Runde', 'Bietphase', 'Raten', 'Prüfen']
 
 export function start (ui) {
   return home(ui, `<div class="stack-lg">

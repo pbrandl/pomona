@@ -3,7 +3,7 @@
  * @module ui/views/onboarding
  */
 import { esc } from '../format.js'
-import { btn, field, sheet, page } from './parts.js'
+import { btn, field, page } from './parts.js'
 import { chatBody, chatInput, homeChips } from './assistant.js'
 
 /** First start: three pages. */
@@ -23,7 +23,7 @@ export function home (ui, hero) {
   return `<div class="home ${on ? 'chatting' : ''} ${fresh ? 'fresh' : ''}">
     <div class="home-hero" ${on ? 'aria-hidden="true"' : ''}>${hero}</div>
     ${on ? '<div class="page-top"><button class="link back" data-action="home-chat-close">← Zurück</button></div>' : ''}
-    ${on ? `<div class="home-chat chat-scroll" id="chat-scroll">${chatBody(ui, { compact: true })}</div>` : ''}
+    ${on ? `<div class="home-chat chat-scroll" id="chat-scroll">${chatBody(ui)}</div>` : ''}
     <div class="home-dock">
       ${on ? homeChips(ui) : ''}
       <div class="home-dock-row">${chatInput(ui, 'Frag Pomona …')}</div>
@@ -68,7 +68,7 @@ export function createWalletSheet (ui) {
 }
 
 export function restoreSheet (ui) {
-  return sheet('Wallet wiederherstellen', `
+  return page('Wallet wiederherstellen', `
     <div class="stack">
       ${field(ui, 'restore', '12 oder 24 Wörter', { area: true })}
       ${field(ui, 'password', 'Neues Passwort (mind. 8 Zeichen)', { type: 'password' })}
@@ -77,7 +77,7 @@ export function restoreSheet (ui) {
 }
 
 export function revealSheet (ui) {
-  return sheet('Notfall-Wörter anzeigen', `
+  return page('Notfall-Wörter anzeigen', `
     <p class="muted">Zum Anzeigen brauchst du dein Passwort.</p>
     ${field(ui, 'password', 'Passwort', { type: 'password' })}
     ${btn(ui, 'reveal-seed', 'Anzeigen', 'accent block', { busy: 'Wird entschlüsselt…' })}`)

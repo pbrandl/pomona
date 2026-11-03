@@ -9,7 +9,7 @@ import { esc, fmt, per, date, short } from '../format.js'
 import { page, spinner } from './parts.js'
 import { stepper } from './bid.js'
 
-export const PAY_STEPS = ['Prüfen', 'Fertig']
+const PAY_STEPS = ['Prüfen', 'Fertig']
 
 export function payPage (ui) {
   return ui.payStep === 'done' ? donePage(ui) : reviewPage(ui)

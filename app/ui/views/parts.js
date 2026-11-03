@@ -66,8 +66,3 @@ export function page (title, body, { steps = null, at = 0, back = 'close-sheet',
     <div class="stack-lg">${body}</div>
   </section>`
 }
-
-/** @deprecated name kept for older views: every former side panel is now a page. */
-export function sheet (title, body, { close = true, steps, at, back } = {}) {
-  return page(title, body, { steps, at, back: back ?? (close ? 'close-sheet' : false) })
-}

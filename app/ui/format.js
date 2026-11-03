@@ -53,12 +53,3 @@ export function num (v) {
   const n = Number(v)
   return Number.isFinite(n) ? n : 0
 }
-
-/** Remaining time until `t` (unix seconds) from `now`. */
-export function left (t, now) {
-  const s = t - now
-  if (s <= 0) return { value: '0', unit: 'vorbei' }
-  if (s >= 86400 * 2) return { value: String(Math.floor(s / 86400)), unit: 'Tage übrig' }
-  if (s >= 3600) return { value: String(Math.floor(s / 3600)), unit: 'Std. übrig' }
-  return { value: String(Math.max(1, Math.floor(s / 60))), unit: 'Min. übrig' }
-}

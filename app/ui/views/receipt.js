@@ -10,7 +10,7 @@
  * @module ui/views/receipt
  */
 import { esc, fmt, date, dayTime, short, per } from '../format.js'
-import { btn, field, sheet, spinner } from './parts.js'
+import { btn, field, page, spinner } from './parts.js'
 
 /** The verification line under a receipt. */
 function verdict (v) {
@@ -24,7 +24,7 @@ export function receiptSheet (ui) {
   const rc = ui.receipt
   const inv = r.invoices[rc.index]
   const p = per(r.intervalName)
-  return sheet('Beleg', `
+  return page('Beleg', `
     <div class="receipt">
       <div class="receipt-head">
         <span class="small muted">Zahlungsbeleg</span>
@@ -48,7 +48,7 @@ export function invoiceSheet (ui) {
   const r = ui.status.round
   if (r.mode === 'invoice') return paygInvoiceSheet(ui)
   const inv = r.invoices[ui.invoiceIndex]
-  return sheet(`Rechnung ${ui.invoiceIndex + 1}`, `
+  return page(`Rechnung ${ui.invoiceIndex + 1}`, `
     <div class="receipt">
       <dl>
         <dt>Status</dt><dd><span class="pill-s ok">Bezahlt</span></dd>
@@ -66,7 +66,7 @@ export function invoiceSheet (ui) {
 function paygInvoiceSheet (ui) {
   const d = ui.invoiceDetails
   const title = `Rechnung ${ui.invoiceIndex + 1}`
-  if (!d) return sheet(title, `<p class="verify pending">${spinner} Wird geladen…</p>`)
+  if (!d) return page(title, `<p class="verify pending">${spinner} Wird geladen…</p>`)
   const open = d.unpaid.length
     ? `<div class="card-inset stack">
         <strong>Noch offen (${d.unpaid.length})</strong>
@@ -74,7 +74,7 @@ function paygInvoiceSheet (ui) {
         <p class="small muted">Offene Rechnungen können später noch bezahlt werden. Nur du siehst diese Liste in Pomona.</p>
       </div>`
     : '<p class="verify ok">✓ Alle haben bezahlt</p>'
-  return sheet(title, `
+  return page(title, `
     <div class="receipt">
       <dl>
         <dt>Verschickt am</dt><dd>${esc(date(d.dueAt))}</dd>
@@ -112,7 +112,7 @@ export function scanSheet (ui) {
       : `<div class="scanner"><div id="scanner-slot"></div><div class="scanner-frame"></div></div>
          <p class="small muted" style="text-align:center">Halte den QR-Code des Belegs vor die Kamera.</p>`
 
-  return sheet('Beleg prüfen', `
+  return page('Beleg prüfen', `
     ${result}
     ${camera}
     ${v
