@@ -22,7 +22,7 @@ export function home (ui, hero) {
   const fresh = on && ui.homeChatFresh // animate once, on the render that opens it
   return `<div class="home ${on ? 'chatting' : ''} ${fresh ? 'fresh' : ''}">
     <div class="home-hero" ${on ? 'aria-hidden="true"' : ''}>${hero}</div>
-    ${on ? '<div class="home-chat-top"><button class="link back" data-action="home-chat-close">← Zurück zum Start</button></div>' : ''}
+    ${on ? '<div class="page-top"><button class="link back" data-action="home-chat-close">← Zurück zum Start</button></div>' : ''}
     ${on ? `<div class="home-chat chat-scroll" id="chat-scroll">${chatBody(ui, { compact: true })}</div>` : ''}
     <div class="home-dock">
       ${on ? homeChips(ui) : ''}

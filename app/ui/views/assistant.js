@@ -151,18 +151,15 @@ export function chatInput (ui, placeholder) {
 }
 
 /**
- * The chat as a messenger: fixed head, messages scroll in the middle, the
- * example questions (one swipeable row) and the field stay at the bottom.
+ * The chat as a messenger: the way back sits in the bar on top, messages scroll
+ * in the middle, the example questions (one swipeable row) and the field stay
+ * at the bottom.
  */
 export function assistantPage (ui) {
   const a = ui.status.assistant
   const hello = ui.chat.length ? '' : '<div class="msg bot"><p>Hallo! Ich erkläre dir die Runde und bereite Schritte für dich vor. Bestätigen musst du immer selbst. Was möchtest du wissen?</p></div>'
   return `<section class="chat-page">
-    <div class="chat-head">
-      <button class="link back" data-action="close-sheet">← Zurück</button>
-      <strong>Frag Pomona</strong>
-      ${ui.chat.length ? '<button class="link small" data-action="agent-reset">Neu</button>' : '<span></span>'}
-    </div>
+    <div class="page-top"><button class="link back" data-action="close-sheet">← Zurück</button><!--right-->${ui.chat.length ? '<button class="link small" data-action="agent-reset">Neuer Chat</button>' : ''}</div>
     <div class="chat-scroll" id="chat-scroll">
       ${hello}
       ${chatBody(ui, { compact: true })}

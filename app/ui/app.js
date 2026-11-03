@@ -115,24 +115,27 @@ const SHEETS = {
   wallet: (u) => (u.status?.wallet.state === 'unlocked' ? walletSheet(u) : '')
 }
 
-function topbar () {
+function topbar (nav = '') {
   const w = ui.status?.wallet
   // On the start screens the chat sits at the bottom; no second entry up here.
   const onHome = !ui.sheet && !!ui.status?.assistant && (w?.state === 'none' || (w?.state === 'unlocked' && !ui.status.round))
   // In overlays (chat, bid flow and every other page on top) the "Pomona" label
-  // goes; they have their own way back. The chat button goes inside the chat.
+  // goes; the page's own way back takes its place, on one line with the chat
+  // button and the wallet. Anything after <!--right--> goes to the right side.
+  // The chat button goes inside the chat.
   const overlay = !!ui.sheet || !!ui.homeChat
+  const [navLeft, navRight = ''] = nav.split('<!--right-->')
   const ask = onHome || ui.sheet === 'assistant' ? '' : `<button class="pill ask-pill" data-action="open-assistant" title="Frag Pomona">${SPARK}<span>Frag Pomona</span></button>`
   // "Frag Pomona" is there from the first start on, also before a wallet exists.
   const right = w?.state === 'unlocked'
-    ? `<div class="bar-right">${ask}<button class="pill" data-action="open-sheet" data-sheet="wallet"><span class="dot ${ui.status.peers > 0 ? 'on' : ''}" title="${ui.status.peers} Peers"></span>${fmt(w.usdt)} ${esc(w.symbol)}<span class="muted mono">${short(w.address)}</span></button></div>`
-    : ui.status ? `<div class="bar-right">${ask}</div>` : ''
+    ? `<div class="bar-right">${navRight}${ask}<button class="pill" data-action="open-sheet" data-sheet="wallet"><span class="dot ${ui.status.peers > 0 ? 'on' : ''}" title="${ui.status.peers} Peers"></span>${fmt(w.usdt)} ${esc(w.symbol)}<span class="muted mono">${short(w.address)}</span></button></div>`
+    : ui.status ? `<div class="bar-right">${navRight}${ask}</div>` : ''
   const update = ui.update
     ? `<div class="update-bar" role="status"><span>Neue Version von Pomona ist bereit.</span><button class="btn accent small" data-action="restart" ${ui.status?.busy ? 'disabled title="Nach der laufenden Transaktion"' : ''}>Neu starten</button></div>`
     : ''
-  const brand = overlay ? '<span></span>' : `<button class="brand" data-action="go-home" aria-label="Pomona, zum Start">${PEAR}Pomona</button>`
-  const empty = overlay && !/<button/.test(right)
-  return `${update}${empty ? '' : `<header class="bar">${brand}${right}</header>`}`
+  const left = overlay ? `<div class="bar-left">${navLeft}</div>` : `<button class="brand" data-action="go-home" aria-label="Pomona, zum Start">${PEAR}Pomona</button>`
+  const empty = overlay && !/<button/.test(left + right)
+  return `${update}${empty ? '' : `<header class="bar">${left}${right}</header>`}`
 }
 
 function body () {
@@ -142,6 +145,9 @@ function body () {
   if (s.wallet.state === 'locked') return locked(ui)
   return s.round ? round(ui) : start(ui)
 }
+
+/** The top row of a page (views/parts.js page()): its way back, nothing nested. */
+const PAGE_TOP = /<div class="page-top">([\s\S]*?)<\/div>/
 
 function render () {
   // Keep focus and caret across re-renders (status refreshes in the background).
@@ -157,7 +163,12 @@ function render () {
   const atBottom = !keep || keep.scrollHeight - keep.scrollTop - keep.clientHeight < 40
   // Morph instead of replacing: unchanged elements stay the same nodes, so the
   // field you type in keeps focus (and the phone keyboard stays open).
-  Idiomorph.morph($app, topbar() + `<main>${flow || body()}</main>` + toast, { morphStyle: 'innerHTML' })
+  // Overlays: the page's top row (its way back) moves up into the bar.
+  let view = flow || body()
+  let nav = ''
+  const top = ui.sheet || ui.homeChat ? view.match(PAGE_TOP) : null
+  if (top) { nav = top[1].trim(); view = view.replace(PAGE_TOP, '') }
+  Idiomorph.morph($app, topbar(nav) + `<main>${view}</main>` + toast, { morphStyle: 'innerHTML' })
   chatSeen = ui.chat.length
   fitToScreen()
   const box = document.getElementById('chat-scroll')

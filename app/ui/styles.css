@@ -1052,7 +1052,6 @@ h1.welcome > span:last-child { font-size: 0.78em; } /* subtitle: smaller, but no
 .home-dock .amount.ask input { font-size: 16px; }
 .home-dock .amount.ask .btn { height: 44px; padding: 0 18px; }
 .home-chat { display: grid; gap: 16px; }
-.home-chat-top { align-items: center; }
 .home.chatting .home-hero { display: none; }
 /* opening: the hero flies out to the top, the chat flies in from below */
 .home.chatting.fresh .home-hero { display: block; position: absolute; inset: 0 0 auto; animation: home-out 0.45s cubic-bezier(.4,0,.2,1) forwards; pointer-events: none; }
@@ -1102,8 +1101,6 @@ body:has(.home-dock) .toast { bottom: 110px; }
 /* ------------------------------------------- chat page as a messenger */
 main:has(.chat-page) { padding-bottom: 0; }
 .chat-page { display: flex; flex-direction: column; height: calc(100dvh - 76px); max-width: 640px; margin: 0 auto; }
-.chat-head { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 4px 0 10px; border-bottom: 1px solid var(--line); }
-.chat-head > :last-child { justify-self: end; }
 .chat-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: grid; align-content: start; gap: 12px; padding: 14px 2px; -webkit-overflow-scrolling: touch; }
 .chat-scroll .chat { display: grid; gap: 10px; }
 .chat-foot { display: grid; gap: 8px; padding: 8px 0 max(10px, env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line); background: var(--bg); }
@@ -1139,10 +1136,6 @@ button, a, [data-action] { -webkit-tap-highlight-color: transparent; }
 
 /* logo is a button back to the start */
 button.brand { background: none; border: 0; padding: 0; color: inherit; font: inherit; font-weight: 600; cursor: pointer; }
-/* start chat: back link on top (stays above the keyboard) */
-.home-chat-top { padding: 2px 0 6px; }
-.home-chat-top .back { font-size: 14px; }
-.home.chatting.fresh .home-chat-top { animation: home-in 0.32s 0.18s cubic-bezier(.2,.8,.2,1) both; }
 
 /* keyboard open: field directly above the keyboard (no home-bar inset) */
 .kb-open .home-dock { padding-bottom: 6px; padding-top: 8px; }
@@ -1163,3 +1156,12 @@ button.brand { background: none; border: 0; padding: 0; color: inherit; font: in
 main:has(.home) { padding-bottom: 0; }
 .home:not(.chatting) .home-hero { flex: 1; display: flex; flex-direction: column; }
 .home .home-hero > .center-screen { flex: 1; min-height: 0; }
+
+/* Overlays: the page's way back sits in the bar, on one line with chat and wallet */
+.bar-left { display: flex; align-items: center; min-width: 0; }
+.bar .back { text-decoration: none; color: var(--muted); font-size: 14px; white-space: nowrap; }
+.bar .back:hover { color: var(--ink); }
+.bar-right > .link { font-size: 14px; text-decoration: none; }
+/* nothing behind the chat field: no shadow cloud, no strip, no line */
+.home-dock .amount.ask { box-shadow: none; border: 1px solid var(--line); background: var(--surface); }
+.chat-foot { background: none; border-top: 0; }
