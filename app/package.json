@@ -12,7 +12,8 @@
     "preview": "node scripts/preview.js",
     "lint": "standard",
     "lint:fix": "standard --fix",
-    "pear": "pear run --dev ."
+    "pear": "pear run --dev .",
+    "ui-check": "node scripts/ui-check.js"
   },
   "pear": {
     "name": "pomona",
@@ -31,7 +32,8 @@
         ".git",
         "test",
         "scripts",
-        "preview.html"
+        "preview.html",
+        ".ui-check"
       ],
       "entrypoints": [
         "/worker/index.js"
@@ -64,6 +66,7 @@
   "devDependencies": {
     "bare-runtime": "^1.36.0",
     "hyperdht": "^6.35.0",
+    "playwright": "1.63.0",
     "standard": "^17.1.2"
   },
   "standard": {

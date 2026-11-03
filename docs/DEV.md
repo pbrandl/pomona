@@ -76,6 +76,22 @@ Das Modell **Genauer** (`Qwen3-4B-Q4_K_M.gguf`, 2,5 GB) kommt im QVAC-Katalog ni
 
 Ein anderer Ordner geht mit `POMONA_MODELS=/pfad npm run dev`. Wer den Peer-to-Peer-Download von QVAC trotzdem versuchen will (z. B. ohne Firewall): `POMONA_MODELS_P2P=1 npm run dev`.
 
+## Oberfläche prüfen (`npm run ui-check`)
+
+Für Änderungen an der Oberfläche, besonders Aufräumen und Umbauen ohne sichtbare Änderung. Das Skript geht in der Vorschau (Mock) jede Ansicht durch: alle Szenarien, jede Seite, die man von dort öffnen kann, Bieten und Bezahlen bis „Fertig“ und den Chat. Das passiert auf vier Bildschirmen (iPhone 13, iPhone SE, dunkel, Desktop). Für jedes Element merkt es sich Position, Größe, Text und berechneten Style.
+
+```bash
+npm run ui-check                    # vergleicht mit der Baseline (legt sie beim ersten Mal an)
+npm run ui-check -- --baseline      # Baseline neu aufnehmen, z. B. nach einer gewollten Änderung
+npm run ui-check -- --only phone    # nur ein Bildschirm: phone, small, dark oder desk
+```
+
+Ablauf: Vor dem Umbau die Baseline aufnehmen, danach `npm run ui-check`. Der Bericht trennt „Verschoben oder andere Größe“ und „Text“, also sichtbare Änderungen, von „Nur berechnete Styles“. Letzteres sind meist Werte ohne sichtbare Wirkung, etwa `gap` an einem Element ohne Lücken. Ohne Unterschiede endet das Skript mit 0, sonst mit 1. Ergebnisse liegen in `app/.ui-check/` (nicht im Repo). Ein Lauf dauert gut vier Minuten.
+
+Einmalig braucht es Chromium für Playwright: `npx playwright install chromium`. Hinter einem Proxy wie Zscaler kann der Download scheitern. Dann zeigt `PLAYWRIGHT_BROWSERS_PATH` auf einen vorhandenen Chromium-Ordner.
+
+Nicht abgedeckt sind Hover, die Handy-Tastatur und echte Geräte. Das bleibt Handarbeit.
+
 ## Sicherheit
 
 Der Kern hält die Wallet, deshalb ist der lokale Server abgesichert:
