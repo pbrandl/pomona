@@ -48,14 +48,14 @@ Mehr dazu:
 Voraussetzungen: Node.js 22 und die [Pear-CLI](https://docs.pears.com) (`npm i -g pear`, danach einmal `pear` ausführen).
 
 ```bash
-# Contracts bauen und testen (19 Tests)
+# Contracts bauen und testen (20 Tests)
 cd contracts && npm install && npm test
 
 # Lokale Chain (Terminal 1) und Deployment (Terminal 2)
 npm run chain
 node scripts/deploy.js local          # schreibt app/core/config/deployments.js
 
-# App testen (36 Tests) und starten
+# App testen (39 Tests) und starten
 cd ../app && npm install && npm test
 pear run --dev .                      # Organisator
 pear run --dev . --tmp-store          # zweite Instanz als Bieter

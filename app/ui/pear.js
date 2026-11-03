@@ -9,7 +9,7 @@ import ui from 'pear-electron'
 import updates from 'pear-updates'
 import restart from 'pear-restart'
 
-const pipe = run(Pear.config.applink + '/worker/index.js')
+const pipe = run((Pear.app ?? Pear.config).applink + '/worker/index.js') // Pear.config: older Pear versions
 const pending = new Map()
 const listeners = new Map()
 const decoder = new TextDecoder()
