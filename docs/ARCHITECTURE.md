@@ -26,7 +26,7 @@ Pomona besteht aus drei Teilen, die sich klar voneinander trennen lassen:
 
 ## Grundsätze
 
-1. **Die Chain ist die Wahrheit über Geld.** Beträge, Phasen, Zeitplan, Organisator und Belege kommen immer aus dem Contract. Daten aus dem P2P-Netz (Titel, Beschreibung, Neuigkeiten) sind nur Beiwerk. Die App prüft sie gegen den Contract und kürzt sie auf feste Größen.
+1. **Die Chain ist die Wahrheit über Geld.** Beträge, Phasen, Zeitplan, Organisator und Belege kommen immer aus dem Contract. Daten aus dem P2P-Netz (Titel, Website, Neuigkeiten) sind nur Beiwerk. Die App prüft sie gegen den Contract und kürzt sie auf feste Größen.
 2. **Nur USDT.** Nutzer halten keinen anderen Token. Auf echten Netzwerken ist die Wallet ein ERC-4337 Smart Account. Ein Token-Paymaster nimmt die Gebühr in USDT.
 3. **Der Worker besitzt alle Geheimnisse.** Seed, Schlüssel und Netzwerkzugriff liegen im Bare-Worker. Die UI sieht nur JSON und kann nur die Methoden aus `core/rpc/methods.js` aufrufen.
 4. **Eine Runde pro App-Instanz.** Das hält Zustand, UI und Sicherheitsmodell einfach.
