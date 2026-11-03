@@ -1172,3 +1172,7 @@ main:has(.home) { padding-bottom: 0; }
 .home.chatting .home-dock, .chat-page .chat-foot { position: absolute; left: 0; right: 0; bottom: 0; margin: 0 auto; background: none; border: 0; pointer-events: none; }
 .home.chatting .home-dock > *, .chat-page .chat-foot > * { pointer-events: auto; }
 .home.chatting .home-chat, .chat-page .chat-scroll { padding-bottom: calc(var(--dock-h, 130px) + 8px); }
+
+/* keypad: digits on the page background, a soft tint only while pressed */
+.keypad .key { background: none; }
+.keypad .key:active { background: var(--accent-soft); color: var(--ink); }

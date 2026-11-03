@@ -68,7 +68,6 @@ function amountPage (ui) {
       </label>`
   return page(null, `
     <div class="bid-progress-box">${progressBar(r, amount)}</div>
-    ${has ? `<p class="lead">Du bietest bisher ${fmt(r.myPledge)} ${esc(r.symbol)} ${p.per}.</p>` : ''}
     ${display}
     ${!has && r.guide ? guideChips(ui, r, p) : ''}
     <p class="bid-hint ${note.warn ? 'warn' : ''}">${hint}</p>
