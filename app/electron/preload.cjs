@@ -18,5 +18,6 @@ contextBridge.exposeInMainWorld('bridge', {
   onExit: (fn) => on('pomona:exit', fn),
   copy: (text) => ipcRenderer.invoke('pomona:copy', String(text)),
   cameraAccess: () => ipcRenderer.invoke('pomona:camera'),
+  pickModel: () => ipcRenderer.invoke('pomona:pickModel'),
   relaunch: () => ipcRenderer.invoke('pomona:relaunch')
 })

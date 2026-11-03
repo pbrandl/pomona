@@ -11,7 +11,7 @@
  * P2P updates (pear-runtime updater) come with packaging and a release link.
  */
 'use strict'
-const { app, BrowserWindow, ipcMain, clipboard, shell, session, systemPreferences, nativeTheme } = require('electron')
+const { app, BrowserWindow, ipcMain, clipboard, dialog, shell, session, systemPreferences, nativeTheme } = require('electron')
 const path = require('path')
 const { pathToFileURL } = require('url')
 const { StringDecoder } = require('string_decoder')
@@ -88,6 +88,17 @@ ipcMain.handle('pomona:camera', async (evt) => {
   if (!trusted(evt)) return false
   // macOS asks the person once; elsewhere the browser permission is enough.
   return process.platform === 'darwin' ? systemPreferences.askForMediaAccess('camera') : true
+})
+// The language model: a file the person already has, or a folder for it.
+// Only the chosen path goes to the worker, which checks the file (SHA-256).
+ipcMain.handle('pomona:pickModel', async (evt) => {
+  if (!trusted(evt)) return null
+  const res = await dialog.showOpenDialog(BrowserWindow.fromWebContents(evt.sender), {
+    title: 'Sprachmodell wählen (Datei oder Ordner)',
+    properties: ['openFile', 'openDirectory'],
+    filters: [{ name: 'Sprachmodell (GGUF)', extensions: ['gguf'] }]
+  })
+  return res.canceled ? null : res.filePaths[0] ?? null
 })
 ipcMain.handle('pomona:relaunch', (evt) => {
   if (!trusted(evt)) return

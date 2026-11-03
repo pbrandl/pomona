@@ -68,6 +68,7 @@ export const METHODS = {
   assistantAsk: { params: { text: ['string', 500], topic: ['string', 24] }, run: (app, p) => app.assistantAsk(p) },
   assistantInstall: { params: { model: ['string', 8] }, run: (app, p) => app.assistantInstall(p) },
   assistantReset: { run: (app) => app.assistantReset() },
+  assistantUseFile: { params: { path: ['string', 1024] }, run: (app, p) => app.assistantUseFile(p) },
 
   // helpers
   qr: { params: { text: ['string', LIMITS.link] }, run: (_app, p) => import('../pomona.js').then((m) => m.qrSvg(p.text ?? '')) }

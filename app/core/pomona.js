@@ -89,7 +89,8 @@ export class Pomona extends EventEmitter {
       quoteBid: (p) => this.quoteBid(p),
       settings: { get: (k) => this.p2p.getSetting(k), set: (k, v) => this.p2p.setSetting(k, v) },
       manualDir: modelsLocalOnly ? modelsDir : null,
-      engine: assistantEngine ?? (() => new QvacEngine({ cacheDir: storage + '/models', localDir: modelsDir, localOnly: modelsLocalOnly })),
+      // dir: a folder the person chose for model files (then only files from there)
+      engine: assistantEngine ?? ((dir) => new QvacEngine({ cacheDir: storage + '/models', localDir: dir ?? modelsDir, localOnly: dir ? true : modelsLocalOnly })),
       onChange: () => this._changed()
     })
     this._timer = null
@@ -733,6 +734,7 @@ export class Pomona extends EventEmitter {
   assistantInstall (p) { return this.assistant.install(p) }
 
   assistantReset () { this.assistant.reset() }
+  assistantUseFile (p) { return this.assistant.useFile(p) }
 
   // ------------------------------------------------------------------ helpers
 

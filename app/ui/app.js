@@ -62,6 +62,7 @@ const ui = {
   createStep: 0, // "Runde starten": 0 Runde, 1 Bietphase, 2 Raten, 3 Prüfen
   bidStep: 'amount', // "Bieten": amount → review → done
   chat: [], // "Frag Pomona": [{ role, text, actions, source }]
+  canPickModel: false, // desktop: model file or folder via the system dialog
   toast: null,
   pending: null, // action currently running in the UI
   draft: {
@@ -219,10 +220,13 @@ function openHomeChat () {
   if (!hero || !from.text || !to.text || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return done()
   const dy = from.text.top - to.text.top
   const easing = 'cubic-bezier(.4,0,.2,1)'
-  hero.animate([
+  const flight = hero.animate([
     { transform: `translateY(${dy}px)`, opacity: 1 },
     { transform: `translateY(${dy - from.text.bottom - 24}px)`, opacity: 0 }
-  ], { duration: 420, easing, fill: 'forwards' }).onfinish = done
+  ], { duration: 420, easing, fill: 'forwards' })
+  // Hidden once done; then drop the animation, or the text stays off-screen
+  // when the start screen comes back ("Zurück").
+  flight.onfinish = () => { done(); flight.cancel() }
   const field = $app.querySelector('.home-dock-row')
   const fy = from.field && to.field ? from.field.top - to.field.top : 0
   if (field && Math.abs(fy) > 1) field.animate([{ transform: `translateY(${fy}px)` }, { transform: 'none' }], { duration: 420, easing })
@@ -539,6 +543,11 @@ const actions = {
     render()
     scrollChat()
     await askAssistant({ topic: el.dataset.topic })
+  },
+  /** Desktop: a model file the person already has, or a folder for it. */
+  async 'agent-pick' () {
+    const path = await window.pomona.pickModel?.()
+    if (path) await run('assistantUseFile', { path })
   },
   async 'agent-install' (el) {
     await run('assistantInstall', { model: el.dataset.model || 'small' })
@@ -926,6 +935,7 @@ $app.addEventListener('keydown', (e) => {
 // -------------------------------------------------------------------- start
 
 function boot () {
+  ui.canPickModel = typeof window.pomona.pickModel === 'function'
   window.pomona.on('change', refresh)
   window.pomona.on('error', (m) => toast(m, true))
   window.pomona.on('update', (u) => { ui.update = u; render() })

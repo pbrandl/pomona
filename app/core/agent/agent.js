@@ -56,6 +56,7 @@ export class Assistant {
 
   async ready () {
     const saved = await this.settings.get('assistant')
+    if (saved?.dir) this.manualDir = saved.dir // a folder the person chose earlier
     if (saved?.model && MODELS[saved.model]) {
       this.model = saved.model
       this.state = 'installed' // downloaded before; loads on first question
@@ -87,9 +88,39 @@ export class Assistant {
     if (!MODELS[model]) fail('BAD_INPUT', 'Unbekanntes Modell.')
     if (this.state === 'downloading' || this.state === 'loading') return this.info(await this.getStatus())
     this.model = model
-    await this.settings.set('assistant', { model })
+    await this.settings.set('assistant', this.manualDir ? { model, dir: this.manualDir } : { model })
     this._load().catch(() => {})
     return { started: true }
+  }
+
+  /**
+   * Use a model file the person already has, or a folder for model files:
+   * `path` is a .gguf file (its name picks the model) or a folder. The file is
+   * checked against the QVAC catalog (size, SHA-256) before it is used.
+   * @param {{ path: string }} p
+   */
+  async useFile ({ path }) {
+    const fs = await import('fs')
+    path = String(path || '').replace(/[\\/]+$/, '')
+    let st
+    try { st = fs.statSync(path) } catch { fail('BAD_INPUT', 'Diesen Ort gibt es nicht.') }
+    let dir = path
+    let model = this.model && MODELS[this.model] ? this.model : 'small'
+    if (!st.isDirectory()) {
+      const name = path.split(/[\\/]/).pop()
+      const key = Object.keys(MODELS).find((k) => MODELS[k].file === name)
+      if (!key) fail('BAD_INPUT', `Diese Datei kennt Pomona nicht. Erwartet: ${Object.values(MODELS).map((m) => m.file).join(' oder ')}.`)
+      dir = path.slice(0, path.length - name.length - 1)
+      model = key
+    }
+    if (this.state === 'downloading' || this.state === 'loading') fail('BUSY', 'Das Sprachmodell wird gerade geladen.')
+    await this.engine?.close().catch(() => {})
+    this.engine = null
+    this.manualDir = dir
+    this.model = model
+    await this.settings.set('assistant', { model, dir })
+    this._load().catch(() => {})
+    return { started: true, dir, model }
   }
 
   /** @private */
@@ -102,7 +133,7 @@ export class Assistant {
     this.onChange()
     this._loading = (async () => {
       try {
-        if (!this.engine) this.engine = this.makeEngine()
+        if (!this.engine) this.engine = this.makeEngine(this.manualDir)
         await this.engine.load(this.model, (ratio) => {
           this.progress = ratio
           this.state = ratio >= 1 ? 'loading' : 'downloading'

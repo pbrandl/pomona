@@ -3,7 +3,7 @@
  * process starts the Bare worker (worker/index.js); the UI speaks
  * newline-delimited JSON-RPC with it through the preload bridge
  * (electron/preload.cjs, see core/rpc/server.js).
- * Exposes `window.pomona = { call, on, copy, cameraAccess, restart }`.
+ * Exposes `window.pomona = { call, on, copy, cameraAccess, pickModel, restart }`.
  * @module ui/electron
  */
 const bridge = window.bridge
@@ -55,6 +55,8 @@ window.pomona = {
   copy: (text) => bridge.copy(text),
   /** Asks the OS for camera access (needed on macOS) before getUserMedia. */
   cameraAccess: () => bridge.cameraAccess(),
+  /** Model file or folder via the system dialog; the path, or null. */
+  pickModel: () => bridge.pickModel(),
   restart: () => bridge.relaunch()
 }
 

@@ -14,7 +14,7 @@ export const SPARK = `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="cu
  * Setup without peer-to-peer (developer mode, firewalls): download the file in
  * the browser, move it into the folder, then set up. Three short steps.
  */
-function manualCard (a) {
+function manualCard (a, ui) {
   const m = a.models.find((x) => x.key === 'small') || a.models[0]
   if (!m) return ''
   const problem = a.state !== 'error'
@@ -31,7 +31,7 @@ function manualCard (a) {
       </div></li>
       <li><span class="setup-n">2</span><div class="stack-sm">
         <strong>In diesen Ordner legen</strong>
-        <div class="setup-path"><span class="mono small">${esc(a.manual.dir)}</span><button class="link small" data-action="copy-models-dir">Kopieren</button></div>
+        <div class="setup-path"><span class="mono small">${esc(a.manual.dir)}</span><button class="link small" data-action="copy-models-dir">Kopieren</button>${ui?.canPickModel ? '<button class="link small" data-action="agent-pick">Ändern</button>' : ''}</div>
       </div></li>
       <li><span class="setup-n">3</span><div class="stack-sm">
         <button class="btn accent block" data-action="agent-install" data-model="${esc(m.key)}">${a.missing ? 'Erneut prüfen' : 'Einrichten'}</button>
@@ -41,6 +41,9 @@ function manualCard (a) {
     <p class="small muted">Die Vorschläge unten funktionieren auch ohne.</p>
   </div>`
 }
+
+/** Desktop only: choose a model file (or folder) with the system dialog. */
+const pick = (ui, label) => ui.canPickModel ? `<button class="link" data-action="agent-pick">${label}</button>` : ''
 
 /** Index from which messages are new (they glide in once); set by app.js. */
 let animFrom = Infinity
@@ -70,13 +73,13 @@ export function chatBody (ui) {
   const thinking = isThinking(ui)
   let model = ''
   if (a?.state === 'downloading' || a?.state === 'loading') {
-    model = `<p class="model-line">${spinner}<span>Sprachmodell wird ${a.state === 'loading' ? 'vorbereitet' : `geladen · ${Math.round((a.progress ?? 0) * 100)} %`}</span></p>`
+    model = `<p class="model-line">${spinner}<span>Sprachmodell wird ${a.state === 'loading' ? 'vorbereitet' : `${a.manual ? 'geprüft' : 'geladen'} · ${Math.round((a.progress ?? 0) * 100)} %`}</span>${a.state === 'downloading' && !a.manual ? pick(ui, 'Hängt? Datei selbst wählen') : ''}</p>`
   } else if (a?.manual && (a.state === 'none' || a.state === 'error')) {
-    model = manualCard(a) // the manual download needs its three steps
+    model = manualCard(a, ui) // the manual download needs its three steps
   } else if (a?.state === 'none' || a?.state === 'error') {
     const small = (a.models || []).find((m) => m.key === 'small')
     model = `<p class="model-line">${a.state === 'error' ? `<span class="warn-text">${esc(a.error)}</span>` : '<span>Für freie Fragen läuft ein Sprachmodell lokal auf deinem Gerät.</span>'}
-      <button class="link" data-action="agent-install" data-model="small">Laden${small ? ` (${esc(small.size)})` : ''}</button></p>`
+      <button class="link" data-action="agent-install" data-model="small">Laden${small ? ` (${esc(small.size)})` : ''}</button>${pick(ui, 'Vorhandene Datei wählen')}</p>`
   }
   return `${model}
     <div class="chat" id="chat">
