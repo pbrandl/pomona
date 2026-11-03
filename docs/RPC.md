@@ -29,7 +29,7 @@ Events: `ready`, `change` (der Status kann sich geändert haben) und `error` (Fe
 | `bid` | `amount` (pro Rate) | – |
 | `withdraw` | `amount` oder `"all"` | – |
 | `invoice` | – | – (Organisator, nur `deposit`) |
-| `quotePay` | `index?` (0-basiert, sonst alle offenen) | `{ invoices: [3], amount, fee, balance, enough, missing, symbol }`. Nur `invoice`; `enough` berücksichtigt auch die Gebühr. |
+| `quotePay` | `index?` (0-basiert, sonst alle offenen) | `{ invoices: [3], amount, self, fee, balance, enough, missing, symbol }`. Nur `invoice`; `enough` berücksichtigt auch die Gebühr. `self`: die eigene Rechnung des Organisators, wird nur vermerkt, nichts wird überwiesen. |
 | `pay` | `index?` | – Bezahlt offene Rechnungen aus der eigenen Wallet an den Organisator (Freigabe und Zahlung in einer Signatur). Danach gibt es den Beleg. |
 | `invoiceDetails` | `index` | `{ index, dueAt, paidCount, paidSum, total, bidders, unpaid: [{ bidder, amount }], symbol }` (Organisator, nur `invoice`) |
 | `terminate` | – | – (Organisator) |
@@ -92,7 +92,8 @@ Beträge sind Strings in deutscher oder englischer Schreibweise, also `"1.234,56
     myDeposit: '1200',                    // myPledge × installments (per Rechnung: '0')
     openInvoices: 1, openAmount: '100',   // per Rechnung: meine offenen Rechnungen
     refundable: '0',
-    invoices: [{ index, dueAt, paidAt, amount, status, mine, paidCount?, paidSum? }],
+    invoices: [{ index, dueAt, paidAt, amount, status, mine, paidCount?, paidSum? }], // Plan der Rundenseite: Organisator immer die ganze Runde, sonst das eigene Gebot
+    myInvoices: [ … ],                    // eigene Raten (Belege, offene Rechnungen); [] ohne Gebot
     // status: vorab hinterlegt  "paid" | "due" | "scheduled" | "void"
     //         per Rechnung      Bieter: "paid" | "open" | "scheduled" | "void"
     //                           Organisator: "issued" (mit paidCount, paidSum) | "scheduled" | "void"

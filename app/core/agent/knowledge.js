@@ -126,7 +126,7 @@ export const TOPICS = {
     keywords: ['beleg', 'quittung', 'nachweis', 'qr'],
     answer: (s) => {
       const r = s.round
-      const paid = (r?.invoices || []).filter((x) => x.status === 'paid' && x.mine)
+      const paid = (r?.myInvoices || []).filter((x) => x.status === 'paid')
       if (payg(r)) {
         return {
           text: 'Für jede Rechnung, die du bezahlst, gibt es einen Beleg mit QR-Code. Der Anbieter prüft ihn direkt an der Blockchain. Ohne Zahlung gibt es keinen Beleg.' +

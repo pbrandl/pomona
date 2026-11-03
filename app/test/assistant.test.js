@@ -37,20 +37,25 @@ function status (over = {}, roundOver = {}) {
     myDeposit: '0',
     refundable: '0',
     invoices: Array.from({ length: 12 }, (_, i) => ({ index: i, status: 'scheduled', mine: false, dueAt: NOW + i * MONTH })),
+    myInvoices: [],
     news: [],
     ...roundOver
   }
   return { wallet: { state: 'unlocked', usdt: '2400', symbol: 'USDT' }, network: { name: 'Arbitrum Sepolia (Test)' }, round, ...over }
 }
 
-const running = (role = 'bidder') => status({}, {
-  role,
-  phase: 'running',
-  invoiceCount: 2,
-  canInvoice: role === 'organizer',
-  myPledge: role === 'bidder' ? '100' : '0',
-  invoices: Array.from({ length: 12 }, (_, i) => ({ index: i, status: i < 2 ? 'paid' : 'scheduled', mine: role === 'bidder', dueAt: NOW + i * MONTH, paidAt: i < 2 ? NOW + i * MONTH : null }))
-})
+const running = (role = 'bidder') => {
+  const list = Array.from({ length: 12 }, (_, i) => ({ index: i, status: i < 2 ? 'paid' : 'scheduled', mine: role === 'bidder', dueAt: NOW + i * MONTH, paidAt: i < 2 ? NOW + i * MONTH : null }))
+  return status({}, {
+    role,
+    phase: 'running',
+    invoiceCount: 2,
+    canInvoice: role === 'organizer',
+    myPledge: role === 'bidder' ? '100' : '0',
+    invoices: list,
+    myInvoices: role === 'bidder' ? list : []
+  })
+}
 
 /** A fake engine whose replies are scripted per call. */
 function fakeEngine (steps) {

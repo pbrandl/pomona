@@ -457,6 +457,7 @@ body:has(.home-dock) .toast { bottom: 110px; }
 }
 .manage-row:first-of-type { border-top: 0; }
 .manage-row:hover { color: var(--accent); }
+.manage-row.act { color: var(--accent); font-weight: 500; }
 .manage-danger { padding-top: 12px; border-top: 1px solid var(--line); font-size: 13px; }
 
 /* Invite page: a large QR code */

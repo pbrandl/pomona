@@ -35,7 +35,7 @@ export function changes (prev, next, { own = null } = {}) {
   const b = next.round
   if (!a || !b || a.address !== b.address) return out
   const organizer = b.role === 'organizer'
-  const mine = b.invoices?.some((x) => x.mine)
+  const mine = Number(b.myPledge) > 0
 
   if (a.phase === 'bidding' && b.phase === 'running') {
     out.push({ key: 'reached', title: 'Ziel erreicht', body: `${b.title}: Die Ratenzahlung startet.` })
@@ -50,7 +50,7 @@ export function changes (prev, next, { own = null } = {}) {
   if (a.phase === 'running' && b.phase === 'completed' && Number(b.refundable) > 0) {
     out.push({ key: 'ended', title: 'Ratenzahlung beendet', body: `${amount(b.refundable)} ${b.symbol} warten auf dich.` })
   }
-  if (b.mode === 'invoice' && b.invoiceCount > a.invoiceCount && !organizer && mine) {
+  if (b.mode === 'invoice' && b.invoiceCount > a.invoiceCount && mine) {
     out.push({ key: 'invoice-' + b.invoiceCount, title: `Rechnung ${b.invoiceCount} ist da`, body: `${amount(b.myPledge)} ${b.symbol} · Bitte in Pomona bezahlen.` })
   } else if (b.invoiceCount > a.invoiceCount && !organizer && mine) {
     out.push({ key: 'invoice-' + b.invoiceCount, title: `Rate ${b.invoiceCount} abgerechnet`, body: 'Dein Beleg ist da.' })

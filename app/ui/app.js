@@ -18,7 +18,7 @@ import { esc, short, fmt, isoDay, endOfDay, num } from './format.js'
 import { PEAR } from './views/parts.js'
 import { onboarding, locked, createWalletSheet, restoreSheet, revealSheet, seedSheet } from './views/onboarding.js'
 import { start, createPage, joinPage, createStepError } from './views/start.js'
-import { round, newsPage, invitePage } from './views/round.js'
+import { round, newsPage, invitePage, ownPage } from './views/round.js'
 import { ICON } from './views/icons.js'
 import { Idiomorph } from './vendor/idiomorph.esm.js'
 import { walletSheet } from './views/wallet.js'
@@ -36,6 +36,7 @@ const $app = document.getElementById('app')
 const ui = {
   status: null,
   sheet: null, // the open page (a key of SHEETS), null = the main view
+  parent: null, // page to return to on "Zurück" (the organizer's bid page), null = the main view
   seed: null, // shown once after creating, or after re-entering the password
   invite: null, // { link, qr }
   addressQr: null,
@@ -109,6 +110,7 @@ const SHEETS = {
   assistant: (u) => (u.status?.assistant ? assistantPage(u) : ''),
   news: (u) => (u.status?.round?.role === 'organizer' ? newsPage(u) : ''),
   invite: (u) => (u.status?.round ? invitePage(u) : ''),
+  own: (u) => (u.status?.round?.role === 'organizer' ? ownPage(u) : ''),
   wallet: (u) => (u.status?.wallet.state === 'unlocked' ? walletSheet(u) : '')
 }
 
@@ -457,7 +459,9 @@ const actions = {
   mode: (el) => { ui.draft.mode = el.dataset.mode },
   'open-sheet': (el) => { ui.sheet = el.dataset.sheet },
   'close-sheet': () => {
-    ui.sheet = null
+    // Pages opened from the organizer's bid page lead back there.
+    ui.sheet = ui.parent && ui.parent !== ui.sheet ? ui.parent : null
+    ui.parent = null
     ui.joinScan = false
     ui.quote = null
     ui.bidDone = null
@@ -482,7 +486,7 @@ const actions = {
   'go-home': () => {
     document.activeElement?.blur?.()
     ui.homeChat = false
-    if (ui.sheet && !ui.status?.busy) actions['close-sheet']()
+    if (ui.sheet && !ui.status?.busy) { ui.parent = null; actions['close-sheet']() }
     window.scrollTo(0, 0)
   },
   async 'agent-send' () {
@@ -798,8 +802,10 @@ $app.addEventListener('click', async (e) => {
   if (!fn) return
   ui.pending = el.dataset.action
   render()
+  const from = ui.sheet
   try {
     await fn(el)
+    if (from === 'own' && ui.sheet && ui.sheet !== 'own') ui.parent = 'own'
   } catch (err) {
     toast(err.message, true)
   } finally {

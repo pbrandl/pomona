@@ -46,7 +46,7 @@ export function describe (s) {
   if (r.guide) lines.push(`Richtwert: ${num(r.guide)} ${r.symbol} ${p.per}`)
   lines.push(`Gebot der Person: ${Number(r.myPledge) > 0 ? `${num(r.myPledge)} ${r.symbol} ${p.per} (${num(r.myDeposit)} hinterlegt)` : 'keins'}`)
   if (Number(r.refundable) > 0) lines.push(`Für die Person zurückholbar: ${num(r.refundable)} ${r.symbol}`)
-  const paid = (r.invoices || []).filter((x) => x.status === 'paid' && x.mine).map((x) => x.index + 1)
+  const paid = (r.myInvoices || []).filter((x) => x.status === 'paid').map((x) => x.index + 1)
   if (paid.length) lines.push(`Belege vorhanden für Rate: ${paid.join(', ')}`)
 
   const peer = [`Titel: ${sanitize(r.title, 120)}`]

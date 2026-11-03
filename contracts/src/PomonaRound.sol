@@ -360,9 +360,13 @@ contract PomonaRound is ReentrancyGuard {
         paidCount[index]++;
         paidSum[index] += amount;
 
-        uint256 before = token.balanceOf(organizer);
-        token.safeTransferFrom(msg.sender, organizer, amount);
-        if (token.balanceOf(organizer) - before != amount) revert UnsupportedToken();
+        // The organizer may bid, too. Their own bid is their own money: paying
+        // it moves nothing and is only recorded (receipt, paid count and sum).
+        if (msg.sender != organizer) {
+            uint256 before = token.balanceOf(organizer);
+            token.safeTransferFrom(msg.sender, organizer, amount);
+            if (token.balanceOf(organizer) - before != amount) revert UnsupportedToken();
+        }
         emit Paid(msg.sender, index, amount, at);
     }
 

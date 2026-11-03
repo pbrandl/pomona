@@ -7,72 +7,76 @@
 import { esc, fmt, num, per, date, dayTime } from '../format.js'
 import { btn, link } from './parts.js'
 
-export function youCard (ui) {
+/**
+ * @param {object} ui
+ * @param {{ asBidder?: boolean }} [o] - asBidder: the organizer's own bid page
+ *   ("Bietseite"); otherwise the organizer gets the project view
+ */
+export function youCard (ui, { asBidder = false } = {}) {
+  const r = ui.status.round
+  return r.role === 'organizer' && !asBidder ? projectCard(ui, r) : bidderCard(ui, r)
+}
+
+/** Your own part in the round: everyone with a bid, the organizer on their bid page too. */
+function bidderCard (ui, r) {
   const s = ui.status
-  const r = s.round
   const p = per(r.intervalName)
   const sym = esc(r.symbol)
   const pledge = num(r.myPledge)
-  let title = ''
-  let sub = ''
-  let actions = ''
-  let tone = ''
-
+  const mine = r.myInvoices || []
   if (num(r.refundable) > 0) {
-    tone = 'act'
-    title = `${fmt(r.refundable)} ${sym} warten auf dich`
-    sub = r.phase === 'failed' ? 'Das Ziel wurde nicht erreicht.' : 'Diese Raten werden nicht mehr abgerechnet.'
-    actions = btn(ui, 'refund', 'Zurückholen', 'accent', { busy: 'Wird überwiesen…' })
-  } else if (r.phase === 'bidding') {
-    return yourBid(ui, r, p) // everyone with a wallet can bid, the organizer too
-  } else if (pledge > 0 && r.openInvoices > 0) {
-    tone = 'act'
-    const open = r.invoices.filter((x) => x.status === 'open')
-    title = open.length === 1 ? `Rechnung ${open[0].index + 1}: ${fmt(r.openAmount)} ${sym}` : `${open.length} offene Rechnungen: ${fmt(r.openAmount)} ${sym}`
-    const lacking = num(s.wallet.usdt) < num(r.openAmount)
-    sub = lacking
-      ? `Dir fehlen ${fmt(num(r.openAmount) - num(s.wallet.usdt))} ${sym}. Lade dein Konto auf, dann bezahlst du und bekommst den Beleg.`
-      : 'Bezahlen und Beleg erhalten. Der Betrag geht direkt an den Organisator.'
-    actions = lacking
-      ? '<button class="btn accent" data-action="open-fund">Aufladen</button>'
-      : '<button class="btn accent" data-action="open-pay">Bezahlen</button>'
-  } else if (r.role === 'organizer' && r.mode === 'invoice' && (r.phase === 'running' || r.phase === 'completed')) {
-    const last = (r.invoices || []).filter((x) => x.status === 'issued').at(-1)
-    title = last ? `Rechnung ${last.index + 1}: ${last.paidCount} von ${r.bidders} bezahlt` : 'Ratenzahlung läuft'
-    sub = r.phase === 'running' && r.invoiceCount < r.installments
-      ? `Rechnungen gehen automatisch raus. Nächste am ${esc(date(r.nextInvoiceAt))}.`
-      : `Alle ${r.installments} Rechnungen sind verschickt.`
-    if (last) actions = `<button class="btn ghost" data-action="show-invoice" data-index="${last.index}">Wer hat bezahlt?</button>`
-  } else if (r.role === 'organizer') {
-    if (r.phase === 'running' && r.canInvoice) {
-      tone = 'act'
-      title = `Rechnung ${r.invoiceCount + 1} ist fällig`
-      sub = `${fmt(r.total)} ${sym} gehen an dein Konto. Alle Bietenden bekommen einen Beleg.`
-      actions = btn(ui, 'invoice', 'Rechnung stellen', 'accent', { busy: 'Wird abgerechnet…' })
-    } else if (r.phase === 'running') {
-      title = `Nächste Rechnung ab ${esc(date(r.nextInvoiceAt))}`
-      sub = `${r.invoiceCount} von ${r.installments} Raten abgerechnet.`
-    } else if (r.phase === 'completed') {
-      title = 'Runde abgeschlossen'
-      sub = `${r.invoiceCount} von ${r.installments} Raten abgerechnet.`
-    } else {
-      title = 'Ziel nicht erreicht'
-      sub = 'Die Bietenden holen ihr Geld zurück.'
-    }
-  } else if (pledge > 0) {
-    tone = 'ok'
-    const paid = (r.invoices || []).filter((x) => x.status === 'paid' && x.mine)
-    title = `Du bist dabei: ${fmt(r.myPledge)} ${sym} ${p.per}`
-    const nextText = r.mode === 'invoice' ? `Nächste Rechnung am ${esc(date(r.nextInvoiceAt))}.` : `Nächste ab ${esc(date(r.nextInvoiceAt))}.`
-    sub = r.phase === 'running' && r.invoiceCount < r.installments
-      ? `${paid.length} von ${r.installments} Raten bezahlt. ${nextText}`
-      : `${paid.length} ${paid.length === 1 ? 'Rate' : 'Raten'} bezahlt.`
-    if (paid.length) actions = `<button class="btn ghost" data-action="show-receipt" data-index="${paid.at(-1).index}">Letzten Beleg zeigen</button>`
-  } else {
-    title = r.phase === 'failed' ? 'Ziel nicht erreicht' : 'Du hast nicht geboten'
-    sub = r.phase === 'failed' ? 'Es gibt keine Raten.' : 'Die Bietphase ist vorbei.'
+    return card('act', `${fmt(r.refundable)} ${sym} warten auf dich`,
+      r.phase === 'failed' ? 'Das Ziel wurde nicht erreicht.' : 'Diese Raten werden nicht mehr abgerechnet.',
+      btn(ui, 'refund', 'Zurückholen', 'accent', { busy: 'Wird überwiesen…' }))
   }
+  if (r.phase === 'bidding') return yourBid(ui, r, p)
+  if (pledge > 0 && r.openInvoices > 0) {
+    const open = mine.filter((x) => x.status === 'open')
+    const self = r.role === 'organizer' // own bid: only recorded, nothing is transferred
+    const lacking = !self && num(s.wallet.usdt) < num(r.openAmount)
+    return card('act',
+      open.length === 1 ? `Rechnung ${open[0].index + 1}: ${fmt(r.openAmount)} ${sym}` : `${open.length} offene Rechnungen: ${fmt(r.openAmount)} ${sym}`,
+      self
+        ? 'Dein eigenes Gebot: Es wird nichts überwiesen, nur als bezahlt vermerkt. Dafür gibt es den Beleg.'
+        : lacking
+          ? `Dir fehlen ${fmt(num(r.openAmount) - num(s.wallet.usdt))} ${sym}. Lade dein Konto auf, dann bezahlst du und bekommst den Beleg.`
+          : 'Bezahlen und Beleg erhalten. Der Betrag geht direkt an den Organisator.',
+      lacking ? '<button class="btn accent" data-action="open-fund">Aufladen</button>' : `<button class="btn accent" data-action="open-pay">${self ? 'Als bezahlt vermerken' : 'Bezahlen'}</button>`)
+  }
+  if (pledge > 0) {
+    const paid = mine.filter((x) => x.status === 'paid')
+    const nextText = r.mode === 'invoice' ? `Nächste Rechnung am ${esc(date(r.nextInvoiceAt))}.` : `Nächste ab ${esc(date(r.nextInvoiceAt))}.`
+    return card('ok', `Du bist dabei: ${fmt(r.myPledge)} ${sym} ${p.per}`,
+      r.phase === 'running' && r.invoiceCount < r.installments
+        ? `${paid.length} von ${r.installments} Raten bezahlt. ${nextText}`
+        : `${paid.length} ${paid.length === 1 ? 'Rate' : 'Raten'} bezahlt.`,
+      paid.length ? `<button class="btn ghost" data-action="show-receipt" data-index="${paid.at(-1).index}">Letzten Beleg zeigen</button>` : '')
+  }
+  return card('', r.phase === 'failed' ? 'Ziel nicht erreicht' : 'Du hast nicht geboten', r.phase === 'failed' ? 'Es gibt keine Raten.' : 'Die Bietphase ist vorbei.')
+}
 
+/** The organizer's project page: the whole round and what to do for it. Own bids live on the bid page. */
+function projectCard (ui, r) {
+  const sym = esc(r.symbol)
+  if (r.phase === 'bidding') return '' // progress and deadline are in the header and the ring
+  if (r.mode === 'invoice' && (r.phase === 'running' || r.phase === 'completed')) {
+    const last = (r.invoices || []).filter((x) => x.status === 'issued').at(-1)
+    return card('', last ? `Rechnung ${last.index + 1}: ${last.paidCount} von ${r.bidders} bezahlt` : 'Ratenzahlung läuft',
+      r.phase === 'running' && r.invoiceCount < r.installments
+        ? `Rechnungen gehen automatisch raus. Nächste am ${esc(date(r.nextInvoiceAt))}.`
+        : `Alle ${r.installments} Rechnungen sind verschickt.`,
+      last ? `<button class="btn ghost" data-action="show-invoice" data-index="${last.index}">Wer hat bezahlt?</button>` : '')
+  }
+  if (r.phase === 'running' && r.canInvoice) {
+    return card('act', `Rechnung ${r.invoiceCount + 1} ist fällig`, `${fmt(r.total)} ${sym} gehen an dein Konto. Alle Bietenden bekommen einen Beleg.`,
+      btn(ui, 'invoice', 'Rechnung stellen', 'accent', { busy: 'Wird abgerechnet…' }))
+  }
+  if (r.phase === 'running') return card('', `Nächste Rechnung ab ${esc(date(r.nextInvoiceAt))}`, `${r.invoiceCount} von ${r.installments} Raten abgerechnet.`)
+  if (r.phase === 'completed') return card('', 'Runde abgeschlossen', `${r.invoiceCount} von ${r.installments} Raten abgerechnet.`)
+  return card('', 'Ziel nicht erreicht', 'Die Bietenden holen ihr Geld zurück.')
+}
+
+function card (tone, title, sub, actions = '') {
   return `<div class="you ${tone}" role="status">
     <div><p class="you-title">${title}</p>${sub ? `<p class="small muted">${sub}</p>` : ''}</div>
     ${actions ? `<div class="you-actions">${actions}</div>` : ''}

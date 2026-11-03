@@ -392,3 +392,35 @@ test('invoice mode: bid without deposit, invoices arrive by themselves, pay with
   assert.equal(s.round.phase, 'running') // until the last interval is over
   assert.equal(s.round.invoiceCount, 3)
 })
+
+test('the organizer bids from their own wallet: the project page keeps the whole round, own installments apart', async () => {
+  const farm = await env.funded()
+  const alice = await env.funded()
+  const { link } = await farm.createRound({ title: 'Hof mit eigenem Gebot', mode: 'invoice', target: '100', interval: 'week', installments: 2, biddingDays: 2, inviteOnly: true })
+  await alice.join({ link })
+  await farm.bid({ amount: '40' })
+  await alice.bid({ amount: '60' })
+  let s = await farm.status()
+  assert.equal(s.round.total, '100')
+  assert.equal(s.round.myPledge, '40')
+
+  await env.warp(2 * DAY)
+  s = await farm.status()
+  assert.equal(s.round.invoices[0].status, 'issued') // project page: the whole round …
+  assert.equal(s.round.invoices[0].amount, '100')
+  assert.equal(s.round.invoices[0].paidCount, 0)
+  assert.equal(s.round.myInvoices[0].status, 'open') // … own installments apart
+  assert.equal(s.round.myInvoices[0].amount, '40')
+  assert.equal(s.round.openInvoices, 1)
+
+  await farm.pay({})
+  s = await farm.status()
+  assert.equal(s.round.myInvoices[0].status, 'paid')
+  assert.equal(s.round.invoices[0].paidCount, 1)
+  assert.equal(s.round.invoices[0].paidSum, '40')
+  assert.equal((await farm.verifyReceipt({ code: (await farm.receipt({ index: 0 })).code })).valid, true)
+
+  s = await alice.status() // a bidder still sees their own part on the round page
+  assert.equal(s.round.invoices[0].amount, '60')
+  assert.deepEqual(s.round.invoices, s.round.myInvoices)
+})

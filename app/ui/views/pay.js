@@ -29,7 +29,7 @@ function reviewPage (ui) {
   const opts = { steps: PAY_STEPS, at: 0, back: running ? false : 'close-sheet' }
   if (!q) return page('Rechnung bezahlen', `<p class="verify pending">${spinner} Wird berechnet…</p>`, opts)
 
-  const first = r.invoices[q.invoices[0] - 1]
+  const first = r.myInvoices[q.invoices[0] - 1]
   const fee = q.fee === null ? 'keine' : `ca. ${fmt(q.fee, 4)} ${esc(q.symbol)}`
   return page('Rechnung bezahlen', `
     <div class="receipt">
@@ -37,18 +37,20 @@ function reviewPage (ui) {
       <dl>
         <dt>Für</dt><dd>${esc(names(q.invoices))} von ${r.installments} · ${esc(p.adj)}</dd>
         <dt>Fällig seit</dt><dd>${esc(date(first.dueAt))}</dd>
-        <dt>An</dt><dd class="mono">${esc(short(r.organizer))} (Organisator)</dd>
+        <dt>An</dt><dd${q.self ? '' : ' class="mono"'}>${q.self ? 'dich selbst (Organisator)' : `${esc(short(r.organizer))} (Organisator)`}</dd>
         <dt>Netzwerkgebühr</dt><dd>${fee}</dd>
         <dt>Dein Guthaben</dt><dd>${fmt(q.balance)} ${esc(q.symbol)}</dd>
       </dl>
     </div>
-    ${q.enough
+    ${q.self
+      ? '<p class="small muted">Das ist dein eigenes Gebot: Es wird nichts überwiesen, die Rechnung wird nur als bezahlt vermerkt. Du bekommst den Beleg wie alle anderen.</p>'
+      : q.enough
       ? '<p class="small muted">Der Betrag geht direkt aus deinem Konto an den Organisator. Danach bekommst du einen Beleg, den er prüfen kann.</p>'
       : `<div class="warning"><strong>Dir fehlen ${fmt(q.missing)} ${esc(q.symbol)}</strong><p>Ohne Zahlung gibt es keinen Beleg. Lade dein Konto auf, die Rechnung bleibt so lange offen.</p></div>`}
     ${running ? stepper(ui.status.busyStep) : ''}
     <div class="actions sticky">
       ${q.enough
-        ? `<button class="btn accent block" data-action="confirm-pay" ${running ? 'disabled' : ''}>${running ? 'Bitte warten…' : `${fmt(q.amount)} ${esc(q.symbol)} bezahlen`}</button>`
+        ? `<button class="btn accent block" data-action="confirm-pay" ${running ? 'disabled' : ''}>${running ? 'Bitte warten…' : q.self ? 'Als bezahlt vermerken' : `${fmt(q.amount)} ${esc(q.symbol)} bezahlen`}</button>`
         : '<button class="btn accent block" data-action="open-fund">Konto aufladen</button>'}
     </div>`, opts)
 }

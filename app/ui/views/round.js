@@ -122,11 +122,15 @@ function column (r, x, organizer) {
   }
 }
 
-function track (ui, r, p) {
-  if (r.phase === 'failed' || !r.invoices?.length) return ''
-  const organizer = r.role === 'organizer'
-  const mine = r.invoices.some((x) => x.mine)
-  const cols = r.invoices.map((x) => column(r, x, organizer))
+/**
+ * @param {{ asBidder?: boolean }} [o] - asBidder: the organizer's bid page, own installments
+ */
+function track (ui, r, p, { asBidder = false } = {}) {
+  const list = asBidder ? r.myInvoices : r.invoices
+  if (r.phase === 'failed' || !list?.length) return ''
+  const organizer = r.role === 'organizer' && !asBidder
+  const mine = list.some((x) => x.mine)
+  const cols = list.map((x) => column(r, x, organizer))
   const got = cols.reduce((s, c) => s + c.got, 0)
   const due = cols.reduce((s, c) => s + c.due, 0)
   const sym = esc(r.symbol)
@@ -136,7 +140,7 @@ function track (ui, r, p) {
     : mine
       ? { top: 'bezahlt', bottom: r.mode === 'invoice' ? 'zu zahlen' : 'ausstehend' }
       : { top: 'erhalten', bottom: 'geplant' }
-  const paid = r.invoices.filter((x) => x.status === 'paid').length
+  const paid = list.filter((x) => x.status === 'paid').length
   const title = organizer || !mine
     ? `${r.installments} ${r.mode === 'invoice' ? 'Rechnungen' : 'Raten'}, ${esc(p.adj)}`
     : `Deine Raten, ${esc(p.adj)}`
@@ -174,7 +178,7 @@ function news (ui, r) {
 
 function manage (ui, r) {
   if (r.role !== 'organizer') return ''
-  const rows = ['<button class="manage-row" data-action="open-sheet" data-sheet="news">Neuigkeit an alle schreiben<span class="chev">›</span></button>']
+  const rows = [ownRow(r), '<button class="manage-row" data-action="open-sheet" data-sheet="news">Neuigkeit an alle schreiben<span class="chev">›</span></button>'].filter(Boolean)
   if (r.invoiceCount > 0) rows.push('<button class="manage-row" data-action="open-scan">Beleg prüfen<span class="chev">›</span></button>')
   const danger = r.phase === 'bidding'
     ? link(ui, 'cancel', 'Runde abbrechen', 'danger')
@@ -184,6 +188,42 @@ function manage (ui, r) {
     ${rows.join('')}
     ${danger ? `<div class="manage-danger">${danger}</div>` : ''}
   </div>`
+}
+
+/**
+ * The organizer's way to their own bid page: what is open for them, or the
+ * offer to bid, too. Nothing once bidding is over without a bid of their own.
+ */
+function ownRow (r) {
+  const sym = esc(r.symbol)
+  const pledge = num(r.myPledge)
+  const [text, act] = num(r.refundable) > 0
+    ? [`Dein Gebot: ${fmt(r.refundable)} ${sym} zurückholen`, true]
+    : pledge > 0 && r.openInvoices > 0
+      ? [`Dein Gebot: ${fmt(r.openAmount)} ${sym} offen`, true]
+      : pledge > 0
+        ? [`Dein Gebot: ${fmt(r.myPledge)} ${sym} ${esc(per(r.intervalName).per)}`, false]
+        : r.phase === 'bidding' ? ['Selbst mitbieten', false] : ['', false]
+  if (!text) return ''
+  return `<button class="manage-row${act ? ' act' : ''}" data-action="open-sheet" data-sheet="own">${text}<span class="chev">›</span></button>`
+}
+
+/**
+ * Page: the organizer's own bid ("Bietseite"). They bid from their own wallet
+ * like everyone else, and see their part here as every bidder does; the
+ * project page keeps showing the whole round.
+ */
+export function ownPage (ui) {
+  const r = ui.status.round
+  const p = per(r.intervalName)
+  return page(null, `
+    <div class="round-head">
+      <p class="eyebrow">Deine Bietseite</p>
+      <div class="title-row"><h1 class="one-line" title="${esc(r.title)}">${esc(r.title)}</h1></div>
+      <p class="small muted">Du bietest wie alle anderen aus deiner eigenen Wallet. Dein Gebot zählt zur Gesamtsumme auf der Projektseite.</p>
+    </div>
+    ${youCard(ui, { asBidder: true })}
+    ${track(ui, r, p, { asBidder: true })}`)
 }
 
 /** Page: the invite as a QR code, to show on a phone or print out. */

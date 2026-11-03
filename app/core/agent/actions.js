@@ -48,7 +48,7 @@ export function validateAction (a, s) {
     }
     case 'receipt': {
       const index = Number(a.index)
-      const inv = r?.invoices?.[index]
+      const inv = r?.myInvoices?.[index]
       if (!Number.isInteger(index) || !inv || inv.status !== 'paid' || !inv.mine) return null
       return { type: 'receipt', index, label: `Beleg für Rate ${index + 1} zeigen` }
     }

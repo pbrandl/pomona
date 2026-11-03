@@ -317,6 +317,24 @@ describe('PomonaRound', () => {
     assert.equal(await round.refundable(await addr(bob)), 0n)
   })
 
+  test('invoice mode: the organizer may bid; paying their own invoice moves no money but is recorded', async () => {
+    const round = await newRound({ mode: Mode.Invoice, target: 100, installments: 2, interval: MONTH })
+    await (await round.connect(organizer).bid(USDT(40), '0x')).wait()
+    await (await round.connect(alice).bid(USDT(60), '0x')).wait()
+    await warpTo(round.biddingEnd)
+    const o0 = await bal(organizer)
+    await (await round.connect(organizer).pay(0)).wait() // no approval needed: nothing is transferred
+    assert.equal(await bal(organizer), o0)
+    const [amount, at] = await round.receipt(await addr(organizer), 0)
+    assert.equal(amount, USDT(40))
+    assert.ok(at > 0n)
+    assert.equal(await round.paidCount(0), 1n)
+    assert.equal(await round.paidSum(0), USDT(40))
+    await rejects(round.connect(organizer).pay(0), 'AlreadyPaid')
+    await pay(round, alice, 0) // everyone else pays as before
+    assert.equal(await bal(organizer) - o0, USDT(60))
+  })
+
   test('invoice mode: no payment without enough balance (no receipt)', async () => {
     const round = await newRound({ mode: Mode.Invoice, target: 10, installments: 2, interval: WEEK })
     const poor = env.signers[4]

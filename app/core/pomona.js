@@ -427,7 +427,8 @@ export class Pomona extends EventEmitter {
     q.enough = q.balance >= need
     return {
       invoices: q.list.map((i) => i + 1),
-      amount: fmt(q.cost),
+      amount: fmt(q.amount),
+      self: q.self, // the organizer's own invoice: nothing is transferred, only recorded
       fee: fee === null ? null : fmt(fee),
       balance: fmt(q.balance),
       enough: q.enough,
@@ -461,7 +462,10 @@ export class Pomona extends EventEmitter {
     const list = index == null ? open : open.filter((i) => i === Number(index))
     if (!list.length) fail('NOTHING', index == null ? 'Es gibt keine offene Rechnung.' : 'Diese Rechnung ist schon bezahlt oder noch nicht da.')
     const meta = await this._token()
-    const cost = pledge * BigInt(list.length)
+    const amount = pledge * BigInt(list.length)
+    // The organizer's own bid is their own money: the contract only records it.
+    const self = same(me, info.organizer)
+    const cost = self ? 0n : amount
     const balance = await this.account.usdtBalance()
     const token = new TokenContract(meta.address, this.provider)
     const allowance = await token.allowance(me, this.round.address)
@@ -471,7 +475,7 @@ export class Pomona extends EventEmitter {
       calls.push(token.approve(this.round.address, cost))
     }
     for (const i of list) calls.push(this.round.pay(i))
-    return { meta, list, cost, balance, enough: balance >= cost, calls }
+    return { meta, list, amount, cost, self, balance, enough: balance >= cost, calls }
   }
 
   /**
@@ -673,8 +677,11 @@ export class Pomona extends EventEmitter {
       this.p2p.news(),
       this.round.pledges()
     ])
-    const invoices = await this._invoices(info, now, pledge, fmt)
-    const open = info.mode === 'invoice' && pledge > 0n ? invoices.filter((x) => x.status === 'open') : []
+    // Own installments (with a bid), and the plan the round page shows: the
+    // organizer's project page always the whole round, everyone else their own part.
+    const myInvoices = pledge > 0n ? await this._invoices(info, now, pledge, fmt) : []
+    const invoices = pledge > 0n && this.saved.role !== 'organizer' ? myInvoices : await this._invoices(info, now, 0n, fmt)
+    const open = info.mode === 'invoice' ? myInvoices.filter((x) => x.status === 'open') : []
     s.round = {
       mode: info.mode,
       role: this.saved.role,
@@ -709,7 +716,8 @@ export class Pomona extends EventEmitter {
       openInvoices: open.length, // invoice mode: my unpaid invoices
       openAmount: fmt(pledge * BigInt(open.length)),
       refundable: fmt(refundable),
-      invoices,
+      invoices, // the round page's plan (see above)
+      myInvoices, // own installments: receipts, open invoices; [] without a bid
       news
     }
     s.assistant = this.assistant.info(s)

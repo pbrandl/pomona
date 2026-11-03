@@ -3,7 +3,7 @@
  * (`npm run preview`). Same method names and status shape as the real core
  * (see docs/RPC.md).
  * Scenario via ?s=onboarding|locked|start|fund|newbidder|bidder|organizer|invoice|receipts|completed|failed
- * Rounds "Per Rechnung": ?s=payg-bidding|payg|payg-organizer
+ * Rounds "Per Rechnung": ?s=payg-bidding|payg|payg-organizer|payg-organizer-bid
  */
 ;(function () {
   // ?s=bidder, or #bidder (artifact pages pass only a plain hash)
@@ -16,10 +16,9 @@
   const link = 'pomona://eyJ2IjoxLCJtIjoiYTdmMGM5ZTQxYjJkNjhmMzBlNWE5Yzc0ZDFiOGUyZjZhMzBjOTRlN2IxZDVmMjhhNmMwZTNiOWQ0ZjdhMmUxYyIsIm4iOiJzZXBvbGlhIiwiciI6IjB4N2E0QjlmMDJjRTFkOEE2ZjMwRTU5YzdEMWI4RTJGNmEzMEM5NEU3YiJ9'
   const wallet = { state: 'unlocked', kind: 'smart', address: '0x5C3e9A0bD41f7E28c6B9a3F1d02E8c7B4a6D9e10', usdt: '2400', symbol: 'USDT' }
 
-  /** Same rules as Pomona._invoices / _invoicesPayg in core/pomona.js. */
-  function plan (r) {
+  /** Same rules as Pomona._invoices / _invoicesPayg in core/pomona.js: own installments (mine) or the whole round. */
+  function plan (r, mine) {
     if (r.mode === 'invoice') {
-      const mine = Number(r.myPledge) > 0
       const upcoming = r.phase === 'bidding' || r.phase === 'running'
       return Array.from({ length: r.installments }, (_, i) => {
         const dueAt = r.biddingEnd + r.interval * i
@@ -39,7 +38,6 @@
       if (i < r.invoiceCount) status = 'paid'
       else if (r.phase === 'running' && i === r.invoiceCount && r.canInvoice) status = 'due'
       else if (r.phase === 'bidding' || r.phase === 'running') status = 'scheduled'
-      const mine = Number(r.myPledge) > 0
       return { index: i, dueAt, paidAt: i < r.invoiceCount ? dueAt + 3600 : null, amount: mine ? r.myPledge : r.total, status, mine }
     })
   }
@@ -79,8 +77,7 @@
     }, over)
     r.nextInvoiceAt = r.biddingEnd + r.interval * r.invoiceCount
     r.expiresAt = r.biddingEnd + r.interval * r.installments
-    r.invoices = plan(r)
-    openInvoices(r)
+    plans(r)
     stats(r)
     return r
   }
@@ -89,8 +86,15 @@
     r.average = r.bidders ? String(Math.round(Number(r.total) / r.bidders * 100) / 100) : null
     r.median = r.bidders ? String(Math.round(Number(r.total) / r.bidders * 0.9)) : null
   }
+  /** Like Pomona.status(): the organizer's page shows the whole round, everyone else their own part. */
+  function plans (r) {
+    const pledged = Number(r.myPledge) > 0
+    r.myInvoices = pledged ? plan(r, true) : []
+    r.invoices = pledged && r.role !== 'organizer' ? r.myInvoices : plan(r, false)
+    openInvoices(r)
+  }
   function openInvoices (r) {
-    const open = r.mode === 'invoice' ? r.invoices.filter((x) => x.status === 'open') : []
+    const open = r.mode === 'invoice' ? r.myInvoices.filter((x) => x.status === 'open') : []
     r.openInvoices = open.length
     r.openAmount = String(open.length * Number(r.myPledge))
   }
@@ -127,6 +131,7 @@
     'payg-bidding': () => ({ ...base, wallet: { ...wallet, usdt: '0' }, round: round({ mode: 'invoice' }) }),
     payg: () => ({ ...base, wallet, round: round({ mode: 'invoice', ...running, canInvoice: false, myPledge: '100', myDeposit: '0', paidMine: 2 }) }),
     'payg-organizer': () => ({ ...base, wallet, round: round({ mode: 'invoice', role: 'organizer', ...running, canInvoice: false }) }),
+    'payg-organizer-bid': () => ({ ...base, wallet, round: round({ mode: 'invoice', role: 'organizer', ...running, canInvoice: false, myPledge: '100', myDeposit: '0', paidMine: 2 }) }),
     failed: () => ({ ...base, wallet, round: round({ phase: 'failed', total: '2230', progress: 2230 / 4000, biddingEnd: now - DAY, myPledge: '80', myDeposit: '960', refundable: '960' }) })
   }
   const state = (scenarios[scenario] || scenarios.bidder)()
@@ -266,24 +271,25 @@
           r.bidders += 1
           stats(r)
           if (!payg) state.wallet.usdt = String(Number(state.wallet.usdt) - n * r.installments)
-          r.invoices = plan(r)
+          plans(r)
           return null
         }
         case 'quotePay': {
           const r = state.round
-          const list = r.invoices.filter((x) => x.status === 'open' && (params.index == null || x.index === params.index))
+          const list = r.myInvoices.filter((x) => x.status === 'open' && (params.index == null || x.index === params.index))
           const amount = list.length * Number(r.myPledge)
           const balance = Number(state.wallet.usdt)
-          return { invoices: list.map((x) => x.index + 1), amount: String(amount), fee: '0.0287', balance: String(balance), enough: balance >= amount, missing: String(Math.max(0, amount - balance)), symbol: 'USDT' }
+          const self = r.role === 'organizer'
+          const cost = self ? 0 : amount
+          return { invoices: list.map((x) => x.index + 1), amount: String(amount), self, fee: '0.0287', balance: String(balance), enough: balance >= cost, missing: String(Math.max(0, cost - balance)), symbol: 'USDT' }
         }
         case 'pay': {
           const r = state.round
-          const list = r.invoices.filter((x) => x.status === 'open' && (params.index == null || x.index === params.index))
+          const list = r.myInvoices.filter((x) => x.status === 'open' && (params.index == null || x.index === params.index))
           await tx('pay')
-          state.wallet.usdt = String(Number(state.wallet.usdt) - list.length * Number(r.myPledge))
+          if (r.role !== 'organizer') state.wallet.usdt = String(Number(state.wallet.usdt) - list.length * Number(r.myPledge))
           r.paidMine = Math.max(r.paidMine ?? 0, ...list.map((x) => x.index + 1))
-          r.invoices = plan(r)
-          openInvoices(r)
+          plans(r)
           return null
         }
         case 'invoiceDetails': {
@@ -312,7 +318,7 @@
           r.bidders = Math.max(0, r.bidders - 1)
           r.myPledge = '0'
           r.myDeposit = '0'
-          r.invoices = plan(r)
+          plans(r)
           return null
         }
         case 'refund': {
@@ -329,7 +335,7 @@
           r.invoiceCount += 1
           r.canInvoice = false
           r.nextInvoiceAt = r.biddingEnd + r.interval * r.invoiceCount
-          r.invoices = plan(r)
+          plans(r)
           return null
         }
         case 'cancel': {
@@ -337,7 +343,7 @@
           await tx('cancel')
           r.phase = 'failed'
           r.refundable = r.myDeposit
-          r.invoices = plan(r)
+          plans(r)
           return null
         }
         case 'terminate': {
@@ -346,7 +352,7 @@
           r.phase = 'completed'
           r.canInvoice = false
           r.refundable = String(Number(r.myPledge) * (r.installments - r.invoiceCount))
-          r.invoices = plan(r)
+          plans(r)
           return null
         }
         case 'postNews':

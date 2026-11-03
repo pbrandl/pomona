@@ -22,7 +22,7 @@ function verdict (v) {
 export function receiptSheet (ui) {
   const r = ui.status.round
   const rc = ui.receipt
-  const inv = r.invoices[rc.index]
+  const inv = r.myInvoices[rc.index]
   const p = per(r.intervalName)
   return page('Beleg', `
     <div class="receipt">

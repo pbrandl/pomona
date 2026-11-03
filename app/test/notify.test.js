@@ -17,7 +17,7 @@ const round = (over = {}) => ({
   refundable: '0',
   biddingEnd: 100 * 86400,
   now: 0,
-  invoices: [{ mine: true }],
+  myPledge: '100',
   news: [],
   ...over
 })
@@ -40,7 +40,7 @@ test('phase changes, invoices and news reach bidders', () => {
 })
 
 test('organizers hear about new bids and due invoices, not about their own actions', () => {
-  const org = round({ role: 'organizer', invoices: [{ mine: false }] })
+  const org = round({ role: 'organizer', myPledge: '0' })
   assert.deepEqual(keys(changes(st(org), st({ ...org, bidders: 4 }))), ['bid-4'])
   assert.deepEqual(keys(changes(st(org), st({ ...org, bidders: 4 }), { own: 'confirm-bid' })), [])
   const run = { ...org, phase: 'running', invoiceCount: 1 }

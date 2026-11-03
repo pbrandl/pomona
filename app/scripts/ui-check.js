@@ -33,7 +33,7 @@ try {
 }
 const { chromium, devices } = playwright
 
-const SCENARIOS = ['onboarding', 'locked', 'start', 'fund', 'newbidder', 'bidder', 'organizer', 'invoice', 'receipts', 'completed', 'payg-bidding', 'payg', 'payg-organizer', 'failed']
+const SCENARIOS = ['onboarding', 'locked', 'start', 'fund', 'newbidder', 'bidder', 'organizer', 'invoice', 'receipts', 'completed', 'payg-bidding', 'payg', 'payg-organizer', 'payg-organizer-bid', 'failed']
 const SCREENS = {
   phone: { ...devices['iPhone 13'] },
   small: { ...devices['iPhone SE'] },

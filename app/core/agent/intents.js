@@ -51,7 +51,7 @@ export function matchIntent (text, s) {
   }
 
   if (/\b(beleg|quittung|nachweis)/.test(t) && !/prüf|pruef|scan/.test(t)) {
-    const paid = (r?.invoices || []).filter((x) => x.status === 'paid' && x.mine)
+    const paid = (r?.myInvoices || []).filter((x) => x.status === 'paid')
     if (!paid.length) return { text: 'Du hast noch keinen Beleg. Der erste kommt mit der ersten Rechnung.', actions: [] }
     const n = /rate\s*(\d+)/.exec(t)
     const pick = n ? paid.find((x) => x.index === Number(n[1]) - 1) : paid.at(-1)
