@@ -214,7 +214,10 @@ let chatSeen = 0 // messages already shown; newer ones glide in once
 function fitToScreen () {
   const vv = window.visualViewport
   // Keyboard open: the field sits right on it, no room for the home-bar inset.
-  document.documentElement.classList.toggle('kb-open', !!vv && vv.height < window.innerHeight - 80)
+  // Detected by the visual viewport, or (inside frames, where that does not
+  // change) by a focused text field on a touch screen.
+  const typing = window.matchMedia?.('(pointer: coarse)').matches && document.activeElement?.matches?.('input:not([type=checkbox]):not([type=radio]), textarea')
+  document.documentElement.classList.toggle('kb-open', !!typing || (!!vv && vv.height < window.innerHeight - 80))
   const el = $app.querySelector('.chat-page, .home.chatting')
   if (!el) return
   // With the phone keyboard open, only the visual viewport is visible: size the
@@ -227,7 +230,9 @@ function fitToScreen () {
     return
   }
   const top = el.getBoundingClientRect().top + window.scrollY
-  el.style.height = `calc(100dvh - ${Math.ceil(top)}px)`
+  // The page itself may keep a bottom inset (e.g. the iPhone home bar).
+  const inset = parseFloat(window.getComputedStyle(document.documentElement).paddingBottom) || 0
+  el.style.height = `calc(100dvh - ${Math.ceil(top + inset)}px)`
 }
 window.addEventListener('resize', fitToScreen)
 window.visualViewport?.addEventListener('resize', () => { fitToScreen(); scrollChat() })
@@ -769,6 +774,28 @@ $app.addEventListener('click', async (e) => {
 // open and nothing moves under the finger.
 $app.addEventListener('pointerdown', (e) => {
   if (e.target.closest('[data-action="agent-send"]') && document.activeElement?.id === 'ask') e.preventDefault()
+})
+
+// Keyboard comes and goes with the focus on phones: refit right away.
+$app.addEventListener('focusin', () => fitToScreen())
+$app.addEventListener('focusout', () => setTimeout(fitToScreen, 50))
+
+// Tap or swipe in the messages: put the keyboard away (as in messengers).
+// Safari on iPhone keeps it open otherwise.
+$app.addEventListener('pointerdown', (e) => {
+  if (!e.target.closest('#chat-scroll') || e.target.closest('button, a, input')) return
+  if (document.activeElement?.id === 'ask') document.activeElement.blur()
+})
+$app.addEventListener('touchmove', (e) => {
+  if (e.target.closest?.('#chat-scroll') && document.activeElement?.id === 'ask') document.activeElement.blur()
+}, { passive: true })
+
+// Escape leaves the start-screen chat.
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape' || !ui.homeChat || ui.sheet) return
+  document.activeElement?.blur?.()
+  ui.homeChat = false
+  render()
 })
 
 // Start screen: the first focus on the docked question field opens the chat in place.

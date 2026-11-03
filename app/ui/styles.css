@@ -1147,3 +1147,9 @@ button.brand { background: none; border: 0; padding: 0; color: inherit; font: in
 /* keyboard open: field directly above the keyboard (no home-bar inset) */
 .kb-open .home-dock { padding-bottom: 6px; padding-top: 8px; }
 .kb-open .chat-foot { padding-bottom: 6px; }
+
+/* keyboard open: no home-bar inset anywhere below the field */
+:root.kb-open { padding-bottom: 0 !important; }
+.kb-open .home-dock, .kb-open .chat-foot { padding-bottom: 4px; }
+/* the box around the start-screen field is see-through */
+.home-dock { background: none; }
