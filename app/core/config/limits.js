@@ -5,7 +5,6 @@
  */
 export const LIMITS = Object.freeze({
   title: 120,
-  description: 2000,
   website: 300,
   news: 1000,
   newsShown: 50,

@@ -59,7 +59,6 @@ test('monthly round: bid via Pears link, invoice per month, receipts, terminate,
 
   const { link } = await farm.createRound({
     title: 'Solawi Lindenhof 2027',
-    description: 'Gemüse für 40 Haushalte',
     target: '150',
     minBid: '10',
     interval: 'month',

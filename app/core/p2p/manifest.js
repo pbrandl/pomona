@@ -16,7 +16,6 @@ import { LIMITS } from '../config/limits.js'
  * @typedef {Object} RoundManifest
  * @property {1} v
  * @property {string} title
- * @property {string} description
  * @property {string} network
  * @property {number} chainId
  * @property {string} round     - contract address
@@ -58,7 +57,6 @@ export function sanitizeManifest (m) {
   return {
     v: 1,
     title: clip(m.title, LIMITS.title),
-    description: clip(m.description, LIMITS.description),
     network: clip(m.network, 32),
     chainId: m.chainId,
     round: m.round,

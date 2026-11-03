@@ -48,7 +48,6 @@
     const r = Object.assign({
       role: 'bidder',
       title: 'Solawi Lindenhof 2027',
-      description: '',
       website: 'https://lindenhof.example/',
       verified: true,
       address: '0x7a4B9f02cE1d8A6f30E59c7D1b8E2F6a30C94E7b',

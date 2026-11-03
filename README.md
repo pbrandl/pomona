@@ -28,7 +28,7 @@ Pomona ist der Nachfolger von [Contrib](https://github.com/pbrandl/contrib) (Flu
 | Schicht | Technik | Aufgabe |
 |---|---|---|
 | Desktop-App | [Pear](https://pears.com) (`pear-electron`, `pear-run`, `pear-pipe`) | Oberfläche im Renderer. Wallet, P2P und Chain laufen in einem Bare-Worker. |
-| P2P | Hyperswarm, Corestore, Hyperbee | Der Organisator veröffentlicht das Manifest (Titel, Beschreibung, Neuigkeiten). Alle Teilnehmer replizieren und seeden es mit. |
+| P2P | Hyperswarm, Corestore, Hyperbee | Der Organisator veröffentlicht das Manifest (Titel, Website, Neuigkeiten). Alle Teilnehmer replizieren und seeden es mit. |
 | Wallet | [WDK](https://docs.wdk.tether.io): `wdk`, `wdk-wallet-evm-erc-4337` | Self-custodial Smart Account (Safe). Gebühren werden in USDT über einen Paymaster bezahlt, eine WDK-Policy begrenzt die Rechte. |
 | Tresor | libsodium: Argon2id + XSalsa20-Poly1305 | Die Seed-Phrase wird nur verschlüsselt gespeichert. |
 | Geld | `PomonaRound`, `PomonaFactory` (Solidity) | Escrow, Raten-Abrechnung und Belege, ohne Admin-Keys. |

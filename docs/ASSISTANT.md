@@ -38,7 +38,7 @@ Jeder Vorschlag wird gegen Rolle, Phase und Status geprüft (`core/agent/actions
 - **Hintergrundwissen** über Pomona.
 - **Aktuelle Lage** als Fakten aus Contract und Wallet.
 
-Texte anderer Peers (Titel, Beschreibung, Neuigkeiten) werden bereinigt und als **Daten** eingezäunt. Das Modell soll darin stehende Anweisungen ignorieren. Selbst wenn es das nicht tut, kann es nur einen Vorschlag erzeugen, den die Person auf der Prüfseite sieht.
+Texte anderer Peers (Titel, Neuigkeiten) werden bereinigt und als **Daten** eingezäunt. Das Modell soll darin stehende Anweisungen ignorieren. Selbst wenn es das nicht tut, kann es nur einen Vorschlag erzeugen, den die Person auf der Prüfseite sieht.
 
 ## Modelle (QVAC-Registry)
 

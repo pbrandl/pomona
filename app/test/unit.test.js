@@ -90,7 +90,7 @@ test('vault: seed is only readable with the password', () => {
 test('manifest from peers is sanitized', () => {
   const m = sanitizeManifest({ title: 'x'.repeat(10000), description: 5, round: A(1), organizer: A(2), chainId: 1, extra: '<script>' })
   assert.equal(m.title.length, 120)
-  assert.equal(m.description, '5')
+  assert.equal(m.description, undefined) // older manifests: no longer part of a round
   assert.equal(m.extra, undefined)
   assert.equal(sanitizeManifest({ round: 'nope', organizer: A(2), chainId: 1 }), null)
   assert.equal(sanitizeManifest('string'), null)
