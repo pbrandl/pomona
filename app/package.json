@@ -51,6 +51,7 @@
     "ethers": "^6.17.0",
     "hyperbee": "^2.27.3",
     "hyperswarm": "^4.17.2",
+    "idiomorph": "^0.7.3",
     "pear-bridge": "^1.2.5",
     "pear-electron": "^1.7.28",
     "pear-pipe": "^1.0.6",

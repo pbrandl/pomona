@@ -20,6 +20,7 @@ import { onboarding, locked, createWalletSheet, restoreSheet, revealSheet, seedS
 import { start, createPage, joinPage, createStepError } from './views/start.js'
 import { round, newsPage, invitePage } from './views/round.js'
 import { ICON } from './views/icons.js'
+import { Idiomorph } from './vendor/idiomorph.esm.js'
 import { walletSheet } from './views/wallet.js'
 import { receiptSheet, invoiceSheet, scanSheet } from './views/receipt.js'
 import { Scanner } from './scanner.js'
@@ -149,7 +150,9 @@ function render () {
   markNew(chatSeen)
   const keep = document.getElementById('chat-scroll')
   const atBottom = !keep || keep.scrollHeight - keep.scrollTop - keep.clientHeight < 40
-  $app.innerHTML = topbar() + `<main>${flow || body()}</main>` + toast
+  // Morph instead of replacing: unchanged elements stay the same nodes, so the
+  // field you type in keeps focus (and the phone keyboard stays open).
+  Idiomorph.morph($app, topbar() + `<main>${flow || body()}</main>` + toast, { morphStyle: 'innerHTML' })
   chatSeen = ui.chat.length
   const box = document.getElementById('chat-scroll')
   if (box && atBottom) box.scrollTop = box.scrollHeight
@@ -726,6 +729,12 @@ $app.addEventListener('click', async (e) => {
     ui.pending = null
     render()
   }
+})
+
+// Tapping "Senden" must not take the focus from the field: the keyboard stays
+// open and nothing moves under the finger.
+$app.addEventListener('pointerdown', (e) => {
+  if (e.target.closest('[data-action="agent-send"]') && document.activeElement?.id === 'ask') e.preventDefault()
 })
 
 // Start screen: the first focus on the docked question field opens the chat in place.
