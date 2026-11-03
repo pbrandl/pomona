@@ -112,6 +112,7 @@ Seit Pear 3 startet Pear keine Apps mehr (`pear run` entfällt). Eine Pear-App i
 - **Preload** (`electron/preload.cjs`): stellt `window.bridge` bereit (Worker starten, Zeilen schreiben und empfangen, Kopieren, Kamera, Neustart). Der Renderer läuft mit `sandbox`, `contextIsolation` und ohne Node.
 - **Renderer**: `index.html` mit `ui/electron.js`, das daraus `window.pomona` macht.
 - **Worker** (`worker/index.js`): Kern und RPC über `Bare.IPC`. Beim Beenden schickt der Hauptprozess SIGTERM; `graceful-goodbye` schließt Swarm und Speicher sauber.
+- **Start** (`scripts/start.js`, `npm start`): startet bei Bedarf die lokale Chain auf 127.0.0.1:8545, deployt die Contracts (oder nimmt vorhandene) und öffnet Electron mit `--dev --local <Adressen>`.
 - **Speicher**: `<userData>/dev` mit `--dev` (lokale Chain), sonst `<userData>/storage`. `--storage <dir>` setzt einen eigenen Ordner und erlaubt damit eine zweite Instanz.
 - **Updates**: noch nicht eingerichtet; kommen mit dem Paketieren (siehe README).
 

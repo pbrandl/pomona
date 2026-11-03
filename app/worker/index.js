@@ -4,9 +4,10 @@
  * and the chain connection. The UI reaches it only through the whitelisted RPC
  * methods in core/rpc/methods.js: newline-delimited JSON over `Bare.IPC`.
  *
- * Started with one JSON argument: { storage, dev }
+ * Started with one JSON argument: { storage, dev, local }
  *   storage  directory for wallet vault and Corestore
  *   dev      local Hardhat chain with its public dev key (npm start)
+ *   local    its rpc and contract addresses (scripts/start.js), or null
  */
 import goodbye from 'graceful-goodbye'
 import { Pomona, serve, METHODS } from '../core/bare.js'
@@ -17,7 +18,8 @@ const pipe = Bare.IPC
 const pomona = new Pomona({
   storage: env.storage,
   allowDev: !!env.dev,
-  defaultNetwork: env.dev ? 'local' : 'arbitrum-sepolia'
+  defaultNetwork: env.dev ? 'local' : 'arbitrum-sepolia',
+  networkOverrides: env.dev && env.local ? { local: env.local } : {}
 })
 
 await pomona.ready()

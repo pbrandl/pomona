@@ -3,8 +3,10 @@
  * and the Bare worker (worker/index.js) that pear-runtime starts. It holds no
  * keys and runs no app logic; the worker does. Based on holepunchto/hello-pear-electron.
  *
- *   npm start                            local dev chain (contracts: npm run chain)
+ *   npm start                            local dev chain (scripts/start.js starts and deploys it)
  *   npm start -- --storage <dir>         a further instance with its own wallet
+ *
+ * Flags: --dev (local chain), --local <json> (its rpc, factory, token), --storage <dir>
  *
  * P2P updates (pear-runtime updater) come with packaging and a release link.
  */
@@ -19,6 +21,17 @@ const argv = process.argv.slice(app.isPackaged ? 1 : 2)
 const option = (name) => { const i = argv.indexOf(name); return i === -1 ? null : argv[i + 1] ?? null }
 const dev = argv.includes('--dev')
 const storage = option('--storage')
+const local = dev ? parseLocal(option('--local')) : null
+
+/** Addresses of the local dev chain from scripts/start.js; anything else is ignored. */
+function parseLocal (json) {
+  try {
+    const { rpc, factory, token } = JSON.parse(json)
+    const address = (a) => typeof a === 'string' && /^0x[0-9a-fA-F]{40}$/.test(a)
+    if (/^http:\/\/(127\.0\.0\.1|localhost):\d+$/.test(rpc) && address(factory) && address(token)) return { rpc, factory, token }
+  } catch {}
+  return null
+}
 // Own storage, own instance: the single-instance lock lives in userData.
 if (storage) app.setPath('userData', path.resolve(storage))
 
@@ -34,7 +47,7 @@ function startWorker () {
   if (worker) return
   // Wallets of the local dev chain and of real networks never mix.
   const dir = path.join(app.getPath('userData'), dev ? 'dev' : 'storage')
-  worker = PearRuntime.run(WORKER, [JSON.stringify({ storage: dir, dev })])
+  worker = PearRuntime.run(WORKER, [JSON.stringify({ storage: dir, dev, local })])
   const decoder = new StringDecoder('utf8')
   worker.on('data', (chunk) => {
     const text = decoder.write(chunk)

@@ -51,15 +51,13 @@ Voraussetzungen: Node.js 22. Seit Pear 3 ist die App eine normale Electron-App m
 # Contracts bauen und testen (20 Tests)
 cd contracts && npm install && npm test
 
-# Lokale Chain (Terminal 1) und Deployment (Terminal 2)
-npm run chain
-node scripts/deploy.js local          # schreibt app/core/config/deployments.js
-
 # App testen (39 Tests) und starten
 cd ../app && npm install && npm test
-npm start                             # Electron-Fenster gegen die lokale Chain
-npm run start:second                  # zweite Instanz mit eigener Wallet (z. B. als Bieter)
+npm start                             # startet lokale Chain + Contracts und öffnet das Fenster
+npm run start:second                  # zweite Instanz mit eigener Wallet (nutzt dieselbe Chain)
 ```
+
+`npm start` baut die Contracts, startet die lokale Chain auf 127.0.0.1:8545 und deployt sie, falls dort noch keine läuft. Eine laufende Chain samt Contracts wird wiederverwendet. Die Chain endet, wenn das Fenster geschlossen wird, das sie gestartet hat.
 
 `npm install` lädt dabei Electron herunter. Scheitert das hinter einer Firmen-Firewall mit einem Zertifikatsfehler, hilft `NODE_EXTRA_CA_CERTS=/pfad/zum/firmen-zertifikat.pem npm install`. Die Entwicklerwerkzeuge im Fenster öffnet ⌥⌘I (macOS) bzw. Strg+Umschalt+I.
 

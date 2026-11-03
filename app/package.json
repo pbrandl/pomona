@@ -7,8 +7,8 @@
   "main": "electron/main.cjs",
   "license": "MIT",
   "scripts": {
-    "start": "electron . --dev",
-    "start:second": "electron . --dev --storage .instances/second",
+    "start": "node scripts/start.js",
+    "start:second": "node scripts/start.js --storage .instances/second",
     "dev": "node scripts/dev.js",
     "test": "node --test test/*.test.js",
     "preview": "node scripts/preview.js",
