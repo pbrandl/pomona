@@ -4,7 +4,7 @@
  * @module ui/views/assistant
  */
 import { esc } from '../format.js'
-import { page, spinner } from './parts.js'
+import { spinner } from './parts.js'
 
 /** "Frag Pomona": a plain round speech bubble. */
 export const SPARK = `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -70,15 +70,20 @@ function manualCard (a) {
   </div>`
 }
 
+/** Index from which messages are new (they glide in once); set by app.js. */
+let animFrom = Infinity
+export function markNew (from) { animFrom = from }
+
 function bubble (m, i) {
-  if (m.role === 'user') return `<div class="msg user"><p>${esc(m.text)}</p></div>`
+  const fresh = i >= animFrom ? ' new' : ''
+  if (m.role === 'user') return `<div class="msg user${fresh}"><p>${esc(m.text)}</p></div>`
   const cards = (m.actions || []).map((a, j) =>
     `<button class="action-card" data-action="agent-act" data-msg="${i}" data-act="${j}"><span>${esc(a.label)}</span><span class="chev">›</span></button>`).join('')
   const note = m.actions?.some((a) => a.type !== 'install' && a.type !== 'open' && a.type !== 'receipt')
     ? '<p class="small muted">Vorbereitet. Bestätigen musst du selbst.</p>'
     : ''
   const source = m.source === 'model' ? '<p class="tiny muted">Lokale KI · kann sich irren</p>' : ''
-  return `<div class="msg bot"><p>${esc(m.text)}</p>${cards ? `<div class="action-cards">${cards}</div>${note}` : ''}${source}</div>`
+  return `<div class="msg bot${fresh}"><p>${esc(m.text)}</p>${cards ? `<div class="action-cards">${cards}</div>${note}` : ''}${source}</div>`
 }
 
 const isThinking = (ui) => ui.pending === 'agent-send' || ui.pending === 'agent-topic'
@@ -98,7 +103,7 @@ export function chatBody (ui, { intro = true, compact = false } = {}) {
     <div class="chat" id="chat">
       ${hello}
       ${chat.map(bubble).join('')}
-      ${thinking ? `<div class="msg bot thinking">${spinner}<span>${a?.state === 'ready' || a?.state === 'installed' ? 'Denkt nach…' : 'Einen Moment…'}</span></div>` : ''}
+      ${thinking ? '<div class="msg bot typing" aria-label="Pomona antwortet"><i></i><i></i><i></i></div>' : ''}
     </div>
     <div class="chips">${chips}</div>`
 }
@@ -123,7 +128,7 @@ function compactBody (ui) {
   return `${model}
     <div class="chat" id="chat">
       ${ui.chat.map(bubble).join('')}
-      ${thinking ? `<div class="msg bot thinking">${spinner}<span>${a?.state === 'ready' || a?.state === 'installed' ? 'Denkt nach…' : 'Einen Moment…'}</span></div>` : ''}
+      ${thinking ? '<div class="msg bot typing" aria-label="Pomona antwortet"><i></i><i></i><i></i></div>' : ''}
     </div>`
 }
 
@@ -140,17 +145,31 @@ export function homeChips (ui) {
 export function chatInput (ui, placeholder) {
   const thinking = isThinking(ui)
   return `<div class="amount ask">
-      <input id="ask" data-draft="ask" placeholder="${esc(placeholder)}" value="${esc(ui.draft.ask)}" autocomplete="off" ${thinking ? 'disabled' : ''} aria-label="Frag Pomona">
+      <input id="ask" data-draft="ask" placeholder="${esc(placeholder)}" value="${esc(ui.draft.ask)}" autocomplete="off" enterkeyhint="send" aria-label="Frag Pomona">
       <button class="btn accent small" data-action="agent-send" ${thinking ? 'disabled' : ''}>Senden</button>
     </div>`
 }
 
+/**
+ * The chat as a messenger: fixed head, messages scroll in the middle, the
+ * example questions (one swipeable row) and the field stay at the bottom.
+ */
 export function assistantPage (ui) {
   const a = ui.status.assistant
-  return page('Frag Pomona', `
-    ${chatBody(ui)}
-    <div class="actions sticky">
-      ${chatInput(ui, a?.state === 'none' ? 'Frag etwas oder sag z. B. „Biete 100 im Monat“' : 'Frag etwas…')}
-      ${ui.chat.length ? '<button class="link small" data-action="agent-reset" style="align-self:center">Neu beginnen</button>' : ''}
-    </div>`)
+  const hello = ui.chat.length ? '' : '<div class="msg bot"><p>Hallo! Ich erkläre dir die Runde und bereite Schritte für dich vor. Bestätigen musst du immer selbst. Was möchtest du wissen?</p></div>'
+  return `<section class="chat-page">
+    <div class="chat-head">
+      <button class="link back" data-action="close-sheet">← Zurück</button>
+      <strong>Frag Pomona</strong>
+      ${ui.chat.length ? '<button class="link small" data-action="agent-reset">Neu</button>' : '<span></span>'}
+    </div>
+    <div class="chat-scroll" id="chat-scroll">
+      ${hello}
+      ${chatBody(ui, { compact: true })}
+    </div>
+    <div class="chat-foot">
+      ${homeChips(ui)}
+      ${chatInput(ui, a?.state === 'ready' || a?.state === 'installed' ? 'Frag etwas…' : 'Frag etwas oder sag „Biete 100 im Monat“')}
+    </div>
+  </section>`
 }

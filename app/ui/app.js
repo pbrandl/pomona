@@ -26,7 +26,7 @@ import { Scanner } from './scanner.js'
 import { fundSheet } from './views/fund.js'
 import { bidPage } from './views/bid.js'
 import { payPage } from './views/pay.js'
-import { assistantPage, SPARK } from './views/assistant.js'
+import { assistantPage, SPARK, markNew } from './views/assistant.js'
 import { changes, deliver } from './notify.js'
 
 const $app = document.getElementById('app')
@@ -146,7 +146,13 @@ function render () {
   // One step, one page: an open flow replaces the main view entirely.
   const flow = ui.sheet && SHEETS[ui.sheet] ? SHEETS[ui.sheet](ui) : ''
   const toast = ui.toast ? `<div class="toast ${ui.toast.error ? 'error' : ''}" role="status">${ui.toast.error ? ICON.alert : ICON.check}<span>${esc(ui.toast.text)}</span></div>` : ''
+  markNew(chatSeen)
+  const keep = document.getElementById('chat-scroll')
+  const atBottom = !keep || keep.scrollHeight - keep.scrollTop - keep.clientHeight < 40
   $app.innerHTML = topbar() + `<main>${flow || body()}</main>` + toast
+  chatSeen = ui.chat.length
+  const box = document.getElementById('chat-scroll')
+  if (box && atBottom) box.scrollTop = box.scrollHeight
   focusTrack()
   const where = ui.sheet + ':' + ui.createStep + ':' + ui.bidStep
   if (where !== lastPage) { lastPage = where; window.scrollTo(0, 0) }
@@ -182,9 +188,20 @@ async function askAssistant (params) {
   scrollChat()
 }
 
-function scrollChat () {
-  setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 30)
+/**
+ * Keeps the newest message in view. The chat page scrolls its own message
+ * area (instantly on open, smoothly for new messages); the start screen
+ * scrolls the window.
+ */
+function scrollChat (smooth = true) {
+  window.requestAnimationFrame(() => {
+    const box = document.getElementById('chat-scroll')
+    const behavior = smooth ? 'smooth' : 'auto'
+    if (box) box.scrollTo({ top: box.scrollHeight, behavior })
+    else window.scrollTo({ top: document.body.scrollHeight, behavior })
+  })
 }
+let chatSeen = 0 // messages already shown; newer ones glide in once
 
 /** Camera scanner, alive only while the scan page is open. */
 let scanner = null
@@ -383,7 +400,7 @@ const actions = {
   'open-create': () => { ui.createStep = 0; ui.sheet = 'create' },
 
   // "Frag Pomona"
-  'open-assistant': () => { ui.sheet = 'assistant'; scrollChat() },
+  'open-assistant': () => { ui.sheet = 'assistant'; chatSeen = ui.chat.length; setTimeout(() => scrollChat(false)) },
   'home-chat-close': () => { ui.homeChat = false; document.activeElement?.blur?.() },
   async 'agent-send' () {
     const text = ui.draft.ask.trim()

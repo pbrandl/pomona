@@ -1098,3 +1098,29 @@ body:has(.home-dock) .toast { bottom: 110px; }
 .home-dock .amount.ask input { flex: 1; width: auto; min-width: 0; }
 .home-dock .amount.ask .btn { flex: none; }
 .home-chat .model-line { padding: 0 2px; }
+
+/* ------------------------------------------- chat page as a messenger */
+main:has(.chat-page) { padding-bottom: 0; }
+.chat-page { display: flex; flex-direction: column; height: calc(100dvh - 76px); max-width: 640px; margin: 0 auto; }
+.chat-head { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 4px 0 10px; border-bottom: 1px solid var(--line); }
+.chat-head > :last-child { justify-self: end; }
+.chat-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: grid; align-content: start; gap: 12px; padding: 14px 2px; -webkit-overflow-scrolling: touch; }
+.chat-scroll .chat { display: grid; gap: 10px; }
+.chat-foot { display: grid; gap: 8px; padding: 8px 0 max(10px, env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line); background: var(--bg); }
+.chat-foot .amount.ask { height: 50px; display: flex; align-items: center; gap: 8px; overflow: hidden; border-radius: 999px; padding: 0 5px 0 18px; background: var(--surface); }
+.chat-foot .amount.ask input { flex: 1; min-width: 0; width: auto; font-size: 16px; }
+.chat-foot .amount.ask .btn { flex: none; height: 40px; }
+/* new messages glide in once */
+.msg.new { animation: msg-in 0.28s cubic-bezier(.2,.8,.2,1) both; }
+.msg.user.new { transform-origin: right bottom; }
+@keyframes msg-in { from { opacity: 0; transform: translateY(8px) scale(0.98); } }
+/* Pomona is typing */
+.msg.typing { display: inline-flex; gap: 5px; align-items: center; padding: 14px 16px; width: max-content; }
+.msg.typing i { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); animation: typing 1s infinite ease-in-out; }
+.msg.typing i:nth-child(2) { animation-delay: 0.15s; }
+.msg.typing i:nth-child(3) { animation-delay: 0.3s; }
+@keyframes typing { 0%, 60%, 100% { transform: translateY(0); opacity: 0.5; } 30% { transform: translateY(-4px); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .msg.new, .msg.typing i { animation: none; } }
+.chat-scroll .chat > .msg.user, .chat-scroll > .msg.user { justify-self: end; }
+.chat-scroll .chat > .msg.bot, .chat-scroll > .msg.bot { justify-self: start; }
+.chat-scroll .msg { max-width: 86%; }
