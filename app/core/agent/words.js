@@ -3,6 +3,7 @@
  * they behave the same in Bare (worker), Node (tests) and the browser (mock).
  * @module core/agent/words
  */
+import { plainDecimal } from '../decimal.js'
 
 const MONTHS = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember']
 
@@ -39,14 +40,12 @@ export function per (intervalName) {
 }
 
 /**
- * Normalizes a typed amount ("1.234,5", "100", "12.5", "48.000") to a plain
- * decimal string ("1234.5"), or null. Mirrors core/units.js parseAmount, but
- * without ethers so it also runs in the browser.
+ * A typed amount ("1.234,5", "100", "12.5", "48.000") as a plain, positive
+ * decimal string ("1234.5"), or null. Same reading as core/units.js
+ * parseAmount (core/decimal.js), without ethers so it runs in the browser.
  */
 export function normalizeAmount (value) {
-  let v = String(value ?? '').trim().replace(/\s/g, '')
-  if (v.includes(',')) v = v.replace(/\./g, '').replace(',', '.')
-  else if (/^\d{1,3}(\.\d{3})+$/.test(v)) v = v.replace(/\./g, '')
+  const v = plainDecimal(value)
   if (!/^\d{1,12}(\.\d{1,6})?$/.test(v)) return null
   if (Number(v) <= 0) return null
   return v.replace(/^0+(?=\d)/, '')

@@ -45,7 +45,10 @@ export function per (intervalName) {
     : { unit: 'Monat', adj: 'monatlich', plural: 'Monate', per: 'pro Monat' }
 }
 
-/** Accepts "48.000", "1.234,56", "12,5" → Number (UI previews only; the core parses for real). */
+/**
+ * Accepts "48.000", "1.234,56", "12,5" → Number, for previews only; the core
+ * parses for real (same rule as core/decimal.js, which the renderer does not load).
+ */
 export function num (v) {
   v = String(v ?? '').trim().replace(/\s/g, '')
   if (v.includes(',')) v = v.replace(/\./g, '').replace(',', '.')

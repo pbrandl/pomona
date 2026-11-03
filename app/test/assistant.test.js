@@ -90,6 +90,10 @@ test('commands without a model: bid, top up, receipt, invoice', () => {
   assert.deepEqual(matchIntent('Rechnung stellen', running('organizer')).actions, [{ type: 'invoice' }])
   assert.deepEqual(matchIntent('Ich will 50 bieten', running()).actions, []) // bidding is over
   assert.equal(matchIntent('Wie viel soll ich bieten?', status()), null) // a question, not a command
+  // "Per Rechnung": nothing is deposited, so the reply must not say so
+  const payg = matchIntent('Ich biete 100 im Monat', status({}, { mode: 'invoice' })).text
+  assert.match(payg, /Hinterlegt wird nichts/)
+  assert.doesNotMatch(payg, /Hinterlegt werden/)
   assert.deepEqual(findAmount('erhöhe um 20 usdt'), { amount: '20', currency: 'usdt' })
 })
 

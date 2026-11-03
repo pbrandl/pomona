@@ -5,6 +5,7 @@
  */
 import { parseUnits, formatUnits } from 'ethers'
 import { fail } from './errors.js'
+import { plainDecimal } from './decimal.js'
 
 /**
  * Parses a user-typed amount. Accepts German and English notation:
@@ -16,9 +17,7 @@ import { fail } from './errors.js'
  * @returns {bigint}
  */
 export function parseAmount (value, decimals, label = 'Betrag') {
-  let v = String(value ?? '').trim().replace(/\s/g, '')
-  if (v.includes(',')) v = v.replace(/\./g, '').replace(',', '.')
-  else if (/^\d{1,3}(\.\d{3})+$/.test(v)) v = v.replace(/\./g, '')
+  const v = plainDecimal(value)
   if (!/^\d+(\.\d+)?$/.test(v)) fail('BAD_AMOUNT', `${label}: bitte eine Zahl eingeben.`)
   const [, frac = ''] = v.split('.')
   if (frac.length > decimals) fail('BAD_AMOUNT', `${label}: höchstens ${decimals} Nachkommastellen.`)

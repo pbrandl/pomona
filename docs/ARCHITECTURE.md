@@ -136,8 +136,10 @@ Der Organisator öffnet „Beleg prüfen“: Kamera (getUserMedia + jsQR, `ui/sc
 ## Bedienung: Aufladen, Bieten, Status, Benachrichtigungen
 
 - **Aufladen** (`ui/views/fund.js`): Adresse mit QR-Code, Warnungen (nur USDT, richtiges Netzwerk, nie an eine Runde senden). Der Kern beobachtet `Transfer`-Events an die eigene Adresse (`Pomona._watchFunds`, Event `funds`), damit ein Eingang in Sekunden angezeigt wird. Nach dem Erstellen einer leeren Wallet öffnet sich das Aufladen automatisch.
-- **Bieten in zwei Schritten** (`ui/views/bid.js`): Richtwert-Schnellwahl (80 % / Richtwert / 120 %), dann `quoteBid`: Hinterlegung, Gebühr in USDT, Guthaben. Danach `bid`. Der Fortschritt kommt als `busyStep` (`prepare` → `sign` → `confirm`) aus `Account.execute(calls, { onStep })`.
-- **„Du“-Karte** (`ui/views/you.js`): Wo stehe ich, und was ist jetzt zu tun? Ein Satz und genau eine Hauptaktion je Rolle und Phase („Du bietest 100 USDT pro Monat“, „Rechnung 4 ist fällig – Rechnung stellen“, „900 USDT warten auf dich – Zurückholen“). Die Rundenansicht zeigt jede Information nur einmal: Phase und Restzeit über dem Titel, Fortschritt als kompakter Ring, Raten und Neuigkeiten eingeklappt, Organisator-Werkzeuge als Liste („Verwalten“).
+- **Bieten: Betrag → Prüfen → Fertig** (`ui/views/bid.js`): Der Schritt „Betrag“ füllt genau die Bildschirmhöhe: Fortschritt der Runde mit dem eigenen Gebot als Segment, die Zahl, eine Notiz, auf Touch-Geräten ein Ziffernblock, auf dem Desktop ein direkt fokussiertes Feld. Dann `quoteBid` (Hinterlegung bzw. Rechnungen, Gebühr, Guthaben), danach `bid`. Der Fortschritt kommt als `busyStep` (`prepare` → `sign` → `confirm`) aus `Account.execute(calls, { onStep })`.
+- **Bezahlen** (`ui/views/pay.js`, Runden „Per Rechnung“): Prüfen → Fertig; ohne genug USDT erscheint „Konto aufladen“ statt eines Knopfs, der scheitern würde.
+- **„Du“-Karte** (`ui/views/you.js`): Wo stehe ich, und was ist jetzt zu tun? In der Bietphase die Box „Dein Gebot“ mit einem Knopf, sonst ein Satz und genau eine Hauptaktion je Rolle und Phase („Rechnung 4 ist fällig – Rechnung stellen“, „900 USDT warten auf dich – Zurückholen“).
+- **Rundenansicht** (`ui/views/round.js`): jede Information nur einmal. Phase und Frist über dem Titel, Titel einzeilig mit Website und Einladen (QR-Code, Link), Zusagen darunter; Ring mit Bietenden, Durchschnitt und Median; die Raten als Zeitleiste (oben erhalten, unten ausstehend, bezahlte abgehakt, antippen für Beleg oder Bezahlen); Neuigkeiten, die neueste offen; Organisator-Werkzeuge als Liste („Verwalten“).
 - **Benachrichtigungen** (`ui/notify.js`): `changes(prev, next)` vergleicht zwei Status-Schnappschüsse (Eingang, Ziel erreicht/verfehlt, neue Rate mit Beleg, Rechnung fällig, neues Gebot, Bietphase endet in 24 h, Neuigkeit). Bei aktivem Fenster als Toast, sonst als System-Benachrichtigung. Eigene Aktionen lösen keine Meldung aus. Getestet in `test/notify.test.js`.
 
 ## Seiten statt Seitenleisten (one step, one page)
@@ -151,7 +153,14 @@ Jeder Ablauf ist eine Folge ganzer Seiten mit Schrittleiste oben (`page()` in `u
 | Bieten | Betrag → Prüfen → Fertig |
 | Einzelseiten | Beitreten, Aufladen, Konto, Beleg, Rechnung, Beleg prüfen |
 
-Eine offene Seite ersetzt die Rundenansicht (`ui.sheet`). Der Hauptknopf bleibt auf dem Handy unten erreichbar (`.actions.sticky`). Bildschirmfotos in `docs/mobile/`.
+Eine offene Seite ersetzt die Rundenansicht (`ui.sheet`). Ihr „← Zurück“ setzt `render()` oben in die Kopfzeile, an die Stelle des Labels „Pomona“ und auf eine Linie mit Chat und Guthaben. Der Hauptknopf bleibt auf dem Handy unten erreichbar (`.actions.sticky`). Bildschirmfotos in `docs/mobile/`.
+
+## Oberfläche pflegen
+
+- **Ein Weg für jede Seite:** `page()` in `ui/views/parts.js`; neue Seiten in `SHEETS` (`ui/app.js`) eintragen, Knöpfe bekommen ein `data-action`, die Aktion steht in `actions`.
+- **Neuzeichnen:** `render()` baut das HTML neu und gleicht es mit Idiomorph ab. Unveränderte Knoten bleiben erhalten, so behält ein Feld den Fokus und die Handy-Tastatur bleibt offen. Folge: Listener an Elementen innerhalb von `#app` nur einmal binden (`once()` in `ui/app.js`), sonst häufen sie sich bei jedem Statusupdate.
+- **Styles:** `ui/styles.css` ist nach Bereichen der Oberfläche gegliedert (Tokens, Basis, Kopfzeile und Seiten, Bedienelemente, Runde, Bieten, Bezahlen, Konto, Assistent, Startseite). Jeder Selektor steht einmal; Handy-Varianten im Block seines Abschnitts. Ändern statt anhängen.
+- **Grenze Renderer/Kern:** Die Oberfläche lädt keinen Kern-Code (der Dev-Server liefert nur `ui/` aus). Kleine Helfer wie das Lesen deutscher Beträge gibt es deshalb zweimal: `core/decimal.js` und `ui/format.js` `num()` (nur für Vorschauen).
 
 ## Assistent „Frag Pomona“ (QVAC)
 

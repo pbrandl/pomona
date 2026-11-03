@@ -36,7 +36,10 @@ export function matchIntent (text, s) {
       const p = per(r.intervalName)
       const euro = /euro|eur|€/.test(found.currency)
       const raise = Number(r.myPledge) > 0
-      let reply = `${raise ? 'Ich bereite eine Erhöhung um' : 'Ich bereite ein Gebot über'} ${num(found.amount)} ${r.symbol} ${p.per} vor. Hinterlegt werden ${num(Number(found.amount) * r.installments)} ${r.symbol} für ${r.installments} Raten. Du prüfst und bestätigst auf der nächsten Seite.`
+      const money = r.mode === 'invoice'
+        ? `Hinterlegt wird nichts: Du bezahlst jede der ${r.installments} Rechnungen, wenn sie kommt.`
+        : `Hinterlegt werden ${num(Number(found.amount) * r.installments)} ${r.symbol} für ${r.installments} Raten.`
+      let reply = `${raise ? 'Ich bereite eine Erhöhung um' : 'Ich bereite ein Gebot über'} ${num(found.amount)} ${r.symbol} ${p.per} vor. ${money} Du prüfst und bestätigst auf der nächsten Seite.`
       if (euro) reply = 'Kurzer Hinweis: Pomona rechnet in USDT, das entspricht ungefähr US-Dollar, nicht Euro. ' + reply
       return { text: reply, actions: [{ type: 'bid', amount: found.amount }] }
     }

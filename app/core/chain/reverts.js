@@ -31,7 +31,7 @@ const MESSAGES = {
  * @param {unknown} e
  * @returns {string|null}
  */
-export function revertName (e, seen = new Set()) {
+function revertName (e, seen = new Set()) {
   if (!e || typeof e !== 'object' || seen.has(e)) return null
   seen.add(e)
   for (const v of Object.values(e)) {

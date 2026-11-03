@@ -7,11 +7,11 @@
  *
  * @module ui/notify
  */
+import { fmt as amount } from './format.js'
 
 /** Actions whose own effect must not trigger a notification. */
 const MONEY_IN = new Set(['refund', 'withdraw', 'invoice', 'faucet'])
 
-const amount = (n) => Number(n || 0).toLocaleString('de-DE', { maximumFractionDigits: 2 })
 const clip = (s, n) => (s.length > n ? s.slice(0, n - 1) + '…' : s)
 
 /**
