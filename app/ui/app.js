@@ -43,6 +43,8 @@ const ui = {
   invoiceIndex: null, // organizer: which paid invoice is open
   verified: null, // result of verifyReceipt in the scan sheet
   scanError: null, // camera unavailable → paste only
+  homeChat: false, // start screen: chat opened in place (hero flew out)
+  homeChatAt: 0,
   joinScan: false, // "Einer Runde beitreten": camera open for the invite QR
   showAllInvoices: false,
   showAllNews: false,
@@ -114,7 +116,9 @@ const SHEETS = {
 
 function topbar () {
   const w = ui.status?.wallet
-  const ask = `<button class="pill ask-pill" data-action="open-assistant" title="Frag Pomona">${SPARK}<span>Frag Pomona</span></button>`
+  // On the start screens the chat sits at the bottom; no second entry up here.
+  const onHome = !ui.sheet && !!ui.status?.assistant && (w?.state === 'none' || (w?.state === 'unlocked' && !ui.status.round))
+  const ask = onHome ? '' : `<button class="pill ask-pill" data-action="open-assistant" title="Frag Pomona">${SPARK}<span>Frag Pomona</span></button>`
   // "Frag Pomona" is there from the first start on, also before a wallet exists.
   const right = w?.state === 'unlocked'
     ? `<div class="bar-right">${ask}<button class="pill" data-action="open-sheet" data-sheet="wallet"><span class="dot ${ui.status.peers > 0 ? 'on' : ''}" title="${ui.status.peers} Peers"></span>${fmt(w.usdt)} ${esc(w.symbol)}<span class="muted mono">${short(w.address)}</span></button></div>`
@@ -128,7 +132,7 @@ function topbar () {
 function body () {
   const s = ui.status
   if (!s) return '<div class="center-screen" style="align-items:center"><span class="spinner"></span></div>'
-  if (s.wallet.state === 'none') return onboarding(ui)
+  if (s.wallet.state === 'none') return onboarding(ui) // with the chat docked below
   if (s.wallet.state === 'locked') return locked(ui)
   return s.round ? round(ui) : start(ui)
 }
@@ -380,6 +384,7 @@ const actions = {
 
   // "Frag Pomona"
   'open-assistant': () => { ui.sheet = 'assistant'; scrollChat() },
+  'home-chat-close': () => { ui.homeChat = false; document.activeElement?.blur?.() },
   async 'agent-send' () {
     const text = ui.draft.ask.trim()
     if (!text) return
@@ -704,6 +709,15 @@ $app.addEventListener('click', async (e) => {
     ui.pending = null
     render()
   }
+})
+
+// Start screen: the first focus on the docked question field opens the chat in place.
+$app.addEventListener('focusin', (e) => {
+  if (e.target.id !== 'ask' || ui.sheet || ui.homeChat || !e.target.closest('.home')) return
+  ui.homeChat = true
+  ui.homeChatAt = Date.now()
+  render()
+  setTimeout(render, 720) // settle after the fly animations
 })
 
 const syncDraft = (e) => {

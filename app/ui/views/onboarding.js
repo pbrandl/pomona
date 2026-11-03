@@ -4,11 +4,39 @@
  */
 import { esc } from '../format.js'
 import { btn, field, sheet, page } from './parts.js'
+import { chatBody, chatInput } from './assistant.js'
 
 /** First start: three pages. */
 export const WALLET_STEPS = ['Passwort', 'Notfall-Wörter', 'Aufladen']
 
+/**
+ * Start screen with "Frag Pomona" docked at the bottom centre. The field is not
+ * focused at first; once it is, the hero flies out to the top and the model
+ * setup and example questions fly in from below.
+ * @param {object} ui
+ * @param {string} hero - the screen's own content
+ */
+export function home (ui, hero) {
+  if (!ui.status?.assistant) return hero
+  const on = !!ui.homeChat
+  const fresh = on && Date.now() - (ui.homeChatAt || 0) < 700 // animate only right after opening
+  return `<div class="home ${on ? 'chatting' : ''} ${fresh ? 'fresh' : ''}">
+    <div class="home-hero" ${on ? 'aria-hidden="true"' : ''}>${hero}</div>
+    ${on
+      ? `<div class="home-chat">
+          <div class="row home-chat-top"><strong>Frag Pomona</strong><button class="link small" data-action="home-chat-close">Schließen</button></div>
+          ${chatBody(ui, { intro: false })}
+        </div>`
+      : ''}
+    <div class="home-dock">${chatInput(ui, 'Frag Pomona …')}</div>
+  </div>`
+}
+
 export function onboarding (ui) {
+  return home(ui, onboardingHero(ui))
+}
+
+function onboardingHero (ui) {
   return `<div class="center-screen stack-lg">
     <div class="stack">
       <h1 class="welcome"><span class="hl">Pomona</span> <span>Public Financing</span></h1>

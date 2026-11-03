@@ -6,9 +6,10 @@
 import { esc } from '../format.js'
 import { page, spinner } from './parts.js'
 
-export const SPARK = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-  <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H10l-4.5 4v-4A1.5 1.5 0 0 1 4 14.5z"/>
-  <path d="M12 6.5l.8 1.9 1.9.8-1.9.8-.8 1.9-.8-1.9-1.9-.8 1.9-.8z"/></svg>`
+/** "Frag Pomona": a round speech bubble with a small sparkle (local AI). */
+export const SPARK = `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <path d="M20.5 11.5a8 8 0 0 1-11.9 7l-4.6 1.4 1.4-4.4a8 8 0 1 1 15.1-4z"/>
+  <path d="M12.5 7.2l1 2.3 2.3 1-2.3 1-1 2.3-1-2.3-2.3-1 2.3-1z" fill="currentColor" stroke="none"/></svg>`
 
 /** Model setup / download state; quiet once the model is there. */
 function modelCard (ui) {
@@ -81,29 +82,42 @@ function bubble (m, i) {
   return `<div class="msg bot"><p>${esc(m.text)}</p>${cards ? `<div class="action-cards">${cards}</div>${note}` : ''}${source}</div>`
 }
 
-export function assistantPage (ui) {
+const isThinking = (ui) => ui.pending === 'agent-send' || ui.pending === 'agent-topic'
+
+/** Model setup, conversation and suggestion chips (page and start screen). */
+export function chatBody (ui, { intro = true } = {}) {
   const a = ui.status.assistant
   const chat = ui.chat
-  const thinking = ui.pending === 'agent-send' || ui.pending === 'agent-topic'
-  const intro = chat.length
+  const thinking = isThinking(ui)
+  const hello = chat.length || !intro
     ? ''
     : '<div class="msg bot"><p>Hallo! Ich erkläre dir die Runde und bereite Schritte für dich vor. Bestätigen musst du immer selbst. Was möchtest du wissen?</p></div>'
   const chips = (a?.suggestions || []).map((s) =>
     `<button class="chip question" data-action="agent-topic" data-topic="${esc(s.topic)}" ${thinking ? 'disabled' : ''}>${esc(s.question)}</button>`).join('')
-
-  return page('Frag Pomona', `
-    ${modelCard(ui)}
+  return `${modelCard(ui)}
     <div class="chat" id="chat">
-      ${intro}
+      ${hello}
       ${chat.map(bubble).join('')}
       ${thinking ? `<div class="msg bot thinking">${spinner}<span>${a?.state === 'ready' || a?.state === 'installed' ? 'Denkt nach…' : 'Einen Moment…'}</span></div>` : ''}
     </div>
-    <div class="chips">${chips}</div>
+    <div class="chips">${chips}</div>`
+}
+
+/** The question field with the send button inside, on the right. */
+export function chatInput (ui, placeholder) {
+  const thinking = isThinking(ui)
+  return `<div class="amount ask">
+      <input id="ask" data-draft="ask" placeholder="${esc(placeholder)}" value="${esc(ui.draft.ask)}" autocomplete="off" ${thinking ? 'disabled' : ''} aria-label="Frag Pomona">
+      <button class="btn accent small" data-action="agent-send" ${thinking ? 'disabled' : ''}>Senden</button>
+    </div>`
+}
+
+export function assistantPage (ui) {
+  const a = ui.status.assistant
+  return page('Frag Pomona', `
+    ${chatBody(ui)}
     <div class="actions sticky">
-      <div class="amount ask">
-        <input id="ask" data-draft="ask" placeholder="${a?.state === 'none' ? 'Frag etwas oder sag z. B. „Biete 100 im Monat“' : 'Frag etwas…'}" value="${esc(ui.draft.ask)}" autocomplete="off" ${thinking ? 'disabled' : ''}>
-        <button class="btn accent small" data-action="agent-send" ${thinking ? 'disabled' : ''}>Senden</button>
-      </div>
-      ${chat.length ? '<button class="link small" data-action="agent-reset" style="align-self:center">Neu beginnen</button>' : ''}
+      ${chatInput(ui, a?.state === 'none' ? 'Frag etwas oder sag z. B. „Biete 100 im Monat“' : 'Frag etwas…')}
+      ${ui.chat.length ? '<button class="link small" data-action="agent-reset" style="align-self:center">Neu beginnen</button>' : ''}
     </div>`)
 }

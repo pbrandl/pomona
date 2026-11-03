@@ -6,17 +6,18 @@
 import { esc, fmt, num, per, date, dayTime, endOfDay } from '../format.js'
 import { btn, field, page } from './parts.js'
 import { ICON } from './icons.js'
+import { home } from './onboarding.js'
 
 export const CREATE_STEPS = ['Runde', 'Bietphase', 'Raten', 'Prüfen']
 
-export function start () {
-  return `<div class="stack-lg">
+export function start (ui) {
+  return home(ui, `<div class="stack-lg">
     <div class="stack"><h1>Eine Runde, ein Ziel.</h1><p class="lead">Starte eine Bietrunde für dein Projekt oder tritt einer bei.</p></div>
     <div class="stack">
       <button class="card choice" data-action="open-create"><div><strong>Runde starten</strong><span class="muted">Für dein Projekt, z. B. eine Solawi. Dauert zwei Minuten.</span></div><span class="chev">›</span></button>
       <button class="card choice" data-action="open-sheet" data-sheet="join"><div><strong>Einer Runde beitreten</strong><span class="muted">Mit dem Einladungslink oder per QR-Code.</span></div><span class="chev">›</span></button>
     </div>
-  </div>`
+  </div>`)
 }
 
 /** Which fields belong to which step, for validation before "Weiter". */

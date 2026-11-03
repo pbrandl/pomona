@@ -1037,3 +1037,28 @@ h1.welcome { font-size: clamp(22px, 7.6vw, 44px); }
 .center-screen .row { flex-wrap: wrap; } /* buttons stack on very narrow phones */
 h1.welcome > span:last-child { font-size: 0.6em; font-weight: 500; letter-spacing: -0.01em; margin-top: 4px; } /* subtitle smaller */
 h1.welcome > span:last-child { font-size: 0.78em; } /* subtitle: smaller, but not too small */
+
+/* ------------------------------------------- start screen: chat docked below */
+.home { position: relative; min-height: calc(100dvh - 140px); padding-bottom: 104px; }
+.home-dock {
+  position: fixed; left: 50%; transform: translateX(-50%); z-index: 30;
+  bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  width: min(560px, calc(100% - 32px));
+}
+.home-dock .amount.ask {
+  height: 56px; padding: 0 6px 0 20px; border-radius: 999px; background: var(--surface);
+  box-shadow: 0 10px 30px rgba(28, 28, 26, 0.12), 0 1px 2px rgba(28, 28, 26, 0.06);
+}
+.home-dock .amount.ask input { font-size: 16px; }
+.home-dock .amount.ask .btn { height: 44px; padding: 0 18px; }
+.home-chat { display: grid; gap: 16px; }
+.home-chat-top { align-items: center; }
+.home.chatting .home-hero { display: none; }
+/* opening: the hero flies out to the top, the chat flies in from below */
+.home.chatting.fresh .home-hero { display: block; position: absolute; inset: 0 0 auto; animation: home-out 0.45s cubic-bezier(.4,0,.2,1) forwards; pointer-events: none; }
+.home.chatting.fresh .home-chat { animation: home-in 0.5s 0.12s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes home-out { to { transform: translateY(-80px); opacity: 0; } }
+@keyframes home-in { from { transform: translateY(60px); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .home.chatting.fresh .home-hero, .home.chatting.fresh .home-chat { animation: none; } .home.chatting.fresh .home-hero { display: none; } }
+body:has(.home-dock) .toast { bottom: 96px; }
+.ask-pill .ic, .bar .ask-pill svg { width: 18px; height: 18px; }
