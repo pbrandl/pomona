@@ -1,8 +1,8 @@
 # Pomona
 
-**Eine dezentrale Bietrunde auf Tethers Stack, nur in USDT.**
+**Eine dezentrale Finanzierungsrunde auf Tethers Stack, nur in USDT.**
 
-Jemand startet eine Bietrunde für ein Projekt und legt fest: das Ziel pro Rate, ob wöchentlich oder monatlich abgerechnet wird, wie oft, und **wie bezahlt wird**. Dann teilt er einen Link. Wer mitmacht, bietet einen Betrag pro Rate.
+Jemand startet eine Finanzierungsrunde für ein Projekt und legt fest: das Ziel pro Rate, ob wöchentlich oder monatlich abgerechnet wird, wie oft, und **wie bezahlt wird**. Dann teilt er einen Link. Wer mitmacht, bietet einen Betrag pro Rate.
 
 **Per Rechnung** (Standard, gut für kleine Projekte): Bieten kostet nichts. Ist das Ziel erreicht, kommt jede Woche bzw. jeden Monat automatisch eine Rechnung. Jede bietende Person bezahlt sie mit einer Signatur aus ihrem Konto direkt an den Organisator und bekommt dafür einen Beleg. Ohne Zahlung gibt es keinen Beleg. Der Organisator sieht, wer bezahlt hat.
 

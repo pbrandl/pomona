@@ -22,7 +22,7 @@ Wird einmal pro Chain deployt und ist fest an einen Token gebunden (USDT).
 | `mode` | Wie bezahlt wird, siehe unten: `Deposit` (vorab hinterlegen) oder `Invoice` (per Rechnung) |
 | `target` | Ziel **pro Rate** (z. B. 4.000 USDT pro Monat) |
 | `minBid` | Mindestgebot pro Rate |
-| `biddingEnd` | Ende der Bietphase, zugleich Fälligkeit der ersten Rechnung |
+| `biddingEnd` | Ende von Phase 1, zugleich Fälligkeit der ersten Rechnung |
 | `interval` | Abstand zwischen Rechnungen: 1 bis 366 Tage. Die App bietet 7 Tage (Woche) und 30 Tage (Monat) an. |
 | `installments` | Wie oft der Organisator abrechnen darf: 1 bis 520 |
 | `inviteSigner` | Adresse des Invite-Keys oder `0x0` für offene Runden |

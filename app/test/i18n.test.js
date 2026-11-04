@@ -35,5 +35,5 @@ test('i18n: t() fills placeholders, plurals, falls back to the key', () => {
   assert.equal(t('agent.topic.receipt.count', { n: 1 }), 'Tienes 1 comprobante.')
   assert.equal(t('nope.nothing'), 'nope.nothing')
   setLanguage('fr')
-  assert.equal(t('err.noRound'), 'Noch keine Runde.')
+  assert.equal(t('err.noRound'), 'Noch keine Finanzierungsrunde.')
 })

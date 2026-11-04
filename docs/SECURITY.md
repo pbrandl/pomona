@@ -70,7 +70,7 @@ Stand: Version 0.2. Dieses Dokument enthält das Bedrohungsmodell, die Ergebniss
 | # | Befund | Schwere | Status |
 |---|---|---|---|
 | 11 | **Belege ließen sich fälschen.** Ein Beleg enthielt nur öffentliche Daten (Netz, Runde, Adresse, Rate). Wer die Adresse eines zahlenden Mitglieds von der Blockchain abliest, konnte einen gültigen Beleg erzeugen, etwa für eine Abholung, ohne selbst bezahlt zu haben. | Hoch | **Behoben.** Belege (Format v2) sind mit dem Schlüssel des zahlenden Kontos unterschrieben (EIP-191). Beim Smart Account prüft der Anbieter on-chain `isOwner` am Safe. Sie gelten nur 10 Minuten, und die App erneuert den QR-Code, solange er offen ist. Manipulierte, fremd unterschriebene und alte Belege werden abgelehnt (`flow.test.js`). Die Wallet-Policy erlaubt `sign` nur für Beleg-Nachrichten. |
-| 12 | **Passwort-Raten über die App** (z. B. bei kompromittierter Oberfläche) war unbegrenzt möglich. | Mittel | **Behoben.** Nach drei Fehlversuchen kommt eine exponentiell wachsende Sperre (5 s bis 5 min) für Entsperren, Notfall-Wörter und Senden. |
+| 12 | **Passwort-Raten über die App** (z. B. bei kompromittierter Oberfläche) war unbegrenzt möglich. | Mittel | **Behoben.** Nach drei Fehlversuchen kommt eine exponentiell wachsende Sperre (5 s bis 5 min) für Entsperren, Passphrase und Senden. |
 | 13 | **Last auf dem RPC-Anbieter:** Jede Statusabfrage las bis zu 520 Rechnungszeiten. Bei öffentlichen Anbietern drohte Drosselung. | Niedrig | **Behoben.** Die Zeiten ändern sich nie und werden zwischengespeichert. |
 | 14 | Escaping in der Oberfläche: alle Werte geprüft. Werte aus dem Contract (z. B. Token-Symbol) laufen ebenfalls durch `esc()`. | – | Kein Befund. |
 
@@ -80,7 +80,7 @@ Verbleibend: Ein Beleg kann innerhalb seiner 10 Minuten weitergegeben werden (Sc
 
 | Risiko | Gegenmaßnahme |
 |---|---|
-| Das Sprachmodell bewegt Geld | Es gibt kein Werkzeug dafür. Die Werkzeuge lesen (`calculate_bid`) oder schlagen eine Aktion vor. Eine Aktion öffnet nur eine Seite der App, signiert wird dort durch die Person. Der Assistent hat keinen Zugriff auf Wallet, Passwort oder Notfall-Wörter. |
+| Das Sprachmodell bewegt Geld | Es gibt kein Werkzeug dafür. Die Werkzeuge lesen (`calculate_bid`) oder schlagen eine Aktion vor. Eine Aktion öffnet nur eine Seite der App, signiert wird dort durch die Person. Der Assistent hat keinen Zugriff auf Wallet, Passwort oder Passphrase. |
 | Prompt Injection über Titel oder Neuigkeiten (kommen von anderen Peers) | Die Texte werden bereinigt (Chat-Template-Tokens, Tags, Begrenzer entfernt), gekürzt und als Daten eingezäunt. Der Systemprompt verbietet, Anweisungen daraus zu befolgen. Selbst wenn ein Modell gehorcht, entsteht höchstens ein Vorschlag, den die Person auf der Prüfseite sieht. Getestet in `test/assistant.test.js`. |
 | Unpassende Vorschläge (falsche Rolle, Phase, Rate) | Jede Aktion wird gegen den aktuellen Status geprüft (`core/agent/actions.js`). Gebote werden vorher mit `quoteBid` gegen die Regeln des Contracts gerechnet. |
 | Falsche Antworten (Halluzination) | Knopf-Vorschläge und Befehle laufen ohne Modell über geprüfte Texte. Antworten des Modells sind sichtbar gekennzeichnet („Lokale KI · kann sich irren“). Zahlen kommen aus dem Status, nicht aus dem Modell. |

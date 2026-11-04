@@ -6,7 +6,7 @@ aktuelle App in Pear gebaut, danach geht es hier weiter.
 ## Ziel
 
 Pomona soll verschiedene Contracts laden können, die nach derselben Mechanik
-funktionieren (Bietphase → Ziel → Raten oder Rechnungen → Belege → Abschluss
+funktionieren (Phase 1 → Ziel → Raten oder Rechnungen → Belege → Abschluss
 oder Rückzahlung), aber unterschiedliche Oberflächen brauchen. Die Wallet wird
 aus der App gelöst und als eigener Dienst angeboten. Ein Swap-Dienst hilft der
 Wallet, mit den richtigen Coins zu bieten.
@@ -70,7 +70,7 @@ Schlüssel.
 - **Ausgangslage:** Die Trennlinie gibt es schon: Der Kern bereitet Aufrufe vor
   (`_prepareBid` → `calls`), `core/wallet/` führt sie aus.
 - **Produkt:** eigene Pear-App (Desktop und Handy) auf WDK, mit Smart Account,
-  Gebühren in der Währung selbst, Notfall-Wörtern, eigener Bestätigungsoberfläche.
+  Gebühren in der Währung selbst, Passphrase, eigener Bestätigungsoberfläche.
 - **Verbindung:** peer-to-peer über HyperDHT mit verschlüsseltem Kanal, gekoppelt
   per QR-Code, ohne Relay-Server. Etwa die Wallet auf dem Handy, Pomona auf dem Laptop.
 - **Sitzungen mit Rechten:** z. B. „Runde 0x…: bieten, bezahlen, zurückholen,
@@ -97,7 +97,7 @@ Verbindungen, die dieselben vorbereiteten Aufrufe übergeben:
 3. **WalletConnect** für andere Wallets.
 4. **Zahladresse** für jede Wallet ohne Verbindung (siehe unten).
 
-Nicht empfohlen: dieselben Notfall-Wörter in zwei Apps eingeben.
+Nicht empfohlen: dieselbe Passphrase in zwei Apps eingeben.
 
 ### Zahladresse (für Wallets ohne Verbindung)
 

@@ -34,7 +34,7 @@ Jeder Vorschlag wird gegen Rolle, Phase und Status geprüft (`core/agent/actions
 ## Was das Modell sieht
 
 `core/agent/context.js` baut den Systemprompt:
-- **Regeln:** nichts behaupten, was nicht passiert ist, nie nach Passwort oder Notfall-Wörtern fragen.
+- **Regeln:** nichts behaupten, was nicht passiert ist, nie nach Passwort oder Passphrase fragen.
 - **Hintergrundwissen** über Pomona.
 - **Aktuelle Lage** als Fakten aus Contract und Wallet.
 

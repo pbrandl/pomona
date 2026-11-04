@@ -141,10 +141,10 @@ Der Organisator öffnet „Beleg prüfen“: Kamera (getUserMedia + jsQR, `ui/sc
 - **Aufladen** (`ui/views/fund.js`): Adresse mit QR-Code, Warnungen (nur USDT, richtiges Netzwerk, nie an eine Runde senden). Der Kern beobachtet `Transfer`-Events an die eigene Adresse (`Pomona._watchFunds`, Event `funds`), damit ein Eingang in Sekunden angezeigt wird. Nach dem Erstellen einer leeren Wallet öffnet sich das Aufladen automatisch.
 - **Bieten: Betrag → Prüfen → Fertig** (`ui/views/bid.js`): Der Schritt „Betrag“ füllt genau die Bildschirmhöhe: Fortschritt der Runde mit dem eigenen Gebot als Segment, die Zahl, eine Notiz, auf Touch-Geräten ein Ziffernblock, auf dem Desktop ein direkt fokussiertes Feld. Dann `quoteBid` (Hinterlegung bzw. Rechnungen, Gebühr, Guthaben), danach `bid`. Der Fortschritt kommt als `busyStep` (`prepare` → `sign` → `confirm`) aus `Account.execute(calls, { onStep })`.
 - **Bezahlen** (`ui/views/pay.js`, Runden „Per Rechnung“): Prüfen → Fertig; ohne genug USDT erscheint „Konto aufladen“ statt eines Knopfs, der scheitern würde.
-- **„Du“-Karte** (`ui/views/you.js`): Wo stehe ich, und was ist jetzt zu tun? In der Bietphase die Box „Dein Gebot“ mit einem Knopf, sonst ein Satz und genau eine Hauptaktion je Rolle und Phase („Rechnung 4 ist fällig – Rechnung stellen“, „900 USDT warten auf dich – Zurückholen“).
+- **„Du“-Karte** (`ui/views/you.js`): Wo stehe ich, und was ist jetzt zu tun? In Phase 1 die Box „Dein Gebot“ mit einem Knopf, sonst ein Satz und genau eine Hauptaktion je Rolle und Phase („Rechnung 4 ist fällig – Rechnung stellen“, „900 USDT warten auf dich – Zurückholen“).
 - **Rundenansicht** (`ui/views/round.js`): jede Information nur einmal. Phase und Frist über dem Titel, Titel einzeilig mit Website und Einladen (QR-Code, Link), Zusagen darunter; Ring mit Bietenden, Durchschnitt und Median; die Raten als Zeitleiste (oben erhalten, unten ausstehend, bezahlte abgehakt, antippen für Beleg oder Bezahlen); Neuigkeiten, die neueste offen; Organisator-Werkzeuge als Liste („Verwalten“).
 - **Projektseite und Bietseite:** Bieten kann jeder mit Wallet, auch der Organisator. Seine Rundenansicht ist die Projektseite: Sie zeigt immer die ganze Runde (Summen, wer bezahlt hat, Verwalten). Sein eigenes Gebot liegt auf einer eigenen Bietseite (`ownPage`, erreichbar über „Verwalten“), die genau zeigt, was jeder Bietende sieht: „Dein Gebot“, die eigenen Raten, Belege und offene Rechnungen. Der Kern liefert dafür `invoices` (Plan der Rundenseite) und `myInvoices` (eigene Raten). Die eigene Rechnung des Organisators wird im Contract nur vermerkt, überwiesen wird nichts.
-- **Benachrichtigungen** (`ui/notify.js`): `changes(prev, next)` vergleicht zwei Status-Schnappschüsse (Eingang, Ziel erreicht/verfehlt, neue Rate mit Beleg, Rechnung fällig, neues Gebot, Bietphase endet in 24 h, Neuigkeit). Bei aktivem Fenster als Toast, sonst als System-Benachrichtigung. Eigene Aktionen lösen keine Meldung aus. Getestet in `test/notify.test.js`.
+- **Benachrichtigungen** (`ui/notify.js`): `changes(prev, next)` vergleicht zwei Status-Schnappschüsse (Eingang, Ziel erreicht/verfehlt, neue Rate mit Beleg, Rechnung fällig, neues Gebot, Phase 1 endet in 24 h, Neuigkeit). Bei aktivem Fenster als Toast, sonst als System-Benachrichtigung. Eigene Aktionen lösen keine Meldung aus. Getestet in `test/notify.test.js`.
 
 ## Seiten statt Seitenleisten (one step, one page)
 
@@ -152,8 +152,8 @@ Jeder Ablauf ist eine Folge ganzer Seiten mit Schrittleiste oben (`page()` in `u
 
 | Ablauf | Schritte |
 |---|---|
-| Konto anlegen | Passwort → Notfall-Wörter → Aufladen |
-| Runde starten | Runde → Bietphase → Raten → Prüfen |
+| Konto anlegen | Passwort → Passphrase → Aufladen |
+| Finanzierungsrunde starten | Projekt → Phase 1 → Raten → Prüfen |
 | Bieten | Betrag → Prüfen → Fertig |
 | Einzelseiten | Beitreten, Aufladen, Konto, Beleg, Rechnung, Beleg prüfen |
 
@@ -174,7 +174,7 @@ Deutsch und Spanisch. Die Texte stehen in `app/i18n/<sprache>/`, eine Datei pro 
 - **Benutzen:** `t('wallet.title')`, mit Werten `t('bid.missing', { amount, symbol })`. Mehrzahl: `{ one, other }`, gewählt über `n`. Listen (Schritte, Monate, Stichwörter) mit `raw()`. Werte von außen (Titel, Adressen) escaped die Ansicht vor dem Einsetzen; die Katalogtexte selbst dürfen einfaches Markup (`<strong>`) enthalten.
 - **Auswahl:** gespeicherte Wahl (`localStorage` `pomona.lang`), sonst die Systemsprache, sonst Deutsch. Umschalten auf der Kontoseite und beim ersten Start. Die Oberfläche meldet die Sprache per RPC `setLanguage` an den Worker; der schreibt Fehler und Assistenten-Antworten dann in derselben Sprache.
 - **Zahlen** schreibt Pomona in jeder Sprache gleich (`1.234,5`), passend zur Eingabe. Datumsangaben folgen der Sprache.
-- **Begriffe Spanisch:** Runde = *ronda (de financiación)*, Gebot = *compromiso*, bieten = *comprometerse*, Bietphase = *fase de compromisos*, Rate = *cuota*, Rechnung = *factura*, Beleg = *comprobante*, Treuhandkonto = *cuenta de garantía*, Notfall-Wörter = *palabras de recuperación*; Anrede *tú*, ohne Landesvarianten.
+- **Begriffe:** Finanzierungsrunde = *ronda de financiación*, Gebot = *compromiso*, bieten = *comprometerse*, Phase 1 (Bieten) = *fase 1*, Rate = *cuota*, Rechnung = *factura*, Beleg = *comprobante*, Treuhandkonto = *cuenta de garantía*, Passphrase = *frase de recuperación*; Anrede *tú*, ohne Landesvarianten.
 - **Neue Sprache:** `i18n/de/` nach `i18n/xx/` kopieren, Werte übersetzen (Schlüssel und `{platzhalter}` bleiben), in `i18n/index.js` unter `LANGUAGES` eintragen. Die Befehlsmuster (`agent.match`) und Stichwörter (`agent.topic.*.keywords`) sind sprachabhängig und brauchen eigene Wörter. `npm test` (`test/i18n.test.js`) meldet fehlende oder überzählige Schlüssel und abweichende Platzhalter.
 
 ## Assistent „Frag Pomona“ (QVAC)

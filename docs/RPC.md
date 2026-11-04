@@ -36,7 +36,7 @@ Events: `ready`, `change` (der Status kann sich geändert haben) und `error` (Fe
 | `cancel` | – | – (Organisator) |
 | `refund` | – | – |
 | `postNews` | `text` | – (Organisator) |
-| `invite` | – | `{ link, qr }` (alle Teilnehmer; geteilt wird in der Bietphase) |
+| `invite` | – | `{ link, qr }` (alle Teilnehmer; geteilt wird in Phase 1) |
 | `receipt` | `index` (0-basiert) | `{ code, qr, validUntil }`. Der Code ist vom Konto unterschrieben und 10 Minuten gültig. |
 | `verifyReceipt` | `code` | `{ valid, reason? , title?, installment, installments, amount, symbol, paidAt, bidder, round }` |
 | `qr` | `text` | SVG-Markup |
