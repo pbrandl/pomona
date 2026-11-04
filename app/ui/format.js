@@ -3,13 +3,13 @@
  * through `esc` unless it is markup we generated ourselves (QR SVGs, icons).
  * @module ui/format
  */
-import { raw, locale } from '../i18n/index.js'
+import { raw, locale, separators } from '../i18n/index.js'
 
 /** HTML-escapes any value. */
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 
-/** "1234.5" → "1.234,5" (one number style in every language, the same the input accepts) */
-export const fmt = (n, max = 2) => Number(n || 0).toLocaleString('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: max })
+/** "1234.5" → "1.234,5" (de, es) or "1,234.5" (en), the style the input accepts */
+export const fmt = (n, max = 2) => Number(n || 0).toLocaleString(separators().decimal === '.' ? 'en-US' : 'de-DE', { minimumFractionDigits: 0, maximumFractionDigits: max })
 
 /** 0x1234…abcd */
 export const short = (a) => (a ? a.slice(0, 6) + '…' + a.slice(-4) : '')
@@ -50,7 +50,8 @@ export function per (intervalName) {
  */
 export function num (v) {
   v = String(v ?? '').trim().replace(/\s/g, '')
-  if (v.includes(',')) v = v.replace(/\./g, '').replace(',', '.')
+  if (separators().decimal === '.') v = v.replace(/,/g, '')
+  else if (v.includes(',')) v = v.replace(/\./g, '').replace(',', '.')
   else if (/^\d{1,3}(\.\d{3})+$/.test(v)) v = v.replace(/\./g, '')
   const n = Number(v)
   return Number.isFinite(n) ? n : 0

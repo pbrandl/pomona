@@ -351,6 +351,7 @@ export default {
     local: 'Para preguntas libres, un modelo de lenguaje funciona localmente en tu dispositivo.',
     load: 'Descargar',
     pick: 'Elegir un archivo existente',
+    pickTitle: 'Elegir el modelo de lenguaje (archivo o carpeta)',
     typing: 'Pomona está respondiendo',
     hello: '¡Hola! Te explico la ronda de financiación y preparo pasos para ti. Confirmar siempre lo haces tú. ¿Qué quieres saber?',
     newChat: 'Nuevo chat',

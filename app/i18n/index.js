@@ -12,11 +12,14 @@
  * @module i18n
  */
 import de from './de/index.js'
+import en from './en/index.js'
 import es from './es/index.js'
 
+// numbers: how amounts are written and typed ('de' = 1.234,5, 'en' = 1,234.5)
 export const LANGUAGES = {
-  de: { name: 'Deutsch', locale: 'de-DE', catalog: de },
-  es: { name: 'Español', locale: 'es', catalog: es }
+  de: { name: 'Deutsch', locale: 'de-DE', numbers: 'de', catalog: de },
+  en: { name: 'English', locale: 'en-US', numbers: 'en', catalog: en },
+  es: { name: 'Español', locale: 'es', numbers: 'de', catalog: es }
 }
 export const FALLBACK = 'de'
 
@@ -36,6 +39,9 @@ export function setLanguage (tag) {
 
 export const language = () => current
 export const locale = () => LANGUAGES[current].locale
+
+/** Separators of amounts in the current language. */
+export const separators = () => LANGUAGES[current].numbers === 'en' ? { group: ',', decimal: '.' } : { group: '.', decimal: ',' }
 
 function lookup (catalog, key) {
   let v = catalog

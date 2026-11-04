@@ -4,16 +4,17 @@
  * @module core/agent/words
  */
 import { plainDecimal } from '../decimal.js'
-import { t, raw } from '../../i18n/index.js'
+import { t, raw, separators } from '../../i18n/index.js'
 
-/** 1234.5 → "1.234,5" (max. 2 decimals; same style in every language, like the input) */
+/** 1234.5 → "1.234,5" or "1,234.5" by language (max. 2 decimals) */
 export function num (value) {
   const n = Number(value)
   if (!Number.isFinite(n)) return '0'
   const [int, frac = ''] = (Math.round(n * 100) / 100).toFixed(2).split('.')
-  const grouped = int.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+  const { group, decimal } = separators()
+  const grouped = int.replace(/\B(?=(\d{3})+(?!\d))/g, group)
   const f = frac.replace(/0+$/, '')
-  return f ? `${grouped},${f}` : grouped
+  return f ? `${grouped}${decimal}${f}` : grouped
 }
 
 /** unix seconds → "12. November 2026" / "12 de noviembre de 2026" (UTC, stable across runtimes) */

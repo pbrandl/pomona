@@ -91,12 +91,12 @@ ipcMain.handle('pomona:camera', async (evt) => {
 })
 // The language model: a file the person already has, or a folder for it.
 // Only the chosen path goes to the worker, which checks the file (SHA-256).
-ipcMain.handle('pomona:pickModel', async (evt) => {
+ipcMain.handle('pomona:pickModel', async (evt, title) => {
   if (!trusted(evt)) return null
   const res = await dialog.showOpenDialog(BrowserWindow.fromWebContents(evt.sender), {
-    title: 'Sprachmodell wählen (Datei oder Ordner)',
+    title: typeof title === 'string' && title ? title : 'Pomona',
     properties: ['openFile', 'openDirectory'],
-    filters: [{ name: 'Sprachmodell (GGUF)', extensions: ['gguf'] }]
+    filters: [{ name: 'GGUF', extensions: ['gguf'] }]
   })
   return res.canceled ? null : res.filePaths[0] ?? null
 })

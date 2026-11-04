@@ -7,13 +7,18 @@
  * @module core/agent/intents
  */
 import { num, per, normalizeAmount } from './words.js'
-import { t, raw } from '../../i18n/index.js'
+import { t, raw, separators } from '../../i18n/index.js'
 
 const AMOUNT = /(\d{1,3}(?:\.\d{3})+|\d+)(?:[.,](\d{1,6}))?\s*(usdt|usd|dollar|dólar|dolar|\$|euros?|eur|€)?/i
 
+const AMOUNT_EN = /(\d+)(?:\.(\d{1,6}))?\s*(usdt|usd|dollars?|\$|euros?|eur|€)?/i
+
 /** Extracts the first amount and its currency word from free text. */
 export function findAmount (text) {
-  const m = AMOUNT.exec(text)
+  // English style: "1,000.50" → "1000.50", and a dot is always the decimal point.
+  const en = separators().decimal === '.'
+  if (en) text = String(text).replace(/(\d),(?=\d{3}(?!\d))/g, '$1')
+  const m = (en ? AMOUNT_EN : AMOUNT).exec(text)
   if (!m) return null
   const raw = m[2] ? `${m[1].replace(/\./g, '')}.${m[2]}` : m[1]
   const amount = normalizeAmount(raw)

@@ -169,12 +169,12 @@ Eine offene Seite ersetzt die Rundenansicht (`ui.sheet`). Ihr „← Zurück“ 
 
 ## Sprachen
 
-Deutsch und Spanisch. Die Texte stehen in `app/i18n/<sprache>/`, eine Datei pro Bereich: `core.js` (Fehler, Belegprüfung, Netzwerke, Datum), `agent.js` (Assistent: Antworten, Befehlsmuster, Prompt, Werkzeuge), `ui.js` (Oberfläche). Deutsch ist die Referenz und der Rückfall für fehlende Schlüssel.
+Deutsch, Englisch und Spanisch. Die Texte stehen in `app/i18n/<sprache>/`, eine Datei pro Bereich: `core.js` (Fehler, Belegprüfung, Netzwerke, Datum), `agent.js` (Assistent: Antworten, Befehlsmuster, Prompt, Werkzeuge), `ui.js` (Oberfläche). Deutsch ist die Referenz und der Rückfall für fehlende Schlüssel.
 
 - **Benutzen:** `t('wallet.title')`, mit Werten `t('bid.missing', { amount, symbol })`. Mehrzahl: `{ one, other }`, gewählt über `n`. Listen (Schritte, Monate, Stichwörter) mit `raw()`. Werte von außen (Titel, Adressen) escaped die Ansicht vor dem Einsetzen; die Katalogtexte selbst dürfen einfaches Markup (`<strong>`) enthalten.
 - **Auswahl:** gespeicherte Wahl (`localStorage` `pomona.lang`), sonst die Systemsprache, sonst Deutsch. Umschalten auf der Kontoseite und beim ersten Start. Die Oberfläche meldet die Sprache per RPC `setLanguage` an den Worker; der schreibt Fehler und Assistenten-Antworten dann in derselben Sprache.
-- **Zahlen** schreibt Pomona in jeder Sprache gleich (`1.234,5`), passend zur Eingabe. Datumsangaben folgen der Sprache.
-- **Begriffe:** Finanzierungsrunde = *ronda de financiación*, Gebot = *compromiso*, bieten = *comprometerse*, Phase 1 (Bieten) = *fase 1*, Phase 2 (Raten) = *fase 2*, Rate = *cuota*, Rechnung = *factura*, Beleg = *comprobante*, Treuhandkonto = *cuenta de garantía*, Seedphrase = *frase semilla*; Anrede *tú*, ohne Landesvarianten.
+- **Zahlen** folgen der Sprache (`numbers` in `LANGUAGES`): Deutsch und Spanisch `1.234,5`, Englisch `1,234.5`. Anzeige (`fmt`, `num`) und Eingabe (`core/decimal.js`, `ui/format.js` `num()`, Befehle im Assistenten) lesen dieselbe Regel. Der Ziffernblock speichert intern immer einen Punkt und zeigt das Trennzeichen der Sprache. Datumsangaben folgen der Sprache.
+- **Begriffe (Englisch / Spanisch):** Finanzierungsrunde = *funding round* / *ronda de financiación*, Gebot = *pledge* / *compromiso*, bieten = *pledge* / *comprometerse*, Phase 1 / Phase 2 = *Phase 1 / Phase 2* / *fase 1 / fase 2*, Rate = *installment* / *cuota*, Rechnung = *invoice* / *factura*, Beleg = *receipt* / *comprobante*, Treuhandkonto = *escrow* / *cuenta de garantía*, Richtwert = *suggested amount* / *importe orientativo*, Seedphrase = *seed phrase* / *frase semilla*. Spanisch mit *tú*, ohne Landesvarianten.
 - **Neue Sprache:** `i18n/de/` nach `i18n/xx/` kopieren, Werte übersetzen (Schlüssel und `{platzhalter}` bleiben), in `i18n/index.js` unter `LANGUAGES` eintragen. Die Befehlsmuster (`agent.match`) und Stichwörter (`agent.topic.*.keywords`) sind sprachabhängig und brauchen eigene Wörter. `npm test` (`test/i18n.test.js`) meldet fehlende oder überzählige Schlüssel und abweichende Platzhalter.
 
 ## Assistent „Frag Pomona“ (QVAC)

@@ -354,7 +354,7 @@ document.addEventListener('keydown', (e) => {
   if (e.target?.closest?.('input, textarea, select')) return
   let k = null
   if (/^[0-9]$/.test(e.key)) k = e.key
-  else if (e.key === ',' || e.key === '.') k = ','
+  else if (e.key === ',' || e.key === '.') k = '.'
   else if (e.key === 'Backspace' || e.key === 'Delete') k = 'del'
   else if (e.key === 'Enter') {
     e.preventDefault()
@@ -614,15 +614,15 @@ const actions = {
   'create-wallet-start': () => { ui.onboarding = true; ui.sheet = 'create-wallet' },
   'toggle-send': () => { ui.showSend = !ui.showSend },
   'pick-amount': (el) => { ui.draft.amount = el.dataset.amount },
-  /** Keypad: at most 6 digits, no leading zero, one comma with two decimals. */
+  /** Keypad: at most 6 digits, no leading zero, one decimal point (stored as ".", shown per language) with two decimals. */
   key: (el) => {
     const k = el.dataset.key
-    let v = String(ui.draft.amount ?? '').replace(/[^\d,]/g, '')
-    const [int, dec] = v.split(',')
+    let v = String(ui.draft.amount ?? '').replace(/[^\d.]/g, '')
+    const [int, dec] = v.split('.')
     if (k === 'del') {
       v = v.slice(0, -1)
-    } else if (k === ',') {
-      if (dec === undefined) v = (int || '0') + ',' // one comma
+    } else if (k === '.') {
+      if (dec === undefined) v = (int || '0') + '.' // one decimal point
     } else if (dec !== undefined) {
       if (dec.length < 2) v += k // cents: two digits
     } else if (int.length < 6 && !(int === '' && k === '0')) {

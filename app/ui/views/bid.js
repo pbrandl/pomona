@@ -6,7 +6,7 @@
 import { esc, fmt, num, per, dayTime, date } from '../format.js'
 import { page, spinner } from './parts.js'
 import { ICON } from './icons.js'
-import { t, raw } from '../../i18n/index.js'
+import { t, raw, separators } from '../../i18n/index.js'
 
 const bidSteps = () => raw('bid.steps')
 
@@ -93,11 +93,11 @@ function progressBar (r, amount) {
   </div>`
 }
 
-/** What was typed on the keypad, with thousands dots and a trailing comma kept ("1.200,5"). */
+/** What was typed on the keypad ("1200.5", always with a dot) in the language's style ("1.200,5"), a trailing separator kept. */
 function typed (raw) {
-  const [int, dec] = String(raw || '').split(',')
+  const [int, dec] = String(raw || '').split('.')
   const n = int ? fmt(Number(int), 0) : '0'
-  return dec === undefined ? n : `${n},${dec}`
+  return dec === undefined ? n : `${n}${separators().decimal}${dec}`
 }
 
 /** Digits, comma (cents, as in franzwerk), delete. */
@@ -105,7 +105,7 @@ function keypad () {
   const key = (k, label = k, aria = k) => `<button class="key" data-action="key" data-key="${k}" aria-label="${aria}">${label}</button>`
   return `<div class="keypad" role="group" aria-label="${t('bid.keypad')}">
     ${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => key(String(n))).join('')}
-    ${key(',', ',', t('bid.comma'))}${key('0')}${key('del', '⌫', t('bid.delete'))}
+    ${key('.', separators().decimal, t('bid.comma'))}${key('0')}${key('del', '⌫', t('bid.delete'))}
   </div>`
 }
 

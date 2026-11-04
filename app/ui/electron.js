@@ -58,7 +58,7 @@ window.pomona = {
   /** Asks the OS for camera access (needed on macOS) before getUserMedia. */
   cameraAccess: () => bridge.cameraAccess(),
   /** Model file or folder via the system dialog; the path, or null. */
-  pickModel: () => bridge.pickModel(),
+  pickModel: () => bridge.pickModel(t('assistant.pickTitle')),
   restart: () => bridge.relaunch()
 }
 

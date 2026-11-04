@@ -111,7 +111,7 @@ Szenarien: `onboarding`, `locked`, `start`, `bidder`, `organizer`, `invoice`, `r
 - [ ] Sepolia: Bundler und Paymaster eintragen und den kompletten Ablauf testen
 - [ ] Automatische Sperre bei Inaktivität, stärkere Argon2id-Parameter
 - [x] Assistent „Frag Pomona“ auf QVAC (lokal, nur vorbereitend)
-- [x] Deutsch und Spanisch, erweiterbar (`app/i18n/`, siehe [ARCHITECTURE.md](docs/ARCHITECTURE.md#sprachen))
+- [x] Deutsch, Englisch und Spanisch, erweiterbar (`app/i18n/`, siehe [ARCHITECTURE.md](docs/ARCHITECTURE.md#sprachen))
 - [ ] Assistent mit echtem Modell auf einem Desktop testen (Qualität auf Deutsch und Spanisch, Tool-Aufrufe)
 - [ ] Spanische Texte von Muttersprachlern gegenlesen lassen
 - [ ] Telegram-Bot im Worker des Organisators

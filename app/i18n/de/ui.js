@@ -352,6 +352,7 @@ export default {
     local: 'Für freie Fragen läuft ein Sprachmodell lokal auf deinem Gerät.',
     load: 'Laden',
     pick: 'Vorhandene Datei wählen',
+    pickTitle: 'Sprachmodell wählen (Datei oder Ordner)',
     typing: 'Pomona antwortet',
     hello: 'Hallo! Ich erkläre dir die Finanzierungsrunde und bereite Schritte für dich vor. Bestätigen musst du immer selbst. Was möchtest du wissen?',
     newChat: 'Neuer Chat',

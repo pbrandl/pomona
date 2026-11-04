@@ -279,3 +279,20 @@ test('assistant in Spanish: commands, topics, labels and prompt', async () => {
     setLanguage('de')
   }
 })
+
+test('assistant in English: commands with English numbers, topics, prompt', async () => {
+  const { setLanguage } = await import('../i18n/index.js')
+  setLanguage('en-GB')
+  try {
+    const bid = matchIntent('I want to pledge 1,200.50 per month', status())
+    assert.equal(bid.actions[0].amount, '1200.50')
+    assert.match(bid.text, /pledge of 1,200\.5 /)
+    assert.equal(matchIntent('pledge 100', status()).actions[0].amount, '100')
+    assert.equal(matchIntent('I want to top up my account', status()).actions[0].page, 'fund')
+    assert.equal(matchTopic('is my money safe?'), 'safety')
+    assert.equal(matchTopic('what is the seed phrase?'), 'words')
+    assert.match(systemPrompt(status()), /Always answer in English/)
+  } finally {
+    setLanguage('de')
+  }
+})
