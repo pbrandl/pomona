@@ -8,6 +8,7 @@ import WDK from '@tetherto/wdk'
 import WalletManagerEvmErc4337 from '@tetherto/wdk-wallet-evm-erc-4337'
 import { explain } from '../chain/reverts.js'
 import { PomonaError } from '../errors.js'
+import { t } from '../../i18n/index.js'
 
 /** Never pay more than this per transaction (USDT base units, 6 decimals). */
 export const DEFAULT_MAX_FEE = 5_000_000n
@@ -69,7 +70,7 @@ export class SmartAccount {
     onStep?.('confirm')
     const r = await acc.waitForTransaction(hash)
     if (r?.userOperationReceipt && r.userOperationReceipt.success === false) {
-      throw new PomonaError('TX_FAILED', 'Die Transaktion ist fehlgeschlagen.')
+      throw new PomonaError('TX_FAILED', t('err.txFailed'))
     }
     return { hash }
   }
@@ -105,8 +106,8 @@ export class SmartAccount {
 
 /** Turns WDK/bundler errors into user-facing ones where we know them. */
 export function translate (e) {
-  if (e?.name === 'PolicyViolationError') return new PomonaError('POLICY', 'Von der Wallet-Richtlinie blockiert: ' + (e.reason || e.message))
-  if (e?.name === 'MaximumFeeExceededError') return new PomonaError('FEE_TOO_HIGH', 'Die Netzwerkgebühr ist gerade zu hoch. Bitte später erneut versuchen.')
-  if (/AA50|paymaster token/i.test(e?.message || '')) return new PomonaError('NO_USDT_FOR_FEE', 'Zu wenig USDT für die Netzwerkgebühr.')
+  if (e?.name === 'PolicyViolationError') return new PomonaError('POLICY', t('err.policy', { reason: e.reason || e.message }))
+  if (e?.name === 'MaximumFeeExceededError') return new PomonaError('FEE_TOO_HIGH', t('err.feeTooHigh'))
+  if (/AA50|paymaster token/i.test(e?.message || '')) return new PomonaError('NO_USDT_FOR_FEE', t('err.noUsdtForFee'))
   return explain(e)
 }

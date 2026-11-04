@@ -32,9 +32,9 @@ const MEM = sodium.crypto_pwhash_MEMLIMIT_INTERACTIVE
 /** @param {string} password */
 export function checkPassword (password) {
   if (typeof password !== 'string' || password.length < LIMITS.password.min) {
-    fail('WEAK_PASSWORD', `Das Passwort braucht mindestens ${LIMITS.password.min} Zeichen.`)
+    fail('WEAK_PASSWORD', 'passwordShort', { min: LIMITS.password.min })
   }
-  if (password.length > LIMITS.password.max) fail('WEAK_PASSWORD', 'Das Passwort ist zu lang.')
+  if (password.length > LIMITS.password.max) fail('WEAK_PASSWORD', 'passwordLong')
 }
 
 function deriveKey (password, salt, ops, mem) {
@@ -78,14 +78,14 @@ export function seal (seed, password) {
  * @throws {PomonaError} WRONG_PASSWORD
  */
 export function open (sealed, password) {
-  if (!sealed || sealed.v !== 1 || sealed.kdf !== 'argon2id13') fail('VAULT_FORMAT', 'Unbekanntes Tresor-Format.')
-  if (typeof password !== 'string' || password.length > LIMITS.password.max) fail('WRONG_PASSWORD', 'Falsches Passwort.')
+  if (!sealed || sealed.v !== 1 || sealed.kdf !== 'argon2id13') fail('VAULT_FORMAT', 'vaultFormat')
+  if (typeof password !== 'string' || password.length > LIMITS.password.max) fail('WRONG_PASSWORD', 'wrongPassword')
   const box = b4a.from(sealed.box, 'hex')
   const key = deriveKey(password, b4a.from(sealed.salt, 'hex'), sealed.ops, sealed.mem)
   const msg = b4a.alloc(box.byteLength - sodium.crypto_secretbox_MACBYTES)
   const ok = sodium.crypto_secretbox_open_easy(msg, box, b4a.from(sealed.nonce, 'hex'), key)
   sodium.sodium_memzero(key)
-  if (!ok) fail('WRONG_PASSWORD', 'Falsches Passwort.')
+  if (!ok) fail('WRONG_PASSWORD', 'wrongPassword')
   const seed = b4a.toString(msg, 'utf-8')
   sodium.sodium_memzero(msg)
   return seed

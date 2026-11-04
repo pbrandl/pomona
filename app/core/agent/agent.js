@@ -16,6 +16,7 @@
 import { answerTopic, matchTopic, suggestions } from './knowledge.js'
 import { matchIntent } from './intents.js'
 import { systemPrompt, sanitize } from './context.js'
+import { t } from '../../i18n/index.js'
 import { TOOLS, runTool } from './tools.js'
 import { validateActions } from './actions.js'
 import { MODELS } from './qvac.js'
@@ -73,7 +74,7 @@ export class Assistant {
       missing: this.missing,
       models: Object.entries(MODELS)
         .filter(([, m]) => !this.manualDir || m.url)
-        .map(([key, m]) => ({ key, label: m.label, size: m.size, note: m.note, file: m.file, url: m.url })),
+        .map(([key, m]) => ({ key, label: t(`agent.model.${key}.label`), size: m.size, note: t(`agent.model.${key}.note`), file: m.file, url: m.url })),
       manual: this.manualDir ? { dir: this.manualDir } : null,
       suggestions: suggestions(status)
     }
@@ -85,7 +86,7 @@ export class Assistant {
    * @param {{ model: 'small'|'better' }} p
    */
   async install ({ model = 'small' } = {}) {
-    if (!MODELS[model]) fail('BAD_INPUT', 'Unbekanntes Modell.')
+    if (!MODELS[model]) fail('BAD_INPUT', 'unknownModel')
     if (this.state === 'downloading' || this.state === 'loading') return this.info(await this.getStatus())
     this.model = model
     await this.settings.set('assistant', this.manualDir ? { model, dir: this.manualDir } : { model })
@@ -103,17 +104,17 @@ export class Assistant {
     const fs = await import('fs')
     path = String(path || '').replace(/[\\/]+$/, '')
     let st
-    try { st = fs.statSync(path) } catch { fail('BAD_INPUT', 'Diesen Ort gibt es nicht.') }
+    try { st = fs.statSync(path) } catch { fail('BAD_INPUT', 'noSuchPath') }
     let dir = path
     let model = this.model && MODELS[this.model] ? this.model : 'small'
     if (!st.isDirectory()) {
       const name = path.split(/[\\/]/).pop()
       const key = Object.keys(MODELS).find((k) => MODELS[k].file === name)
-      if (!key) fail('BAD_INPUT', `Diese Datei kennt Pomona nicht. Erwartet: ${Object.values(MODELS).map((m) => m.file).join(' oder ')}.`)
+      if (!key) fail('BAD_INPUT', 'unknownModelFile', { files: Object.values(MODELS).map((m) => m.file).join(', ') })
       dir = path.slice(0, path.length - name.length - 1)
       model = key
     }
-    if (this.state === 'downloading' || this.state === 'loading') fail('BUSY', 'Das Sprachmodell wird gerade geladen.')
+    if (this.state === 'downloading' || this.state === 'loading') fail('BUSY', 'modelLoading')
     await this.engine?.close().catch(() => {})
     this.engine = null
     this.manualDir = dir
@@ -145,7 +146,7 @@ export class Assistant {
       } catch (e) {
         this.state = 'error'
         this.missing = e?.code === 'MODEL_MISSING'
-        this.error = this.missing ? 'Die Modelldatei ist noch nicht im Ordner.' : 'Das Sprachmodell konnte nicht geladen werden: ' + (e?.message || e)
+        this.error = this.missing ? t('agent.msg.modelMissing') : t('agent.msg.modelFailed', { error: e?.message || e })
         throw e
       } finally {
         this._loading = null
@@ -160,17 +161,17 @@ export class Assistant {
    * @returns {Promise<{ reply: string, actions: object[], source: 'topic'|'rules'|'model'|'faq'|'none' }>}
    */
   async ask ({ text, topic } = {}) {
-    if (this._busy) fail('BUSY', 'Einen Moment, ich denke noch über die letzte Frage nach.')
+    if (this._busy) fail('BUSY', 'stillThinking')
     this._busy = true
     try {
       const s = await this.getStatus()
       if (topic) {
         const a = answerTopic(topic, s)
-        if (!a) fail('BAD_INPUT', 'Unbekanntes Thema.')
+        if (!a) fail('BAD_INPUT', 'unknownTopic')
         return this._finish(s, a.text, a.actions, 'topic', null)
       }
       const question = sanitize(text, MAX_TEXT)
-      if (!question) fail('BAD_INPUT', 'Bitte stell eine Frage.')
+      if (!question) fail('BAD_INPUT', 'askSomething')
 
       const intent = matchIntent(question, s)
       if (intent) return this._finish(s, intent.text, intent.actions, 'rules', question)
@@ -182,7 +183,7 @@ export class Assistant {
         const a = answerTopic(found, s)
         return this._finish(s, a.text, a.actions, 'faq', question)
       }
-      return this._finish(s, 'Diese Frage kann ich ohne Sprachmodell noch nicht beantworten. Richte den Assistenten einmalig ein (läuft dann offline auf deinem Gerät) oder tippe auf einen Vorschlag.', [{ type: 'install' }], 'none', question)
+      return this._finish(s, t('agent.msg.noModel'), [{ type: 'install' }], 'none', question)
     } finally {
       this._busy = false
     }
@@ -207,8 +208,8 @@ export class Assistant {
     }
     if (!reply) {
       reply = actions.length
-        ? 'Ich habe das für dich vorbereitet. Bitte prüfe es und bestätige selbst.'
-        : 'Das habe ich leider nicht verstanden. Magst du es anders formulieren?'
+        ? t('agent.msg.prepared')
+        : t('agent.msg.notUnderstood')
     }
     return this._finish(s, reply, actions, 'model', question)
   }
@@ -246,6 +247,6 @@ function withTimeout (promise, ms) {
   let timer
   return Promise.race([
     promise.finally(() => clearTimeout(timer)),
-    new Promise((resolve, reject) => { timer = setTimeout(() => reject(new Error('Der Assistent hat zu lange gebraucht.')), ms) })
+    new Promise((resolve, reject) => { timer = setTimeout(() => reject(new Error(t('agent.msg.timeout'))), ms) })
   ])
 }

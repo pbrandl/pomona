@@ -5,25 +5,9 @@
 import { Interface } from 'ethers'
 import abi from './abi.js'
 import { PomonaError } from '../errors.js'
+import { t, raw } from '../../i18n/index.js'
 
 const iface = new Interface([...abi.PomonaRound, ...abi.PomonaFactory].filter((f) => f.type === 'error'))
-
-const MESSAGES = {
-  WrongPhase: 'Das ist in der aktuellen Phase der Runde nicht möglich.',
-  NotOrganizer: 'Nur der Organisator darf das.',
-  ZeroAmount: 'Bitte einen Betrag eingeben.',
-  BelowMinBid: 'Das Gebot liegt unter dem Mindestgebot.',
-  InvalidInvite: 'Die Einladung ist ungültig.',
-  TooMuch: 'Mehr als dein Gebot kann nicht zurückgezogen werden.',
-  NotDue: 'Die nächste Rechnung ist noch nicht fällig.',
-  NothingToRefund: 'Es gibt nichts zurückzuzahlen.',
-  UnsupportedToken: 'Dieser Token wird nicht unterstützt.',
-  BadParams: 'Ungültige Angaben für die Runde.',
-  WrongMode: 'Das passt nicht zur Art, wie in dieser Runde bezahlt wird.',
-  NotIssued: 'Diese Rechnung ist noch nicht da.',
-  NotBidder: 'Du hast in dieser Runde nicht geboten.',
-  AlreadyPaid: 'Diese Rechnung ist schon bezahlt.'
-}
 
 /**
  * Finds the first custom error of our contracts anywhere inside a provider
@@ -53,6 +37,6 @@ function revertName (e, seen = new Set()) {
  */
 export function explain (e) {
   const name = revertName(e)
-  if (name && MESSAGES[name]) return new PomonaError('REVERT_' + name, MESSAGES[name])
+  if (name && raw('revert.' + name)) return new PomonaError('REVERT_' + name, t('revert.' + name))
   return /** @type {Error} */ (e)
 }

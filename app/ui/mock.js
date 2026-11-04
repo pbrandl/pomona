@@ -45,8 +45,8 @@
   const round = (over) => {
     const r = Object.assign({
       role: 'bidder',
-      title: 'Solawi Lindenhof 2027',
-      website: 'https://lindenhof.example/',
+      title: 'Projekt Nordhafen 2027',
+      website: 'https://nordhafen.example/',
       verified: true,
       address: '0x7a4B9f02cE1d8A6f30E59c7D1b8E2F6a30C94E7b',
       organizer: '0x1111111111111111111111111111111111111111',
@@ -71,7 +71,7 @@
       myDeposit: '0',
       refundable: '0',
       news: [
-        { text: 'Hofführung am Samstag um 14 Uhr – alle Bietenden sind herzlich eingeladen.', at: Date.now() - 3600e3 * 5 },
+        { text: 'Projekttreffen am Samstag um 14 Uhr – alle Bietenden sind herzlich eingeladen.', at: Date.now() - 3600e3 * 5 },
         { text: 'Willkommen zur Bietrunde 2027! Richtwert sind 100 USDT im Monat.', at: Date.now() - 86400e3 * 3 }
       ]
     }, over)
@@ -144,9 +144,11 @@
   const ai = { state: aiParam === 'ready' ? 'ready' : 'none', model: null, progress: null, error: null, missing: false, manual: aiParam === 'manual' ? { dir: '/Users/anna/pomona-models' } : null }
   let manualTries = 0
   let agent = null
+  let I18N = null
   const loadAgent = async () => {
     if (!agent) {
       const [K, I, A] = await Promise.all([import('../core/agent/knowledge.js'), import('../core/agent/intents.js'), import('../core/agent/actions.js')])
+      I18N = await import('../i18n/index.js') // same module as the UI: one language
       agent = { K, I, A }
     }
     return agent
@@ -183,6 +185,10 @@
           state.assistant = { ...ai, models: ai.manual ? MODELS.filter((m) => m.url) : MODELS, suggestions: K.suggestions(state) }
           return structuredClone(state)
         }
+        case 'setLanguage':
+          await loadAgent()
+          changed()
+          return { lang: I18N.language() }
         case 'assistantAsk': {
           const { K, I, A } = await loadAgent()
           await new Promise((resolve) => setTimeout(resolve, 600))
@@ -200,7 +206,7 @@
           }
           const topic = K.matchTopic(params.text)
           if (topic) return finish(K.answerTopic(topic, state), 'faq')
-          return finish({ text: 'Diese Frage kann ich ohne Sprachmodell noch nicht beantworten. Richte den Assistenten einmalig ein (läuft dann offline auf deinem Gerät) oder tippe auf einen Vorschlag.', actions: [{ type: 'install' }] }, 'none')
+          return finish({ text: I18N.t('agent.msg.noModel'), actions: [{ type: 'install' }] }, 'none')
         }
         case 'assistantInstall': {
           ai.model = params.model || 'small'

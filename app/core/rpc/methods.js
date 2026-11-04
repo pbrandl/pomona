@@ -64,6 +64,8 @@ export const METHODS = {
   receipt: { params: { index: 'number' }, run: (app, p) => app.receipt(p) },
   verifyReceipt: { params: { code: ['string', LIMITS.link] }, run: (app, p) => app.verifyReceipt(p) },
 
+  setLanguage: { params: { lang: ['string', 16] }, run: (app, p) => app.setLanguage(p) },
+
   // assistant ("Frag Pomona"): explains and prepares; nothing here can sign
   assistantAsk: { params: { text: ['string', 500], topic: ['string', 24] }, run: (app, p) => app.assistantAsk(p) },
   assistantInstall: { params: { model: ['string', 8] }, run: (app, p) => app.assistantInstall(p) },

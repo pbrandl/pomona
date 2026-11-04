@@ -129,8 +129,8 @@ Rückzahlung verloren.
 **Entschieden:** Pomona nutzt nur **EURC, USDT und BTC** (niedrige Gebühren).
 Wer mit anderen Coins zahlt, kann tauschen, trägt aber die Gebühren.
 
-- **Eine Währung pro Runde,** beim Anlegen festgelegt (z. B. EURC für eine
-  Solawi in Deutschland). Keine Umrechnung innerhalb einer Runde.
+- **Eine Währung pro Runde,** beim Anlegen festgelegt (z. B. EURC für ein
+  Projekt im Euroraum). Keine Umrechnung innerhalb einer Runde.
 - **EURC und USDT** auf derselben EVM-Mechanik. Nötig ist eine Chain mit beiden;
   Arbitrum hat EURC laut Sekundärquellen, an Circles Adressliste prüfen.
 - **BTC:** kein Runden-Contract auf Bitcoin. Wege:

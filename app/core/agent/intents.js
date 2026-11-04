@@ -1,14 +1,15 @@
 /**
  * Clear commands the assistant understands without a language model:
  * "Ich möchte 100 im Monat bieten", "Konto aufladen", "Zeig meinen Beleg für
- * Rate 2", "Rechnung stellen". Fast, predictable, offline, and the same in
+ * Rate 2", "Rechnung stellen" (patterns per language in i18n/). Fast, predictable, offline, and the same in
  * every runtime. Anything less clear goes to the model (or the FAQ).
  *
  * @module core/agent/intents
  */
 import { num, per, normalizeAmount } from './words.js'
+import { t, raw } from '../../i18n/index.js'
 
-const AMOUNT = /(\d{1,3}(?:\.\d{3})+|\d+)(?:[.,](\d{1,6}))?\s*(usdt|usd|dollar|\$|euro|eur|€)?/i
+const AMOUNT = /(\d{1,3}(?:\.\d{3})+|\d+)(?:[.,](\d{1,6}))?\s*(usdt|usd|dollar|dólar|dolar|\$|euros?|eur|€)?/i
 
 /** Extracts the first amount and its currency word from free text. */
 export function findAmount (text) {
@@ -20,6 +21,10 @@ export function findAmount (text) {
   return { amount, currency: (m[3] || '').toLowerCase() }
 }
 
+/** The command pattern `name` of the current language (i18n/<lang>/agent.js, match.*). */
+const pattern = (name) => new RegExp(raw('agent.match.' + name))
+const say = (key, params) => t('agent.intent.' + key, params)
+
 /**
  * @param {string} text
  * @param {object} s - status() snapshot
@@ -30,60 +35,58 @@ export function matchIntent (text, s) {
   const r = s?.round
 
   // "Ich möchte 100 im Monat bieten", "Gebot 80", "erhöhe um 20"
-  if (/\b(biet|biete|bieten|gebot|beitragen|geben|erhöh)/.test(t)) {
+  if (pattern('bid').test(t)) {
     const found = findAmount(t)
     if (found && r?.phase === 'bidding') {
       const p = per(r.intervalName)
-      const euro = /euro|eur|€/.test(found.currency)
+      const v = { amount: num(found.amount), symbol: r.symbol, per: p.per, n: r.installments }
       const raise = Number(r.myPledge) > 0
-      const money = r.mode === 'invoice'
-        ? `Hinterlegt wird nichts: Du bezahlst jede der ${r.installments} Rechnungen, wenn sie kommt.`
-        : `Hinterlegt werden ${num(Number(found.amount) * r.installments)} ${r.symbol} für ${r.installments} Raten.`
-      let reply = `${raise ? 'Ich bereite eine Erhöhung um' : 'Ich bereite ein Gebot über'} ${num(found.amount)} ${r.symbol} ${p.per} vor. ${money} Du prüfst und bestätigst auf der nächsten Seite.`
-      if (euro) reply = 'Kurzer Hinweis: Pomona rechnet in USDT, das entspricht ungefähr US-Dollar, nicht Euro. ' + reply
+      const money = r.mode === 'invoice' ? say('bidInvoice', v) : say('bidDeposit', { ...v, total: num(Number(found.amount) * r.installments) })
+      let reply = [say(raise ? 'bidRaise' : 'bidNew', v), money, say('bidConfirm')].join(' ')
+      if (pattern('euro').test(found.currency)) reply = say('euro') + ' ' + reply
       return { text: reply, actions: [{ type: 'bid', amount: found.amount }] }
     }
-    if (found && r) return { text: 'Bieten geht nur während der Bietphase. Diese Runde ist schon weiter.', actions: [] }
+    if (found && r) return { text: say('notBidding'), actions: [] }
   }
 
-  if (/\b(aufladen|einzahlen|guthaben aufladen|usdt (kaufen|bekommen|senden))/.test(t)) {
-    return { text: 'Hier ist deine Seite zum Aufladen, mit Adresse und QR-Code. Bitte nur USDT schicken, nur über das angezeigte Netzwerk.', actions: [{ type: 'open', page: 'fund' }] }
+  if (pattern('fund').test(t)) {
+    return { text: say('fund'), actions: [{ type: 'open', page: 'fund' }] }
   }
 
-  if (/\b(beleg|quittung|nachweis)/.test(t) && !/prüf|pruef|scan/.test(t)) {
+  if (pattern('receipt').test(t) && !pattern('check').test(t)) {
     const paid = (r?.myInvoices || []).filter((x) => x.status === 'paid')
-    if (!paid.length) return { text: 'Du hast noch keinen Beleg. Der erste kommt mit der ersten Rechnung.', actions: [] }
-    const n = /rate\s*(\d+)/.exec(t)
+    if (!paid.length) return { text: say('noReceipt'), actions: [] }
+    const n = pattern('installment').exec(t)
     const pick = n ? paid.find((x) => x.index === Number(n[1]) - 1) : paid.at(-1)
-    if (!pick) return { text: `Für Rate ${n[1]} gibt es noch keinen Beleg. Bezahlt sind bisher ${paid.length} ${paid.length === 1 ? 'Rate' : 'Raten'}.`, actions: [] }
-    return { text: `Hier ist dein Beleg für Rate ${pick.index + 1}. Zeig den QR-Code beim Anbieter vor.`, actions: [{ type: 'receipt', index: pick.index }] }
+    if (!pick) return { text: say('noReceiptFor', { i: n[1], n: paid.length }), actions: [] }
+    return { text: say('receipt', { i: pick.index + 1 }), actions: [{ type: 'receipt', index: pick.index }] }
   }
 
-  if (/(beleg|qr).{0,20}(prüf|pruef|scan)|(prüf|pruef|scann).{0,20}(beleg|qr)/.test(t)) {
-    if (r?.role === 'organizer') return { text: 'Öffne die Prüfung und halte den QR-Code des Belegs vor die Kamera, oder füge den Code ein.', actions: [{ type: 'open', page: 'scan' }] }
+  if (pattern('scan').test(t)) {
+    if (r?.role === 'organizer') return { text: say('scan'), actions: [{ type: 'open', page: 'scan' }] }
     return null
   }
 
-  if (/rechnung (stellen|schreiben|erstellen)|abrechnen/.test(t) && r?.role === 'organizer') {
-    if (r.canInvoice) return { text: `Rechnung ${r.invoiceCount + 1} ist fällig: ${num(r.total)} ${r.symbol} gehen an dein Konto. Bestätigen musst du selbst.`, actions: [{ type: 'invoice' }] }
-    return { text: 'Gerade ist keine Rechnung fällig.', actions: [] }
+  if (pattern('invoice').test(t) && r?.role === 'organizer') {
+    if (r.canInvoice) return { text: say('invoice', { n: r.invoiceCount + 1, amount: num(r.total), symbol: r.symbol }), actions: [{ type: 'invoice' }] }
+    return { text: say('noInvoiceDue'), actions: [] }
   }
 
-  if (/(rechnung|rate) (be)?zahlen|bezahlen/.test(t) && r?.mode === 'invoice') {
-    if (r.openInvoices > 0) return { text: `Offen sind ${num(r.openAmount)} ${r.symbol}. Prüfen und bestätigen musst du selbst, danach bekommst du den Beleg.`, actions: [{ type: 'pay' }] }
-    return { text: 'Gerade ist keine Rechnung offen.', actions: [] }
+  if (pattern('pay').test(t) && r?.mode === 'invoice') {
+    if (r.openInvoices > 0) return { text: say('pay', { amount: num(r.openAmount), symbol: r.symbol }), actions: [{ type: 'pay' }] }
+    return { text: say('noOpenInvoice'), actions: [] }
   }
 
-  if (/zurückziehen|zurueckziehen|gebot (löschen|loeschen|stornieren)/.test(t)) {
+  if (pattern('withdraw').test(t)) {
     if (r?.phase === 'bidding' && Number(r.myPledge) > 0) {
-      const back = Number(r.myDeposit) > 0 ? ` ${num(r.myDeposit)} ${r.symbol} gehen dann in dein Konto zurück.` : ''
-      return { text: `Du kannst dein Gebot bis zum Ende der Bietphase zurückziehen.${back}`, actions: [{ type: 'withdraw' }] }
+      const back = Number(r.myDeposit) > 0 ? ' ' + say('withdrawBack', { amount: num(r.myDeposit), symbol: r.symbol }) : ''
+      return { text: say('withdraw') + back, actions: [{ type: 'withdraw' }] }
     }
     return null
   }
 
-  if (/(geld|betrag) zurück(holen|bekommen)?|zurückholen|rückzahlung/.test(t) && Number(r?.refundable) > 0) {
-    return { text: `Für dich liegen ${num(r.refundable)} ${r.symbol} bereit.`, actions: [{ type: 'refund' }] }
+  if (pattern('refund').test(t) && Number(r?.refundable) > 0) {
+    return { text: say('refund', { amount: num(r.refundable), symbol: r.symbol }), actions: [{ type: 'refund' }] }
   }
 
   return null

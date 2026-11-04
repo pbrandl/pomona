@@ -10,22 +10,18 @@
  * @module core/agent/qvac
  */
 
-/** Models offered to the user. Ids are QVAC registry constants. */
+/** Models offered to the user. Ids are QVAC registry constants; names in i18n/ (agent.model). */
 export const MODELS = {
   small: {
     id: 'QWEN3_1_7B_INST_Q4',
-    label: 'Kompakt',
     size: '1,1 GB',
-    note: 'schnell, für die meisten Fragen',
     // Same file (same SHA-256) the QVAC catalog points to, for manual download.
     file: 'Qwen3-1.7B-Q4_0.gguf',
     url: 'https://huggingface.co/unsloth/Qwen3-1.7B-GGUF/resolve/d7f544eead698dbd1f15126ef60b45a1e1933222/Qwen3-1.7B-Q4_0.gguf'
   },
   better: {
     id: 'QWEN3_4B_INST_Q4_K_M',
-    label: 'Genauer',
     size: '2,5 GB',
-    note: 'versteht mehr, braucht etwa 4 GB Arbeitsspeicher',
     file: 'Qwen3-4B-Q4_K_M.gguf',
     url: null // only in QVAC's own storage, no public direct link
   }

@@ -23,7 +23,7 @@ Events: `ready`, `change` (der Status kann sich geändert haben) und `error` (Fe
 | `revealSeed` | `password` | Seed als String |
 | `sendUsdt` | `to`, `amount`, `password` | `{ hash }` |
 | `faucet` | – | Nur auf der lokalen Chain: 5.000 Test-USDT |
-| `createRound` | `title`, `website?` (nur http/https, z. B. `lindenhof.de`), `mode?` (`invoice` = per Rechnung, `deposit` = vorab hinterlegen, Standard `deposit`), `network?`, `target`, `minBid?`, `interval` (`week`/`month`), `installments`, `biddingEnd` (Unix-Sekunden) oder `biddingDays`, `guide?` (Richtwert pro Rate), `inviteOnly?` | `{ link }` |
+| `createRound` | `title`, `website?` (nur http/https, z. B. `beispiel.de`), `mode?` (`invoice` = per Rechnung, `deposit` = vorab hinterlegen, Standard `deposit`), `network?`, `target`, `minBid?`, `interval` (`week`/`month`), `installments`, `biddingEnd` (Unix-Sekunden) oder `biddingDays`, `guide?` (Richtwert pro Rate), `inviteOnly?` | `{ link }` |
 | `join` | `link` | Status |
 | `quoteBid` | `amount` (pro Rate) | `{ amount, pledgeAfter, installments, deposit, fee, balance, enough, missing, symbol }`. Rechnet nur, sendet nichts. `fee` ist die Netzwerkgebühr in USDT (`null` auf der lokalen Chain). |
 | `bid` | `amount` (pro Rate) | – |

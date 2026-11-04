@@ -38,7 +38,7 @@ export function cleanWebsite (url) {
   if (typeof url !== 'string') return null
   let s = url.trim()
   if (!s || s.length > LIMITS.website) return null
-  if (!/^[a-z][a-z0-9+.-]*:/i.test(s)) s = 'https://' + s // lindenhof.de → https://lindenhof.de/
+  if (!/^[a-z][a-z0-9+.-]*:/i.test(s)) s = 'https://' + s // beispiel.de → https://beispiel.de/
   let u
   try { u = new URL(s) } catch { return null }
   if (u.protocol !== 'https:' && u.protocol !== 'http:') return null

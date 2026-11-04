@@ -6,6 +6,7 @@
  *
  * @module ui/scanner
  */
+import { t } from '../i18n/index.js'
 
 /**
  * Decodes a QR code from RGBA pixels.
@@ -34,13 +35,13 @@ export class Scanner {
 
   async start () {
     if (window.pomona.cameraAccess && !(await window.pomona.cameraAccess())) {
-      throw new Error('Pomona hat keinen Zugriff auf die Kamera. Du kannst den Code auch einfügen.')
+      throw new Error(t('camera.denied'))
     }
-    if (!navigator.mediaDevices?.getUserMedia) throw new Error('Keine Kamera verfügbar. Du kannst den Code einfügen.')
+    if (!navigator.mediaDevices?.getUserMedia) throw new Error(t('camera.none'))
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false })
     } catch {
-      throw new Error('Kamera nicht verfügbar. Du kannst den Code einfügen.')
+      throw new Error(t('camera.unavailable'))
     }
     this.video = document.createElement('video')
     this.video.muted = true

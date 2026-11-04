@@ -8,6 +8,9 @@
  * @module ui/notify
  */
 import { fmt as amount } from './format.js'
+import { t } from '../i18n/index.js'
+
+const say = (key, params) => t('notify.' + key, params)
 
 /** Actions whose own effect must not trigger a notification. */
 const MONEY_IN = new Set(['refund', 'withdraw', 'invoice', 'faucet'])
@@ -28,7 +31,7 @@ export function changes (prev, next, { own = null } = {}) {
   const before = Number(prev.wallet?.usdt ?? NaN)
   const after = Number(next.wallet?.usdt ?? NaN)
   if (after > before && !MONEY_IN.has(own) && !next.busy) {
-    out.push({ key: 'funds', title: 'Eingang auf deinem Konto', body: `+${amount(after - before)} ${next.wallet.symbol}` })
+    out.push({ key: 'funds', title: say('funds'), body: `+${amount(after - before)} ${next.wallet.symbol}` })
   }
 
   const a = prev.round
@@ -38,36 +41,36 @@ export function changes (prev, next, { own = null } = {}) {
   const mine = Number(b.myPledge) > 0
 
   if (a.phase === 'bidding' && b.phase === 'running') {
-    out.push({ key: 'reached', title: 'Ziel erreicht', body: `${b.title}: Die Ratenzahlung startet.` })
+    out.push({ key: 'reached', title: say('reached'), body: say('reachedBody', { title: b.title }) })
   }
   if (a.phase === 'bidding' && b.phase === 'failed') {
     out.push({
       key: 'failed',
-      title: 'Ziel nicht erreicht',
-      body: Number(b.refundable) > 0 ? 'Hol dir deinen Betrag in Pomona zurück.' : 'Die Bietenden bekommen ihr Geld zurück.'
+      title: say('failed'),
+      body: say(Number(b.refundable) > 0 ? 'failedRefund' : 'failedOthers')
     })
   }
   if (a.phase === 'running' && b.phase === 'completed' && Number(b.refundable) > 0) {
-    out.push({ key: 'ended', title: 'Ratenzahlung beendet', body: `${amount(b.refundable)} ${b.symbol} warten auf dich.` })
+    out.push({ key: 'ended', title: say('ended'), body: say('endedBody', { amount: amount(b.refundable), symbol: b.symbol }) })
   }
   if (b.mode === 'invoice' && b.invoiceCount > a.invoiceCount && mine) {
-    out.push({ key: 'invoice-' + b.invoiceCount, title: `Rechnung ${b.invoiceCount} ist da`, body: `${amount(b.myPledge)} ${b.symbol} · Bitte in Pomona bezahlen.` })
+    out.push({ key: 'invoice-' + b.invoiceCount, title: say('invoice', { i: b.invoiceCount }), body: say('invoiceBody', { amount: amount(b.myPledge), symbol: b.symbol }) })
   } else if (b.invoiceCount > a.invoiceCount && !organizer && mine) {
-    out.push({ key: 'invoice-' + b.invoiceCount, title: `Rate ${b.invoiceCount} abgerechnet`, body: 'Dein Beleg ist da.' })
+    out.push({ key: 'invoice-' + b.invoiceCount, title: say('billed', { i: b.invoiceCount }), body: say('billedBody') })
   }
   if (organizer && b.canInvoice && !a.canInvoice) {
-    out.push({ key: 'due-' + b.invoiceCount, title: `Rechnung ${b.invoiceCount + 1} ist fällig`, body: 'Du kannst sie jetzt stellen.' })
+    out.push({ key: 'due-' + b.invoiceCount, title: say('due', { i: b.invoiceCount + 1 }), body: say('dueBody') })
   }
   if (organizer && b.bidders > a.bidders && own !== 'confirm-bid') {
-    out.push({ key: 'bid-' + b.bidders, title: 'Neues Gebot', body: `${b.bidders} Bietende · ${Math.round(b.progress * 100)} % vom Ziel` })
+    out.push({ key: 'bid-' + b.bidders, title: say('bid'), body: say('bidBody', { n: b.bidders, pct: Math.round(b.progress * 100) }) })
   }
   if (b.phase === 'bidding' && a.biddingEnd - a.now >= 86400 && b.biddingEnd - b.now < 86400) {
-    out.push({ key: 'soon', title: 'Bietphase endet bald', body: `${b.title}: noch weniger als 24 Stunden.` })
+    out.push({ key: 'soon', title: say('soon'), body: say('soonBody', { title: b.title }) })
   }
   const newsA = a.news?.[0]?.at
   const newsB = b.news?.[0]
   if (!organizer && newsB && newsB.at !== newsA) {
-    out.push({ key: 'news-' + newsB.at, title: `Neuigkeit: ${b.title}`, body: clip(newsB.text, 140) })
+    out.push({ key: 'news-' + newsB.at, title: say('news', { title: b.title }), body: clip(newsB.text, 140) })
   }
   return out
 }

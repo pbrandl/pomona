@@ -3,6 +3,7 @@
  * @module ui/views/parts
  */
 import { esc } from '../format.js'
+import { t } from '../../i18n/index.js'
 
 export const PEAR = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
   <path d="M12 7c-1.6 0-2.6 1.3-2.9 2.8-.3 1.6-1.1 2.3-2 3.3A5.3 5.3 0 0 0 12 21.5a5.3 5.3 0 0 0 4.9-8.4c-.9-1-1.7-1.7-2-3.3C14.6 8.3 13.6 7 12 7Z"/>
@@ -20,10 +21,10 @@ export const spinner = '<span class="spinner"></span>'
  */
 export function btn (ui, action, label, cls = '', o = {}) {
   const busy = ui.pending === action
-  const step = { sign: 'Wird gesendet…', confirm: 'Wird bestätigt…' }[ui.status?.busyStep]
+  const step = { sign: t('common.sending'), confirm: t('common.confirming') }[ui.status?.busyStep]
   const off = o.disabled || !!ui.pending || !!ui.status?.busy
   const data = Object.entries(o.data || {}).map(([k, v]) => ` data-${k}="${esc(v)}"`).join('')
-  return `<button class="btn ${cls}" data-action="${action}"${data} ${off ? 'disabled' : ''}>${busy ? spinner + ' ' + esc(step || o.busy || 'Bitte warten…') : esc(label)}</button>`
+  return `<button class="btn ${cls}" data-action="${action}"${data} ${off ? 'disabled' : ''}>${busy ? spinner + ' ' + esc(step || o.busy || t('common.wait')) : esc(label)}</button>`
 }
 
 /** A text-style button. */
@@ -54,12 +55,12 @@ export function field (ui, key, label, { type = 'text', placeholder = '', mode =
  */
 export function page (title, body, { steps = null, at = 0, back = 'close-sheet', cls = '' } = {}) {
   const bar = steps
-    ? `<ol class="stepbar" aria-label="Schritt ${at + 1} von ${steps.length}">${steps.map((label, i) =>
+    ? `<ol class="stepbar" aria-label="${t('common.stepOf', { at: at + 1, n: steps.length })}">${steps.map((label, i) =>
         `<li class="${i < at ? 'done' : i === at ? 'now' : 'todo'}" ${i === at ? 'aria-current="step"' : ''}><span>${i < at ? '✓' : i + 1}</span>${esc(label)}</li>`).join('')}</ol>`
     : ''
   return `<section class="page ${cls}">
     <div class="page-top">
-      ${back ? `<button class="link back" data-action="${back}">← Zurück</button>` : '<span></span>'}
+      ${back ? `<button class="link back" data-action="${back}">${t('common.back')}</button>` : '<span></span>'}
     </div>
     ${bar}
     ${title ? `<h1 class="page-title">${esc(title)}</h1>` : ''}

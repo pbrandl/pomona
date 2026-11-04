@@ -6,7 +6,7 @@ import { changes } from '../ui/notify.js'
 const wallet = (usdt) => ({ state: 'unlocked', usdt, symbol: 'USDT' })
 const round = (over = {}) => ({
   address: '0x1',
-  title: 'Solawi',
+  title: 'Nordhafen',
   role: 'bidder',
   symbol: 'USDT',
   phase: 'bidding',
@@ -35,7 +35,7 @@ test('phase changes, invoices and news reach bidders', () => {
   assert.deepEqual(keys(changes(st(round()), st(round({ phase: 'failed', refundable: '1200' })))), ['failed'])
   const running = round({ phase: 'running', invoiceCount: 2 })
   assert.deepEqual(keys(changes(st(running), st({ ...running, invoiceCount: 3 }))), ['invoice-3'])
-  assert.deepEqual(keys(changes(st(round()), st(round({ news: [{ text: 'Hoffest!', at: 5 }] })))), ['news-5'])
+  assert.deepEqual(keys(changes(st(round()), st(round({ news: [{ text: 'Treffen!', at: 5 }] })))), ['news-5'])
   assert.deepEqual(keys(changes(st(round({ now: 0 })), st(round({ now: 99.5 * 86400 })))), ['soon'])
 })
 

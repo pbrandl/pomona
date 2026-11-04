@@ -98,7 +98,7 @@ export class P2PNode {
       }
       await new Promise((resolve) => setTimeout(resolve, 250))
     }
-    return fail('NO_PEERS', 'Runde nicht gefunden. Ist mindestens ein Teilnehmer online?')
+    return fail('NO_PEERS', 'noPeers')
   }
 
   get writable () {

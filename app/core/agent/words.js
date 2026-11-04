@@ -1,13 +1,12 @@
 /**
- * Tiny German formatting helpers for the assistant. Pure JS without Intl, so
+ * Tiny formatting helpers for the assistant and the worker; texts from i18n/. Pure JS without Intl, so
  * they behave the same in Bare (worker), Node (tests) and the browser (mock).
  * @module core/agent/words
  */
 import { plainDecimal } from '../decimal.js'
+import { t, raw } from '../../i18n/index.js'
 
-const MONTHS = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember']
-
-/** 1234.5 → "1.234,5" (max. 2 decimals) */
+/** 1234.5 → "1.234,5" (max. 2 decimals; same style in every language, like the input) */
 export function num (value) {
   const n = Number(value)
   if (!Number.isFinite(n)) return '0'
@@ -17,26 +16,24 @@ export function num (value) {
   return f ? `${grouped},${f}` : grouped
 }
 
-/** unix seconds → "12. November 2026" (UTC, stable across runtimes) */
-export function day (t) {
-  const d = new Date(t * 1000)
-  return `${d.getUTCDate()}. ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`
+/** unix seconds → "12. November 2026" / "12 de noviembre de 2026" (UTC, stable across runtimes) */
+export function day (time) {
+  const d = new Date(time * 1000)
+  return t('date.day', { d: d.getUTCDate(), month: raw('date.months')[d.getUTCMonth()], y: d.getUTCFullYear() })
 }
 
 /** "noch 12 Tage" / "noch 5 Stunden" / "vorbei" */
-export function until (t, now) {
-  const s = t - now
-  if (s <= 0) return 'vorbei'
-  if (s >= 2 * 86400) return `noch ${Math.floor(s / 86400)} Tage`
-  if (s >= 3600) return `noch ${Math.floor(s / 3600)} Stunden`
-  return `noch ${Math.max(1, Math.floor(s / 60))} Minuten`
+export function until (time, now) {
+  const s = time - now
+  if (s <= 0) return t('date.over')
+  if (s >= 2 * 86400) return t('date.days', { n: Math.floor(s / 86400) })
+  if (s >= 3600) return t('date.hours', { n: Math.floor(s / 3600) })
+  return t('date.minutes', { n: Math.max(1, Math.floor(s / 60)) })
 }
 
-/** "pro Monat" / "pro Woche" and the adjective */
+/** { unit, adj, plural, per } of the interval ("pro Monat", "monatlich", …) */
 export function per (intervalName) {
-  return intervalName === 'week'
-    ? { per: 'pro Woche', adj: 'wöchentlich', unit: 'Woche' }
-    : { per: 'pro Monat', adj: 'monatlich', unit: 'Monat' }
+  return raw(intervalName === 'week' ? 'interval.week' : 'interval.month')
 }
 
 /**

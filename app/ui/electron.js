@@ -6,6 +6,8 @@
  * Exposes `window.pomona = { call, on, copy, cameraAccess, pickModel, restart }`.
  * @module ui/electron
  */
+import { t } from '../i18n/index.js'
+
 const bridge = window.bridge
 const pending = new Map()
 const listeners = new Map()
@@ -32,7 +34,7 @@ bridge.onData((text) => {
 })
 
 bridge.onExit((code) => {
-  const error = new Error(`Der Hintergrunddienst wurde beendet (Code ${code}). Bitte Pomona neu starten.`)
+  const error = new Error(t('app.workerExit', { code }))
   for (const p of pending.values()) p.reject(error)
   pending.clear()
   emit('error', error.message)

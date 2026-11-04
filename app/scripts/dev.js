@@ -235,8 +235,8 @@ function listen (name, worker, token, port) {
     if (req.method !== 'GET') return res.writeHead(405, headers).end()
     const path = url.pathname === '/' ? '/index.html' : decodeURIComponent(url.pathname)
     const file = normalize(join(root, path))
-    // Only the page and the UI folder are served, never the core or the worker.
-    if (path !== '/index.html' && !file.startsWith(join(root, 'ui') + sep)) return res.writeHead(404, headers).end()
+    // Only the page, the UI folder and its texts (i18n/); never the core or the worker.
+    if (path !== '/index.html' && !file.startsWith(join(root, 'ui') + sep) && !file.startsWith(join(root, 'i18n') + sep)) return res.writeHead(404, headers).end()
     try {
       let body = await readFile(file)
       if (path === '/index.html') {

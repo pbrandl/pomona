@@ -195,6 +195,10 @@ a.btn { text-decoration: none; }
 .link:hover { color: var(--ink); }
 .link.danger:hover { color: var(--danger); }
 
+/* Language switch (views/language.js) */
+.lang-pick { justify-content: flex-start; gap: 10px; }
+.lang-pick > .link.on { color: var(--ink); font-weight: 600; text-decoration: none; }
+
 .pill {
   display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px;
   border-radius: 999px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; font-size: 13px;

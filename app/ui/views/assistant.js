@@ -5,6 +5,7 @@
  */
 import { esc } from '../format.js'
 import { spinner } from './parts.js'
+import { t } from '../../i18n/index.js'
 
 /** "Frag Pomona": a plain round speech bubble. */
 export const SPARK = `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -20,25 +21,25 @@ function manualCard (a, ui) {
   const problem = a.state !== 'error'
     ? ''
     : a.missing
-      ? '<p class="warn-text small">Noch nicht gefunden. Liegt die Datei noch in Downloads? Bitte in den Ordner oben verschieben und erneut prüfen.</p>'
+      ? `<p class="warn-text small">${t('assistant.notFound')}</p>`
       : `<p class="warn-text small">${esc(a.error)}</p>`
   return `<div class="card-inset stack">
-    <p><strong>Für freie Fragen</strong> braucht Pomona einmalig ein Sprachmodell (${esc(m.size)}). Es läuft dann offline: Deine Fragen verlassen das Gerät nicht.</p>
+    <p>${t('assistant.needModel', { size: esc(m.size) })}</p>
     <ol class="setup-steps">
       <li><span class="setup-n">1</span><div class="stack-sm">
-        <strong>Herunterladen</strong>
+        <strong>${t('assistant.download')}</strong>
         <a class="btn ghost small" href="${esc(m.url)}" target="_blank" rel="noopener noreferrer">${esc(m.file)} · ${esc(m.size)}</a>
       </div></li>
       <li><span class="setup-n">2</span><div class="stack-sm">
-        <strong>In diesen Ordner legen</strong>
-        <div class="setup-path"><span class="mono small">${esc(a.manual.dir)}</span><button class="link small" data-action="copy-models-dir">Kopieren</button>${ui?.canPickModel ? '<button class="link small" data-action="agent-pick">Ändern</button>' : ''}</div>
+        <strong>${t('assistant.putInFolder')}</strong>
+        <div class="setup-path"><span class="mono small">${esc(a.manual.dir)}</span><button class="link small" data-action="copy-models-dir">${t('assistant.copy')}</button>${ui?.canPickModel ? `<button class="link small" data-action="agent-pick">${t('assistant.change')}</button>` : ''}</div>
       </div></li>
       <li><span class="setup-n">3</span><div class="stack-sm">
-        <button class="btn accent block" data-action="agent-install" data-model="${esc(m.key)}">${a.missing ? 'Erneut prüfen' : 'Einrichten'}</button>
+        <button class="btn accent block" data-action="agent-install" data-model="${esc(m.key)}">${a.missing ? t('assistant.checkAgain') : t('assistant.setUp')}</button>
       </div></li>
     </ol>
     ${problem}
-    <p class="small muted">Die Vorschläge unten funktionieren auch ohne.</p>
+    <p class="small muted">${t('assistant.withoutModel')}</p>
   </div>`
 }
 
@@ -55,9 +56,9 @@ function bubble (m, i) {
   const cards = (m.actions || []).map((a, j) =>
     `<button class="action-card" data-action="agent-act" data-msg="${i}" data-act="${j}"><span>${esc(a.label)}</span><span class="chev">›</span></button>`).join('')
   const note = m.actions?.some((a) => a.type !== 'install' && a.type !== 'open' && a.type !== 'receipt')
-    ? '<p class="small muted">Vorbereitet. Bestätigen musst du selbst.</p>'
+    ? `<p class="small muted">${t('assistant.prepared')}</p>`
     : ''
-  const source = m.source === 'model' ? '<p class="tiny muted">Lokale KI · kann sich irren</p>' : ''
+  const source = m.source === 'model' ? `<p class="tiny muted">${t('assistant.localAi')}</p>` : ''
   return `<div class="msg bot${fresh}"><p>${esc(m.text)}</p>${cards ? `<div class="action-cards">${cards}</div>${note}` : ''}${source}</div>`
 }
 
@@ -73,18 +74,18 @@ export function chatBody (ui) {
   const thinking = isThinking(ui)
   let model = ''
   if (a?.state === 'downloading' || a?.state === 'loading') {
-    model = `<p class="model-line">${spinner}<span>Sprachmodell wird ${a.state === 'loading' ? 'vorbereitet' : `${a.manual ? 'geprüft' : 'geladen'} · ${Math.round((a.progress ?? 0) * 100)} %`}</span>${a.state === 'downloading' && !a.manual ? pick(ui, 'Hängt? Datei selbst wählen') : ''}</p>`
+    model = `<p class="model-line">${spinner}<span>${a.state === 'loading' ? t('assistant.preparing') : t(a.manual ? 'assistant.checking' : 'assistant.loading', { pct: Math.round((a.progress ?? 0) * 100) })}</span>${a.state === 'downloading' && !a.manual ? pick(ui, t('assistant.stuck')) : ''}</p>`
   } else if (a?.manual && (a.state === 'none' || a.state === 'error')) {
     model = manualCard(a, ui) // the manual download needs its three steps
   } else if (a?.state === 'none' || a?.state === 'error') {
     const small = (a.models || []).find((m) => m.key === 'small')
-    model = `<p class="model-line">${a.state === 'error' ? `<span class="warn-text">${esc(a.error)}</span>` : '<span>Für freie Fragen läuft ein Sprachmodell lokal auf deinem Gerät.</span>'}
-      <button class="link" data-action="agent-install" data-model="small">Laden${small ? ` (${esc(small.size)})` : ''}</button>${pick(ui, 'Vorhandene Datei wählen')}</p>`
+    model = `<p class="model-line">${a.state === 'error' ? `<span class="warn-text">${esc(a.error)}</span>` : `<span>${t('assistant.local')}</span>`}
+      <button class="link" data-action="agent-install" data-model="small">${t('assistant.load')}${small ? ` (${esc(small.size)})` : ''}</button>${pick(ui, t('assistant.pick'))}</p>`
   }
   return `${model}
     <div class="chat" id="chat">
       ${ui.chat.map(bubble).join('')}
-      ${thinking ? '<div class="msg bot typing" aria-label="Pomona antwortet"><i></i><i></i><i></i></div>' : ''}
+      ${thinking ? `<div class="msg bot typing" aria-label="${t('assistant.typing')}"><i></i><i></i><i></i></div>` : ''}
     </div>`
 }
 
@@ -101,8 +102,8 @@ export function homeChips (ui) {
 export function chatInput (ui, placeholder) {
   const thinking = isThinking(ui)
   return `<div class="amount ask">
-      <input id="ask" data-draft="ask" placeholder="${esc(placeholder)}" value="${esc(ui.draft.ask)}" autocomplete="off" enterkeyhint="send" aria-label="Frag Pomona">
-      <button class="btn accent small" data-action="agent-send" ${thinking ? 'disabled' : ''}>Senden</button>
+      <input id="ask" data-draft="ask" placeholder="${esc(placeholder)}" value="${esc(ui.draft.ask)}" autocomplete="off" enterkeyhint="send" aria-label="${t('assistant.title')}">
+      <button class="btn accent small" data-action="agent-send" ${thinking ? 'disabled' : ''}>${t('wallet.send')}</button>
     </div>`
 }
 
@@ -113,16 +114,16 @@ export function chatInput (ui, placeholder) {
  */
 export function assistantPage (ui) {
   const a = ui.status.assistant
-  const hello = ui.chat.length ? '' : '<div class="msg bot"><p>Hallo! Ich erkläre dir die Runde und bereite Schritte für dich vor. Bestätigen musst du immer selbst. Was möchtest du wissen?</p></div>'
+  const hello = ui.chat.length ? '' : `<div class="msg bot"><p>${t('assistant.hello')}</p></div>`
   return `<section class="chat-page">
-    <div class="page-top"><button class="link back" data-action="close-sheet">← Zurück</button><!--right-->${ui.chat.length ? '<button class="link small" data-action="agent-reset">Neuer Chat</button>' : ''}</div>
+    <div class="page-top"><button class="link back" data-action="close-sheet">${t('common.back')}</button><!--right-->${ui.chat.length ? `<button class="link small" data-action="agent-reset">${t('assistant.newChat')}</button>` : ''}</div>
     <div class="chat-scroll" id="chat-scroll">
       ${hello}
       ${chatBody(ui)}
     </div>
     <div class="chat-foot">
       ${homeChips(ui)}
-      ${chatInput(ui, a?.state === 'ready' || a?.state === 'installed' ? 'Frag etwas…' : 'Frag etwas oder sag „Biete 100 im Monat“')}
+      ${chatInput(ui, a?.state === 'ready' || a?.state === 'installed' ? t('assistant.askShort') : t('assistant.askHint'))}
     </div>
   </section>`
 }

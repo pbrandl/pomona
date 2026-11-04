@@ -16,7 +16,7 @@ const MONTH = 30 * 86400
 function status (over = {}, roundOver = {}) {
   const round = {
     role: 'bidder',
-    title: 'Solawi Lindenhof',
+    title: 'Projekt Nordhafen',
     symbol: 'USDT',
     target: '4000',
     total: '3250',
@@ -252,10 +252,30 @@ test('tools map to validated proposals (1-based installments, organizer-only new
   assert.deepEqual(receipt.action, { type: 'receipt', index: 1, label: 'Beleg für Rate 2 zeigen' })
   const notPaid = await runTool({ name: 'show_receipt', arguments: { installment: 9 } }, { status: running(), quoteBid })
   assert.equal(notPaid.action, undefined)
-  const news = await runTool({ name: 'draft_news', arguments: { text: 'Hoffest am Samstag!' } }, { status: running('organizer'), quoteBid })
+  const news = await runTool({ name: 'draft_news', arguments: { text: 'Treffen am Samstag!' } }, { status: running('organizer'), quoteBid })
   assert.equal(news.action.type, 'news')
   const newsBidder = await runTool({ name: 'draft_news', arguments: { text: 'Spam' } }, { status: running(), quoteBid })
   assert.equal(newsBidder.result.ok, false)
   const badAmount = await runTool({ name: 'calculate_bid', arguments: { amount: 'viel' } }, { status: status(), quoteBid })
   assert.equal(badAmount.result.ok, false)
+})
+
+test('assistant in Spanish: commands, topics, labels and prompt', async () => {
+  const { setLanguage } = await import('../i18n/index.js')
+  setLanguage('es')
+  try {
+    const bid = matchIntent('Quiero comprometer 120 al mes', status())
+    assert.equal(bid.actions[0].type, 'bid')
+    assert.equal(bid.actions[0].amount, '120')
+    assert.match(bid.text, /compromiso de 120/)
+    assert.equal(matchIntent('quiero recargar mi cuenta', status()).actions[0].page, 'fund')
+    assert.equal(matchTopic('¿cuánto cuesta esto?'), 'fees')
+    assert.equal(matchTopic('¿está seguro mi dinero?'), 'safety')
+    assert.match(validateAction({ type: 'withdraw' }, status({}, { myPledge: '50' })).label, /Retirar compromiso/)
+    assert.match(answerTopic('how', status()).text, /cuotas/)
+    assert.match(systemPrompt(status()), /Responde siempre en español/)
+    assert.match(TOOLS[0].description, /compromiso/)
+  } finally {
+    setLanguage('de')
+  }
 })

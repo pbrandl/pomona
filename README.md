@@ -2,7 +2,7 @@
 
 **Eine dezentrale Bietrunde auf Tethers Stack, nur in USDT.**
 
-Jemand startet eine Bietrunde, zum Beispiel für eine Solawi, und legt fest: das Ziel pro Rate, ob wöchentlich oder monatlich abgerechnet wird, wie oft, und **wie bezahlt wird**. Dann teilt er einen Link. Wer mitmacht, bietet einen Betrag pro Rate.
+Jemand startet eine Bietrunde für ein Projekt und legt fest: das Ziel pro Rate, ob wöchentlich oder monatlich abgerechnet wird, wie oft, und **wie bezahlt wird**. Dann teilt er einen Link. Wer mitmacht, bietet einen Betrag pro Rate.
 
 **Per Rechnung** (Standard, gut für kleine Projekte): Bieten kostet nichts. Ist das Ziel erreicht, kommt jede Woche bzw. jeden Monat automatisch eine Rechnung. Jede bietende Person bezahlt sie mit einer Signatur aus ihrem Konto direkt an den Organisator und bekommt dafür einen Beleg. Ohne Zahlung gibt es keinen Beleg. Der Organisator sieht, wer bezahlt hat.
 
@@ -111,7 +111,9 @@ Szenarien: `onboarding`, `locked`, `start`, `bidder`, `organizer`, `invoice`, `r
 - [ ] Sepolia: Bundler und Paymaster eintragen und den kompletten Ablauf testen
 - [ ] Automatische Sperre bei Inaktivität, stärkere Argon2id-Parameter
 - [x] Assistent „Frag Pomona“ auf QVAC (lokal, nur vorbereitend)
-- [ ] Assistent mit echtem Modell auf einem Desktop testen (Qualität auf Deutsch, Tool-Aufrufe)
+- [x] Deutsch und Spanisch, erweiterbar (`app/i18n/`, siehe [ARCHITECTURE.md](docs/ARCHITECTURE.md#sprachen))
+- [ ] Assistent mit echtem Modell auf einem Desktop testen (Qualität auf Deutsch und Spanisch, Tool-Aufrufe)
+- [ ] Spanische Texte von Muttersprachlern gegenlesen lassen
 - [ ] Telegram-Bot im Worker des Organisators
 - [ ] Externes Audit vor dem Mainnet
 

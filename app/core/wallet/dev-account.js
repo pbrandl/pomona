@@ -10,6 +10,7 @@ import WalletManagerEvm from '@tetherto/wdk-wallet-evm'
 import { Wallet, Contract, parseEther } from 'ethers'
 import { translate } from './smart-account.js'
 import { PomonaError } from '../errors.js'
+import { t } from '../../i18n/index.js'
 
 /** Hardhat's first default account. Public knowledge; worthless outside a dev chain. */
 export const HARDHAT_DEV_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'
@@ -65,7 +66,7 @@ export class DevAccount {
       }
       onStep?.('confirm')
       const r = await this.provider.waitForTransaction(hash)
-      if (!r || r.status !== 1) throw new PomonaError('TX_FAILED', 'Die Transaktion ist fehlgeschlagen.')
+      if (!r || r.status !== 1) throw new PomonaError('TX_FAILED', t('err.txFailed'))
       last = hash
     }
     return { hash: last }

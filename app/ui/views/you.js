@@ -6,6 +6,7 @@
  */
 import { esc, fmt, num, per, date, dayTime } from '../format.js'
 import { btn, link } from './parts.js'
+import { t } from '../../i18n/index.js'
 
 /**
  * @param {object} ui
@@ -25,9 +26,9 @@ function bidderCard (ui, r) {
   const pledge = num(r.myPledge)
   const mine = r.myInvoices || []
   if (num(r.refundable) > 0) {
-    return card('act', `${fmt(r.refundable)} ${sym} warten auf dich`,
-      r.phase === 'failed' ? 'Das Ziel wurde nicht erreicht.' : 'Diese Raten werden nicht mehr abgerechnet.',
-      btn(ui, 'refund', 'Zurückholen', 'accent', { busy: 'Wird überwiesen…' }))
+    return card('act', t('you.waiting', { amount: fmt(r.refundable), symbol: sym }),
+      t(r.phase === 'failed' ? 'you.failed' : 'you.notBilled'),
+      btn(ui, 'refund', t('you.refund'), 'accent', { busy: t('fund.faucetBusy') }))
   }
   if (r.phase === 'bidding') return yourBid(ui, r, p)
   if (pledge > 0 && r.openInvoices > 0) {
@@ -35,24 +36,24 @@ function bidderCard (ui, r) {
     const self = r.role === 'organizer' // own bid: only recorded, nothing is transferred
     const lacking = !self && num(s.wallet.usdt) < num(r.openAmount)
     return card('act',
-      open.length === 1 ? `Rechnung ${open[0].index + 1}: ${fmt(r.openAmount)} ${sym}` : `${open.length} offene Rechnungen: ${fmt(r.openAmount)} ${sym}`,
+      open.length === 1 ? t('you.invoice', { i: open[0].index + 1, amount: fmt(r.openAmount), symbol: sym }) : t('you.openInvoices', { n: open.length, amount: fmt(r.openAmount), symbol: sym }),
       self
-        ? 'Dein eigenes Gebot: Es wird nichts überwiesen, nur als bezahlt vermerkt. Dafür gibt es den Beleg.'
+        ? t('you.selfNote')
         : lacking
-          ? `Dir fehlen ${fmt(num(r.openAmount) - num(s.wallet.usdt))} ${sym}. Lade dein Konto auf, dann bezahlst du und bekommst den Beleg.`
-          : 'Bezahlen und Beleg erhalten. Der Betrag geht direkt an den Organisator.',
-      lacking ? '<button class="btn accent" data-action="open-fund">Aufladen</button>' : `<button class="btn accent" data-action="open-pay">${self ? 'Als bezahlt vermerken' : 'Bezahlen'}</button>`)
+          ? t('you.lacking', { amount: fmt(num(r.openAmount) - num(s.wallet.usdt)), symbol: sym })
+          : t('you.payNote'),
+      lacking ? `<button class="btn accent" data-action="open-fund">${t('wallet.fund')}</button>` : `<button class="btn accent" data-action="open-pay">${self ? t('you.markPaid') : t('you.pay')}</button>`)
   }
   if (pledge > 0) {
     const paid = mine.filter((x) => x.status === 'paid')
-    const nextText = r.mode === 'invoice' ? `Nächste Rechnung am ${esc(date(r.nextInvoiceAt))}.` : `Nächste ab ${esc(date(r.nextInvoiceAt))}.`
-    return card('ok', `Du bist dabei: ${fmt(r.myPledge)} ${sym} ${p.per}`,
+    const nextText = t(r.mode === 'invoice' ? 'you.nextInvoice' : 'you.nextFrom', { day: esc(date(r.nextInvoiceAt)) })
+    return card('ok', t('you.in', { amount: fmt(r.myPledge), symbol: sym, per: p.per }),
       r.phase === 'running' && r.invoiceCount < r.installments
-        ? `${paid.length} von ${r.installments} Raten bezahlt. ${nextText}`
-        : `${paid.length} ${paid.length === 1 ? 'Rate' : 'Raten'} bezahlt.`,
-      paid.length ? `<button class="btn ghost" data-action="show-receipt" data-index="${paid.at(-1).index}">Letzten Beleg zeigen</button>` : '')
+        ? t('you.paidOf', { paid: paid.length, n: r.installments }) + ' ' + nextText
+        : t('you.paid', { n: paid.length }),
+      paid.length ? `<button class="btn ghost" data-action="show-receipt" data-index="${paid.at(-1).index}">${t('you.lastReceipt')}</button>` : '')
   }
-  return card('', r.phase === 'failed' ? 'Ziel nicht erreicht' : 'Du hast nicht geboten', r.phase === 'failed' ? 'Es gibt keine Raten.' : 'Die Bietphase ist vorbei.')
+  return card('', r.phase === 'failed' ? t('round.phase.failed') : t('you.notBid'), r.phase === 'failed' ? t('you.noInstallments') : t('you.biddingOver'))
 }
 
 /** The organizer's project page: the whole round and what to do for it. Own bids live on the bid page. */
@@ -61,19 +62,20 @@ function projectCard (ui, r) {
   if (r.phase === 'bidding') return '' // progress and deadline are in the header and the ring
   if (r.mode === 'invoice' && (r.phase === 'running' || r.phase === 'completed')) {
     const last = (r.invoices || []).filter((x) => x.status === 'issued').at(-1)
-    return card('', last ? `Rechnung ${last.index + 1}: ${last.paidCount} von ${r.bidders} bezahlt` : 'Ratenzahlung läuft',
+    return card('', last ? t('you.invoicePaidBy', { i: last.index + 1, paid: last.paidCount, n: r.bidders }) : t('you.running'),
       r.phase === 'running' && r.invoiceCount < r.installments
-        ? `Rechnungen gehen automatisch raus. Nächste am ${esc(date(r.nextInvoiceAt))}.`
-        : `Alle ${r.installments} Rechnungen sind verschickt.`,
-      last ? `<button class="btn ghost" data-action="show-invoice" data-index="${last.index}">Wer hat bezahlt?</button>` : '')
+        ? t('you.autoInvoices', { day: esc(date(r.nextInvoiceAt)) })
+        : t('you.allSent', { n: r.installments }),
+      last ? `<button class="btn ghost" data-action="show-invoice" data-index="${last.index}">${t('you.whoPaid')}</button>` : '')
   }
   if (r.phase === 'running' && r.canInvoice) {
-    return card('act', `Rechnung ${r.invoiceCount + 1} ist fällig`, `${fmt(r.total)} ${sym} gehen an dein Konto. Alle Bietenden bekommen einen Beleg.`,
-      btn(ui, 'invoice', 'Rechnung stellen', 'accent', { busy: 'Wird abgerechnet…' }))
+    return card('act', t('you.due', { i: r.invoiceCount + 1 }), t('you.dueNote', { amount: fmt(r.total), symbol: sym }),
+      btn(ui, 'invoice', t('you.issue'), 'accent', { busy: t('you.issuing') }))
   }
-  if (r.phase === 'running') return card('', `Nächste Rechnung ab ${esc(date(r.nextInvoiceAt))}`, `${r.invoiceCount} von ${r.installments} Raten abgerechnet.`)
-  if (r.phase === 'completed') return card('', 'Runde abgeschlossen', `${r.invoiceCount} von ${r.installments} Raten abgerechnet.`)
-  return card('', 'Ziel nicht erreicht', 'Die Bietenden holen ihr Geld zurück.')
+  const billed = t('you.billed', { done: r.invoiceCount, n: r.installments })
+  if (r.phase === 'running') return card('', t('you.nextAt', { day: esc(date(r.nextInvoiceAt)) }), billed)
+  if (r.phase === 'completed') return card('', t('you.completed'), billed)
+  return card('', t('round.phase.failed'), t('you.refunding'))
 }
 
 function card (tone, title, sub, actions = '') {
@@ -92,17 +94,17 @@ function yourBid (ui, r, p) {
   const pledge = num(r.myPledge)
   const payg = r.mode === 'invoice'
   const note = pledge > 0
-    ? (payg ? `Bezahlt wird mit jeder Rechnung. Änderbar bis ${esc(dayTime(r.biddingEnd))}.` : `${fmt(r.myDeposit)} ${sym} liegen im Treuhandkonto. Änderbar bis ${esc(dayTime(r.biddingEnd))}.`)
-    : r.guide ? `Richtwert ${fmt(r.guide)} ${sym} ${p.per}. Gib, was du kannst.` : `${r.installments} Raten, ${esc(p.adj)}.`
+    ? (payg ? t('you.bidInvoice', { end: esc(dayTime(r.biddingEnd)) }) : t('you.bidDeposit', { amount: fmt(r.myDeposit), symbol: sym, end: esc(dayTime(r.biddingEnd)) }))
+    : r.guide ? t('you.guide', { amount: fmt(r.guide), symbol: sym, per: p.per }) : t('round.installmentsTitle', { n: r.installments, adj: esc(p.adj) }) + '.'
   return `<div class="you bid-box ${pledge > 0 ? 'ok' : 'act'}" role="status">
     <div class="bid-box-main">
-      <p class="small muted bid-box-label">Dein Gebot</p>
+      <p class="small muted bid-box-label">${t('you.yourBid')}</p>
       <p class="bid-box-amount"><strong class="${pledge > 0 ? '' : 'none'}">${fmt(pledge)}</strong> ${sym} <span>${p.per}</span></p>
       <p class="small muted">${note}</p>
     </div>
     <div class="you-actions">
-      <button class="btn accent" data-action="start-bid">${pledge > 0 ? 'Erhöhen' : 'Bieten'}</button>
-      ${pledge > 0 ? link(ui, 'withdraw', ui.pending === 'withdraw' ? 'Wird zurückgezogen…' : 'Zurückziehen') : ''}
+      <button class="btn accent" data-action="start-bid">${pledge > 0 ? t('you.raise') : t('you.bid')}</button>
+      ${pledge > 0 ? link(ui, 'withdraw', ui.pending === 'withdraw' ? t('you.withdrawing') : t('you.withdraw')) : ''}
     </div>
   </div>`
 }

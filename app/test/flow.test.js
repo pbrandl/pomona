@@ -58,7 +58,7 @@ test('monthly round: bid via Pears link, invoice per month, receipts, terminate,
   const bob = await env.funded()
 
   const { link } = await farm.createRound({
-    title: 'Solawi Lindenhof 2027',
+    title: 'Projekt Nordhafen 2027',
     target: '150',
     minBid: '10',
     interval: 'month',
@@ -75,7 +75,7 @@ test('monthly round: bid via Pears link, invoice per month, receipts, terminate,
 
   await alice.join({ link })
   s = await alice.status()
-  assert.equal(s.round.title, 'Solawi Lindenhof 2027')
+  assert.equal(s.round.title, 'Projekt Nordhafen 2027')
   assert.equal(s.round.verified, true)
   assert.equal(await eventually(async () => (await alice.status()).round.news[0]?.text), 'Willkommen!')
 
@@ -83,7 +83,7 @@ test('monthly round: bid via Pears link, invoice per month, receipts, terminate,
   await farm.p2p.swarm.leave(farm.p2p.manifest.core.discoveryKey)
   for (const c of farm.p2p.swarm.connections) c.destroy()
   await bob.join({ link })
-  assert.equal((await bob.status()).round.title, 'Solawi Lindenhof 2027')
+  assert.equal((await bob.status()).round.title, 'Projekt Nordhafen 2027')
 
   await alice.bid({ amount: '100' })
   s = await alice.status()
@@ -123,7 +123,7 @@ test('monthly round: bid via Pears link, invoice per month, receipts, terminate,
   assert.equal(v.valid, true)
   assert.equal(v.amount, '100')
   assert.equal(v.installment, 1)
-  assert.equal(v.title, 'Solawi Lindenhof 2027')
+  assert.equal(v.title, 'Projekt Nordhafen 2027')
   await assert.rejects(alice.receipt({ index: 1 }), /keinen Beleg/)
   // Tampering with a real receipt breaks its signature.
   const forged = encodeReceipt({ ...decodeReceipt(code), index: 1 })
@@ -325,7 +325,7 @@ test('invoice mode: bid without deposit, invoices arrive by themselves, pay with
   const poor = await env.make()
   await poor.createWallet({ password: PASSWORD }) // no USDT
 
-  const { link } = await farm.createRound({ title: 'Kleine Solawi', mode: 'invoice', target: '100', interval: 'week', installments: 3, biddingDays: 2, inviteOnly: true })
+  const { link } = await farm.createRound({ title: 'Kleines Projekt', mode: 'invoice', target: '100', interval: 'week', installments: 3, biddingDays: 2, inviteOnly: true })
   await alice.join({ link })
   await poor.join({ link })
 

@@ -18,8 +18,10 @@
  * @module core/agent/actions
  */
 import { num, normalizeAmount, per } from './words.js'
+import { t } from '../../i18n/index.js'
 
-const PAGES = { fund: 'Konto aufladen', wallet: 'Konto öffnen', scan: 'Beleg prüfen', join: 'Runde beitreten', create: 'Runde starten' }
+const PAGES = ['fund', 'wallet', 'scan', 'join', 'create']
+const label = (key, params) => t('agent.action.' + key, params)
 
 /**
  * @param {object} a - proposed action
@@ -38,39 +40,39 @@ export function validateAction (a, s) {
       const amount = normalizeAmount(a.amount)
       if (!amount) return null
       const p = per(r.intervalName)
-      return { type: 'bid', amount, label: `Gebot prüfen: ${num(amount)} ${r.symbol} ${p.per}` }
+      return { type: 'bid', amount, label: label('bid', { amount: num(amount), symbol: r.symbol, per: p.per }) }
     }
     case 'open': {
-      if (!Object.hasOwn(PAGES, a.page)) return null
+      if (!PAGES.includes(a.page)) return null
       if ((a.page === 'join' || a.page === 'create') && r) return null
       if (a.page === 'scan' && !organizer) return null
-      return { type: 'open', page: a.page, label: PAGES[a.page] }
+      return { type: 'open', page: a.page, label: label('page.' + a.page) }
     }
     case 'receipt': {
       const index = Number(a.index)
       const inv = r?.myInvoices?.[index]
       if (!Number.isInteger(index) || !inv || inv.status !== 'paid' || !inv.mine) return null
-      return { type: 'receipt', index, label: `Beleg für Rate ${index + 1} zeigen` }
+      return { type: 'receipt', index, label: label('receipt', { n: index + 1 }) }
     }
     case 'invoice':
       if (!organizer || !r.canInvoice) return null
-      return { type: 'invoice', label: `Rechnung ${r.invoiceCount + 1} stellen` }
+      return { type: 'invoice', label: label('invoice', { n: r.invoiceCount + 1 }) }
     case 'pay':
       if (!r || r.mode !== 'invoice' || !(r.openInvoices > 0)) return null
-      return { type: 'pay', label: `Rechnung bezahlen: ${num(r.openAmount)} ${r.symbol}` }
+      return { type: 'pay', label: label('pay', { amount: num(r.openAmount), symbol: r.symbol }) }
     case 'withdraw':
       if (!r || r.phase !== 'bidding' || !(Number(r.myPledge) > 0)) return null
-      return { type: 'withdraw', label: 'Gebot zurückziehen' }
+      return { type: 'withdraw', label: label('withdraw') }
     case 'refund':
       if (!r || !(Number(r.refundable) > 0)) return null
-      return { type: 'refund', label: `${num(r.refundable)} ${r.symbol} zurückholen` }
+      return { type: 'refund', label: label('refund', { amount: num(r.refundable), symbol: r.symbol }) }
     case 'news': {
       const text = String(a.text ?? '').trim().slice(0, 1000)
       if (!organizer || !text) return null
-      return { type: 'news', text, label: 'Neuigkeit ansehen und senden' }
+      return { type: 'news', text, label: label('news') }
     }
     case 'install':
-      return { type: 'install', label: 'Assistent einrichten' }
+      return { type: 'install', label: label('install') }
     default:
       return null
   }

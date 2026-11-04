@@ -99,7 +99,7 @@ Die UI hält keinen eigenen Geschäftszustand. Bei jedem `change`-Event des Work
 ## Konventionen
 
 - ES-Module, JavaScript mit JSDoc-Typen, Stil `standard` (`npm run lint`).
-- Fehler, die der Nutzer sieht, sind `PomonaError(code, message)` mit stabilem Code.
+- Fehler, die der Nutzer sieht, sind `PomonaError` mit stabilem Code; `fail(code, key, params)` holt den Text `err.<key>` in der eingestellten Sprache.
 - Beträge sind im Kern immer `bigint` in Basiseinheiten. Strings gibt es nur an der RPC-Grenze.
 - Jede Geschäftsregel steht genau einmal im Contract. `schedule.js` spiegelt sie nur für die Anzeige.
 - Tests: `contracts/test` (Contract), `app/test/unit.test.js` (ohne Netz), `app/test/flow.test.js` (End-to-End), `app/test/bare.test.js` (Bare).
@@ -164,7 +164,18 @@ Eine offene Seite ersetzt die Rundenansicht (`ui.sheet`). Ihr „← Zurück“ 
 - **Ein Weg für jede Seite:** `page()` in `ui/views/parts.js`; neue Seiten in `SHEETS` (`ui/app.js`) eintragen, Knöpfe bekommen ein `data-action`, die Aktion steht in `actions`.
 - **Neuzeichnen:** `render()` baut das HTML neu und gleicht es mit Idiomorph ab. Unveränderte Knoten bleiben erhalten, so behält ein Feld den Fokus und die Handy-Tastatur bleibt offen. Folge: Listener an Elementen innerhalb von `#app` nur einmal binden (`once()` in `ui/app.js`), sonst häufen sie sich bei jedem Statusupdate.
 - **Styles:** `ui/styles.css` ist nach Bereichen der Oberfläche gegliedert (Tokens, Basis, Kopfzeile und Seiten, Bedienelemente, Runde, Bieten, Bezahlen, Konto, Assistent, Startseite). Jeder Selektor steht einmal; Handy-Varianten im Block seines Abschnitts. Ändern statt anhängen.
-- **Grenze Renderer/Kern:** Die Oberfläche lädt keinen Kern-Code (der Dev-Server liefert nur `ui/` aus). Kleine Helfer wie das Lesen deutscher Beträge gibt es deshalb zweimal: `core/decimal.js` und `ui/format.js` `num()` (nur für Vorschauen).
+- **Grenze Renderer/Kern:** Die Oberfläche lädt keinen Kern-Code (der Dev-Server liefert nur `ui/` und `i18n/` aus). Kleine Helfer wie das Lesen deutscher Beträge gibt es deshalb zweimal: `core/decimal.js` und `ui/format.js` `num()` (nur für Vorschauen).
+- **Keine Texte im Code:** Alles, was Menschen lesen, kommt über `t('bereich.schlüssel')` aus `i18n/` (siehe „Sprachen“).
+
+## Sprachen
+
+Deutsch und Spanisch. Die Texte stehen in `app/i18n/<sprache>/`, eine Datei pro Bereich: `core.js` (Fehler, Belegprüfung, Netzwerke, Datum), `agent.js` (Assistent: Antworten, Befehlsmuster, Prompt, Werkzeuge), `ui.js` (Oberfläche). Deutsch ist die Referenz und der Rückfall für fehlende Schlüssel.
+
+- **Benutzen:** `t('wallet.title')`, mit Werten `t('bid.missing', { amount, symbol })`. Mehrzahl: `{ one, other }`, gewählt über `n`. Listen (Schritte, Monate, Stichwörter) mit `raw()`. Werte von außen (Titel, Adressen) escaped die Ansicht vor dem Einsetzen; die Katalogtexte selbst dürfen einfaches Markup (`<strong>`) enthalten.
+- **Auswahl:** gespeicherte Wahl (`localStorage` `pomona.lang`), sonst die Systemsprache, sonst Deutsch. Umschalten auf der Kontoseite und beim ersten Start. Die Oberfläche meldet die Sprache per RPC `setLanguage` an den Worker; der schreibt Fehler und Assistenten-Antworten dann in derselben Sprache.
+- **Zahlen** schreibt Pomona in jeder Sprache gleich (`1.234,5`), passend zur Eingabe. Datumsangaben folgen der Sprache.
+- **Begriffe Spanisch:** Runde = *ronda (de financiación)*, Gebot = *compromiso*, bieten = *comprometerse*, Bietphase = *fase de compromisos*, Rate = *cuota*, Rechnung = *factura*, Beleg = *comprobante*, Treuhandkonto = *cuenta de garantía*, Notfall-Wörter = *palabras de recuperación*; Anrede *tú*, ohne Landesvarianten.
+- **Neue Sprache:** `i18n/de/` nach `i18n/xx/` kopieren, Werte übersetzen (Schlüssel und `{platzhalter}` bleiben), in `i18n/index.js` unter `LANGUAGES` eintragen. Die Befehlsmuster (`agent.match`) und Stichwörter (`agent.topic.*.keywords`) sind sprachabhängig und brauchen eigene Wörter. `npm test` (`test/i18n.test.js`) meldet fehlende oder überzählige Schlüssel und abweichende Platzhalter.
 
 ## Assistent „Frag Pomona“ (QVAC)
 

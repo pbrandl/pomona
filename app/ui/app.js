@@ -15,6 +15,7 @@
  * @module ui/app
  */
 import { esc, short, fmt, isoDay, endOfDay, num } from './format.js'
+import { t, setLanguage, language, supported } from '../i18n/index.js'
 import { PEAR } from './views/parts.js'
 import { onboarding, locked, createWalletSheet, restoreSheet, revealSheet, seedSheet } from './views/onboarding.js'
 import { start, createPage, joinPage, createStepError } from './views/start.js'
@@ -125,15 +126,15 @@ function topbar (nav = '') {
   // The chat button goes inside the chat.
   const overlay = !!ui.sheet || !!ui.homeChat
   const [navLeft, navRight = ''] = nav.split('<!--right-->')
-  const ask = onHome || ui.sheet === 'assistant' ? '' : `<button class="pill ask-pill" data-action="open-assistant" title="Frag Pomona">${SPARK}<span>Frag Pomona</span></button>`
+  const ask = onHome || ui.sheet === 'assistant' ? '' : `<button class="pill ask-pill" data-action="open-assistant" title="${t('assistant.title')}">${SPARK}<span>${t('assistant.title')}</span></button>`
   // "Frag Pomona" is there from the first start on, also before a wallet exists.
   const right = w?.state === 'unlocked'
-    ? `<div class="bar-right">${navRight}${ask}<button class="pill" data-action="open-sheet" data-sheet="wallet"><span class="dot ${ui.status.peers > 0 ? 'on' : ''}" title="${ui.status.peers} Peers"></span>${fmt(w.usdt)} ${esc(w.symbol)}<span class="muted mono">${short(w.address)}</span></button></div>`
+    ? `<div class="bar-right">${navRight}${ask}<button class="pill" data-action="open-sheet" data-sheet="wallet"><span class="dot ${ui.status.peers > 0 ? 'on' : ''}" title="${t('wallet.peers', { n: ui.status.peers })}"></span>${fmt(w.usdt)} ${esc(w.symbol)}<span class="muted mono">${short(w.address)}</span></button></div>`
     : ui.status ? `<div class="bar-right">${navRight}${ask}</div>` : ''
   const update = ui.update
-    ? `<div class="update-bar" role="status"><span>Neue Version von Pomona ist bereit.</span><button class="btn accent small" data-action="restart" ${ui.status?.busy ? 'disabled title="Nach der laufenden Transaktion"' : ''}>Neu starten</button></div>`
+    ? `<div class="update-bar" role="status"><span>${t('app.update')}</span><button class="btn accent small" data-action="restart" ${ui.status?.busy ? `disabled title="${t('app.afterTx')}"` : ''}>${t('app.restart')}</button></div>`
     : ''
-  const left = overlay ? `<div class="bar-left">${navLeft}</div>` : `<button class="brand" data-action="go-home" aria-label="Pomona, zum Start">${PEAR}Pomona</button>`
+  const left = overlay ? `<div class="bar-left">${navLeft}</div>` : `<button class="brand" data-action="go-home" aria-label="${t('app.home')}">${PEAR}Pomona</button>`
   const empty = overlay && !/<button/.test(left + right)
   return `${update}${empty ? '' : `<header class="bar">${left}${right}</header>`}`
 }
@@ -512,7 +513,7 @@ const actions = {
     stopScanner()
   },
   async restart () {
-    if (ui.status?.busy) throw new Error('Bitte warten, bis die Transaktion bestätigt ist.')
+    if (ui.status?.busy) throw new Error(t('app.waitTx'))
     await window.pomona.restart()
   },
   'open-create': () => { ui.createStep = 0; ui.sheet = 'create' },
@@ -521,6 +522,13 @@ const actions = {
   'open-assistant': () => { ui.sheet = 'assistant'; chatSeen = ui.chat.length; setTimeout(scrollChat) },
   'home-chat-close': () => { document.activeElement?.blur?.(); ui.homeChat = false },
   /** The logo always leads back to the start view (closes pages and the chat). */
+  /** Language switch (Konto page, first start): UI at once, worker for its messages. */
+  async 'set-language' (el) {
+    const lang = setLanguage(el.dataset.lang)
+    try { window.localStorage.setItem(LANG_KEY, lang) } catch {}
+    document.documentElement.lang = lang
+    await call('setLanguage', { lang })
+  },
   'go-home': () => {
     document.activeElement?.blur?.()
     ui.homeChat = false
@@ -627,7 +635,7 @@ const actions = {
 
   // wallet
   async 'create-wallet' () {
-    if (ui.draft.password !== ui.draft.password2) throw new Error('Die Passwörter stimmen nicht überein.')
+    if (ui.draft.password !== ui.draft.password2) throw new Error(t('app.passwordMismatch'))
     const { seed } = await run('createWallet', { password: ui.draft.password })
     clearPasswords()
     ui.seed = seed
@@ -639,7 +647,7 @@ const actions = {
     ui.draft.restore = ''
     clearPasswords()
     ui.sheet = null
-    toast('Wallet wiederhergestellt')
+    toast(t('app.restored'))
   },
   async unlock () {
     await run('unlock', { password: ui.draft.password })
@@ -667,16 +675,16 @@ const actions = {
   },
   async faucet () {
     await run('faucet')
-    toast('Testguthaben ist da')
+    toast(t('app.faucet'))
   },
   async send () {
-    if (!window.confirm(`${ui.draft.sendAmount} USDT an ${ui.draft.sendTo} senden?`)) return
+    if (!window.confirm(t('app.confirmSend', { amount: ui.draft.sendAmount, to: ui.draft.sendTo }))) return
     const password = ui.draft.sendPassword
     ui.draft.sendPassword = ''
     await run('sendUsdt', { to: ui.draft.sendTo.trim(), amount: ui.draft.sendAmount, password })
     ui.draft.sendTo = ''
     ui.draft.sendAmount = ''
-    toast('Gesendet')
+    toast(t('app.sent'))
   },
 
   // round
@@ -698,7 +706,7 @@ const actions = {
     ui.invite = await call('invite')
     ui.sheet = null
     ui.createStep = 0
-    toast('Runde gestartet. Teile jetzt den Link.')
+    toast(t('app.created'))
   },
   /** Join page: open or close the camera for the invite QR code. */
   async 'join-scan' () {
@@ -717,7 +725,7 @@ const actions = {
   },
   /** Opens the confirmation with deposit, fee and balance check. */
   async 'review-bid' () {
-    if (!(num(ui.draft.amount) > 0)) throw new Error('Bitte einen Betrag eingeben.')
+    if (!(num(ui.draft.amount) > 0)) throw new Error(t('err.noAmount'))
     ui.sheet = 'bid' // also when started from the inline field on the round page
     ui.quote = null
     ui.bidDone = null
@@ -755,34 +763,34 @@ const actions = {
   },
   async withdraw () {
     const deposit = ui.status.round.mode !== 'invoice'
-    if (!window.confirm(deposit ? 'Dein ganzes Gebot zurückziehen? Der hinterlegte Betrag geht zurück in deine Wallet.' : 'Dein Gebot zurückziehen?')) return
+    if (!window.confirm(t(deposit ? 'app.confirmWithdrawDeposit' : 'app.confirmWithdraw'))) return
     await run('withdraw', { amount: 'all' })
-    toast('Gebot zurückgezogen')
+    toast(t('app.withdrawn'))
   },
   async invoice () {
     const r = ui.status.round
-    if (!window.confirm(`Rate ${r.invoiceCount + 1} von ${r.installments} abrechnen? ${r.total} ${r.symbol} gehen an deine Wallet.`)) return
+    if (!window.confirm(t('app.confirmInvoice', { i: r.invoiceCount + 1, n: r.installments, amount: fmt(r.total), symbol: r.symbol }))) return
     await run('invoice')
-    toast('Rate abgerechnet. Die Bietenden haben ihren Beleg.')
+    toast(t('app.invoiced'))
   },
   async refund () {
     await run('refund')
-    toast('Betrag ist zurück in deiner Wallet')
+    toast(t('app.refunded'))
   },
   async cancel () {
-    if (!window.confirm('Runde wirklich abbrechen? Alle Bietenden bekommen ihr Geld zurück.')) return
+    if (!window.confirm(t('app.confirmCancel'))) return
     await run('cancel')
   },
   async terminate () {
-    if (!window.confirm('Runde vorzeitig beenden? Es können keine weiteren Raten abgerechnet werden; der Rest geht an die Bietenden zurück.')) return
+    if (!window.confirm(t('app.confirmTerminate'))) return
     await run('terminate')
   },
   async 'post-news' () {
-    if (!ui.draft.news.trim()) throw new Error('Bitte eine Nachricht schreiben.')
+    if (!ui.draft.news.trim()) throw new Error(t('app.noMessage'))
     await run('postNews', { text: ui.draft.news })
     ui.draft.news = ''
     ui.sheet = null
-    toast('Neuigkeit gesendet')
+    toast(t('app.newsSent'))
   },
 
   // receipts
@@ -831,10 +839,10 @@ const actions = {
   },
 
   // clipboard
-  async 'copy-invite' () { await window.pomona.copy(ui.invite.link); toast('Link kopiert') },
-  async 'copy-models-dir' () { await window.pomona.copy(ui.status.assistant.manual.dir); toast('Ordner kopiert') },
-  async 'copy-address' () { await window.pomona.copy(ui.status.wallet.address); toast('Adresse kopiert') },
-  async 'copy-receipt' () { await window.pomona.copy(ui.receipt.code); toast('Beleg kopiert') }
+  async 'copy-invite' () { await window.pomona.copy(ui.invite.link); toast(t('app.copiedLink')) },
+  async 'copy-models-dir' () { await window.pomona.copy(ui.status.assistant.manual.dir); toast(t('app.copiedFolder')) },
+  async 'copy-address' () { await window.pomona.copy(ui.status.wallet.address); toast(t('app.copiedAddress')) },
+  async 'copy-receipt' () { await window.pomona.copy(ui.receipt.code); toast(t('app.copiedReceipt')) }
 }
 
 // ------------------------------------------------------------------- events
@@ -934,14 +942,25 @@ $app.addEventListener('keydown', (e) => {
 
 // -------------------------------------------------------------------- start
 
+/** Saved choice, else the system language (es-…, de-…), else German. */
+const LANG_KEY = 'pomona.lang'
+function startLanguage () {
+  let saved = null
+  try { saved = window.localStorage.getItem(LANG_KEY) } catch {}
+  const lang = setLanguage(supported(saved) ?? (navigator.languages || [navigator.language]).map(supported).find(Boolean))
+  document.documentElement.lang = lang
+}
+
 function boot () {
   ui.canPickModel = typeof window.pomona.pickModel === 'function'
+  call('setLanguage', { lang: language() }).catch(() => {})
   window.pomona.on('change', refresh)
   window.pomona.on('error', (m) => toast(m, true))
   window.pomona.on('update', (u) => { ui.update = u; render() })
   refresh()
 }
 
+startLanguage()
 render()
 if (window.pomona) boot()
 else window.addEventListener('pomona:backend', boot, { once: true })

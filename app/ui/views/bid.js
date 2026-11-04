@@ -6,19 +6,17 @@
 import { esc, fmt, num, per, dayTime, date } from '../format.js'
 import { page, spinner } from './parts.js'
 import { ICON } from './icons.js'
+import { t, raw } from '../../i18n/index.js'
 
-const BID_STEPS = ['Betrag', 'Prüfen', 'Fertig']
+const bidSteps = () => raw('bid.steps')
 
-const TX_STEPS = [
-  ['prepare', 'Wird vorbereitet'],
-  ['sign', 'Wird unterschrieben und gesendet'],
-  ['confirm', 'Wird im Netzwerk bestätigt']
-]
+const TX_STEPS = ['prepare', 'sign', 'confirm']
 
 /** Progress of a running transaction. */
 export function stepper (step, done = false) {
-  const at = done ? TX_STEPS.length : Math.max(0, TX_STEPS.findIndex(([k]) => k === step))
-  return `<ol class="stepper">${TX_STEPS.map(([, label], i) => {
+  const at = done ? TX_STEPS.length : Math.max(0, TX_STEPS.indexOf(step))
+  return `<ol class="stepper">${TX_STEPS.map((key, i) => {
+    const label = t('bid.tx.' + key)
     const state = i < at ? 'done' : i === at ? 'now' : 'todo'
     const icon = state === 'done' ? '✓' : state === 'now' ? spinner : ''
     return `<li class="${state}"><span class="st-dot">${icon}</span>${esc(label)}</li>`
@@ -45,25 +43,25 @@ function amountPage (ui) {
   const touch = isTouch() // touch: keypad; desktop: a focused text field with a blinking caret
   // The note is always there: one quiet line, one detail line.
   const sym = esc(r.symbol)
-  const day = esc(new Date(r.biddingEnd * 1000).toLocaleDateString('de-DE'))
-  const what = amount > 0 ? `<strong>${fmt(amount + num(r.myPledge))} ${sym}</strong>` : 'dein Betrag'
+  const day = esc(date(r.biddingEnd))
+  const what = amount > 0 ? `<strong>${fmt(amount + num(r.myPledge))} ${sym}</strong>` : t('bid.yourAmount')
   const min = '' // the minimum bid sits under the figure, always visible
   let note
   if (payg) {
-    note = { lead: 'Heute wird nichts abgebucht', detail: `Ab ${day} ${esc(p.adj)} ${what} per Rechnung${min}` }
+    note = { lead: t('bid.nothingToday'), detail: t('bid.fromInvoice', { day, adj: esc(p.adj), what }) + min }
   } else if (amount > 0 && cost > balance) {
-    note = { lead: `Dir fehlen ${fmt(cost - balance)} ${sym}`, detail: `Hinterlegt werden ${r.installments} × ${fmt(amount)} = ${fmt(cost)} ${sym} · <button class="link" data-action="open-fund">Aufladen</button>`, warn: true }
+    note = { lead: t('bid.missing', { amount: fmt(cost - balance), symbol: sym }), detail: t('bid.depositCalc', { n: r.installments, amount: fmt(amount), cost: fmt(cost), symbol: sym }) + ` · <button class="link" data-action="open-fund">${t('wallet.fund')}</button>`, warn: true }
   } else if (amount > 0) {
-    note = { lead: `${has ? 'Zusätzlich hinterlegt' : 'Hinterlegt'}: ${fmt(cost)} ${sym}`, detail: `${r.installments} × ${fmt(amount)} ${sym} im Treuhandkonto` }
+    note = { lead: t(has ? 'bid.depositMore' : 'bid.deposit', { amount: fmt(cost), symbol: sym }), detail: t('bid.inEscrow', { n: r.installments, amount: fmt(amount), symbol: sym }) }
   } else {
-    note = { lead: 'Hinterlegt wird alles vorab', detail: `${r.installments} × dein Betrag im Treuhandkonto${min}` }
+    note = { lead: t('bid.allUpfront'), detail: t('bid.inEscrowAmount', { n: r.installments }) + min }
   }
   const hint = `<span class="note-lead">${ICON.info}${note.lead}</span><span class="note-detail">${note.detail}</span>`
-  const unit = `<span class="amount-unit">${esc(r.symbol)} ${p.per}${num(r.minBid) > 0 && !has ? ` · mindestens ${fmt(r.minBid)}` : ''}</span>`
+  const unit = `<span class="amount-unit">${esc(r.symbol)} ${p.per}${num(r.minBid) > 0 && !has ? ' · ' + t('bid.atLeast', { amount: fmt(r.minBid) }) : ''}</span>`
   const display = touch
     ? `<div class="amount-display ${amount > 0 ? '' : 'empty'}" aria-live="polite"><strong>${typed(ui.draft.amount)}</strong>${unit}</div>`
     : `<label class="amount-display desktop" for="amount">
-        <input id="amount" data-draft="amount" inputmode="decimal" value="${esc(ui.draft.amount)}" autocomplete="off" autofocus aria-label="Dein Gebot ${p.per} in ${esc(r.symbol)}">
+        <input id="amount" data-draft="amount" inputmode="decimal" value="${esc(ui.draft.amount)}" autocomplete="off" autofocus aria-label="${t('bid.inputAria', { per: p.per, symbol: esc(r.symbol) })}">
         ${unit}
       </label>`
   return page(null, `
@@ -72,8 +70,8 @@ function amountPage (ui) {
     ${!has && r.guide ? guideChips(ui, r, p) : ''}
     <p class="bid-hint ${note.warn ? 'warn' : ''}">${hint}</p>
     ${touch ? keypad() : ''}
-    <div class="actions sticky"><button class="btn accent block" data-action="review-bid" ${amount > 0 ? '' : 'disabled'}>Weiter</button></div>`,
-  { steps: BID_STEPS, at: 0, cls: touch ? 'fit' : 'fit desk' })
+    <div class="actions sticky"><button class="btn accent block" data-action="review-bid" ${amount > 0 ? '' : 'disabled'}>${t('common.next')}</button></div>`,
+  { steps: bidSteps(), at: 0, cls: touch ? 'fit' : 'fit desk' })
 }
 
 /** Where the round stands, and how far your bid moves it toward the target. */
@@ -84,10 +82,10 @@ function progressBar (r, amount) {
   const after = before + amount
   const w = (v) => Math.max(0, Math.min(100, (v / target) * 100))
   const text = amount > 0
-    ? `<strong>${fmt(after, 0)}</strong> von ${fmt(target, 0)} ${esc(r.symbol)} · ${fmt((after / target) * 100, 0)} %`
-    : `<strong>${fmt(before, 0)}</strong> von ${fmt(target, 0)} ${esc(r.symbol)} · ${fmt((before / target) * 100, 0)} %`
+    ? t('bid.progress', { now: `<strong>${fmt(after, 0)}</strong>`, target: fmt(target, 0), symbol: esc(r.symbol), pct: fmt((after / target) * 100, 0) })
+    : t('bid.progress', { now: `<strong>${fmt(before, 0)}</strong>`, target: fmt(target, 0), symbol: esc(r.symbol), pct: fmt((before / target) * 100, 0) })
   return `<div class="bid-progress">
-    <div class="bp-track" role="img" aria-label="${amount > 0 ? 'Fortschritt mit deinem Gebot' : 'Fortschritt der Runde'}">
+    <div class="bp-track" role="img" aria-label="${t(amount > 0 ? 'bid.progressMine' : 'bid.progressRound')}">
       <i class="bp-now" style="width:${w(before)}%"></i>
       <i class="bp-mine" style="left:${w(before)}%;width:${Math.max(0, w(after) - w(before))}%"></i>
     </div>
@@ -98,16 +96,16 @@ function progressBar (r, amount) {
 /** What was typed on the keypad, with thousands dots and a trailing comma kept ("1.200,5"). */
 function typed (raw) {
   const [int, dec] = String(raw || '').split(',')
-  const n = int ? Number(int).toLocaleString('de-DE') : '0'
+  const n = int ? fmt(Number(int), 0) : '0'
   return dec === undefined ? n : `${n},${dec}`
 }
 
 /** Digits, comma (cents, as in franzwerk), delete. */
 function keypad () {
   const key = (k, label = k, aria = k) => `<button class="key" data-action="key" data-key="${k}" aria-label="${aria}">${label}</button>`
-  return `<div class="keypad" role="group" aria-label="Ziffernblock">
+  return `<div class="keypad" role="group" aria-label="${t('bid.keypad')}">
     ${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => key(String(n))).join('')}
-    ${key(',', ',', 'Komma')}${key('0')}${key('del', '⌫', 'Löschen')}
+    ${key(',', ',', t('bid.comma'))}${key('0')}${key('del', '⌫', t('bid.delete'))}
   </div>`
 }
 
@@ -118,9 +116,9 @@ function guideChips (ui, r, p) {
   const values = [...new Set([Math.round(g * 0.8), g, Math.round(g * 1.2)])].filter((v) => v > 0 && v >= min)
   const chips = values.map((v) => {
     const on = num(ui.draft.amount) === v
-    return `<button class="chip ${on ? 'on' : ''} ${v === g ? 'guide' : ''}" data-action="pick-amount" data-amount="${v}">${fmt(v)}${v === g ? ' <span>Richtwert</span>' : ''}</button>`
+    return `<button class="chip ${on ? 'on' : ''} ${v === g ? 'guide' : ''}" data-action="pick-amount" data-amount="${v}">${fmt(v)}${v === g ? ` <span>${t('label.guide')}</span>` : ''}</button>`
   }).join('')
-  return `<div><p class="small muted guide-text" style="margin-bottom:8px">Richtwert: ${fmt(g)} ${esc(r.symbol)} ${p.per}. Gib, was du kannst.</p><div class="chips">${chips}</div></div>`
+  return `<div><p class="small muted guide-text" style="margin-bottom:8px">${t('you.guide', { amount: fmt(g), symbol: esc(r.symbol), per: p.per })}</p><div class="chips">${chips}</div></div>`
 }
 
 function reviewPage (ui) {
@@ -128,56 +126,56 @@ function reviewPage (ui) {
   const q = ui.quote
   const p = per(r.intervalName)
   const running = ui.pending === 'confirm-bid'
-  const opts = { steps: BID_STEPS, at: 1, back: running ? false : 'bid-back' }
-  if (!q) return page('Gebot prüfen', `<p class="verify pending">${spinner} Wird berechnet…</p>`, opts)
+  const opts = { steps: bidSteps(), at: 1, back: running ? false : 'bid-back' }
+  if (!q) return page(t('bid.review'), `<p class="verify pending">${spinner} ${t('bid.calculating')}</p>`, opts)
 
-  const fee = q.fee === null ? 'keine' : `ca. ${fmt(q.fee, 4)} ${esc(q.symbol)}`
+  const fee = q.fee === null ? t('bid.noFee') : t('bid.fee', { amount: fmt(q.fee, 4), symbol: esc(q.symbol) })
   if (q.mode === 'invoice') {
-    return page('Gebot prüfen', `
+    return page(t('bid.review'), `
     <div class="receipt">
       <div class="receipt-head"><span class="small muted">${esc(r.title)}</span><strong>${fmt(q.pledgeAfter)} ${esc(q.symbol)} ${p.per}</strong></div>
       <dl>
-        <dt>Rechnungen</dt><dd>${q.installments} × ${esc(p.adj)}, ab ${esc(date(r.biddingEnd))}</dd>
-        <dt>Jetzt abgebucht</dt><dd><strong>nichts</strong></dd>
-        <dt>Netzwerkgebühr</dt><dd>${fee}</dd>
+        <dt>${t('create.invoices')}</dt><dd>${t('bid.schedule', { n: q.installments, adj: esc(p.adj), day: esc(date(r.biddingEnd)) })}</dd>
+        <dt>${t('bid.chargedNow')}</dt><dd><strong>${t('bid.nothing')}</strong></dd>
+        <dt>${t('bid.networkFee')}</dt><dd>${fee}</dd>
       </dl>
     </div>
     ${q.enough
       ? ''
-      : `<div class="warning"><strong>Dir fehlen ${fmt(q.missing, 4)} ${esc(q.symbol)} für die Netzwerkgebühr</strong><p>Auch eine Zusage ist eine Transaktion. Lade ein paar Cent auf.</p></div>`}
+      : `<div class="warning"><strong>${t('bid.missingFee', { amount: fmt(q.missing, 4), symbol: esc(q.symbol) })}</strong><p>${t('bid.missingFeeNote')}</p></div>`}
     <ul class="facts">
-      <li>Du sagst ${fmt(q.pledgeAfter)} ${esc(q.symbol)} pro Rate zu. Abgebucht wird nichts.</li>
-      <li>Wird das Ziel erreicht, kommt jede Rate als Rechnung. Du bezahlst sie mit einem Tipp und bekommst einen Beleg.</li>
-      <li>Bis ${esc(dayTime(r.biddingEnd))} kannst du erhöhen oder zurückziehen.</li>
+      <li>${t('bid.factPledge', { amount: fmt(q.pledgeAfter), symbol: esc(q.symbol) })}</li>
+      <li>${t('bid.factInvoice')}</li>
+      <li>${t('bid.factChange', { end: esc(dayTime(r.biddingEnd)) })}</li>
     </ul>
     ${running ? stepper(ui.status.busyStep) : ''}
     <div class="actions sticky">${q.enough
-      ? `<button class="btn accent block" data-action="confirm-bid" ${running ? 'disabled' : ''}>${running ? 'Bitte warten…' : 'Verbindlich zusagen'}</button>`
-      : '<button class="btn accent block" data-action="open-fund">Konto aufladen</button>'}</div>`, opts)
+      ? `<button class="btn accent block" data-action="confirm-bid" ${running ? 'disabled' : ''}>${running ? t('common.wait') : t('bid.confirmInvoice')}</button>`
+      : `<button class="btn accent block" data-action="open-fund">${t('fund.title')}</button>`}</div>`, opts)
   }
-  return page('Gebot prüfen', `
+  return page(t('bid.review'), `
     <div class="receipt">
       <div class="receipt-head"><span class="small muted">${esc(r.title)}</span><strong>${fmt(q.amount)} ${esc(q.symbol)} ${p.per}</strong></div>
       <dl>
-        <dt>Raten</dt><dd>${q.installments} × ${esc(p.adj)}, ab ${esc(date(r.biddingEnd))}</dd>
-        <dt>Jetzt hinterlegt</dt><dd><strong>${fmt(q.deposit)} ${esc(q.symbol)}</strong></dd>
-        <dt>Netzwerkgebühr</dt><dd>${fee}</dd>
-        <dt>Dein Guthaben</dt><dd>${fmt(q.balance)} ${esc(q.symbol)}</dd>
+        <dt>${t('bid.installments')}</dt><dd>${t('bid.schedule', { n: q.installments, adj: esc(p.adj), day: esc(date(r.biddingEnd)) })}</dd>
+        <dt>${t('bid.depositedNow')}</dt><dd><strong>${fmt(q.deposit)} ${esc(q.symbol)}</strong></dd>
+        <dt>${t('bid.networkFee')}</dt><dd>${fee}</dd>
+        <dt>${t('bid.balance')}</dt><dd>${fmt(q.balance)} ${esc(q.symbol)}</dd>
       </dl>
     </div>
     ${q.enough
       ? `<ul class="facts">
-          <li>Das Geld liegt im Treuhandkonto, nicht beim Organisator.</li>
-          <li>Bis ${esc(dayTime(r.biddingEnd))} kannst du erhöhen oder zurückziehen.</li>
-          <li>Wird das Ziel nicht erreicht, bekommst du alles zurück.</li>
-          <li>Für jede abgerechnete Rate bekommst du einen Beleg.</li>
+          <li>${t('bid.factEscrow')}</li>
+          <li>${t('bid.factChange', { end: esc(dayTime(r.biddingEnd)) })}</li>
+          <li>${t('bid.factBack')}</li>
+          <li>${t('bid.factReceipt')}</li>
         </ul>`
-      : `<div class="warning"><strong>Dir fehlen ${fmt(q.missing)} ${esc(q.symbol)}</strong><p>Lade dein Konto auf oder biete weniger.</p></div>`}
+      : `<div class="warning"><strong>${t('bid.missing', { amount: fmt(q.missing), symbol: esc(q.symbol) })}</strong><p>${t('bid.missingNote')}</p></div>`}
     ${running ? stepper(ui.status.busyStep) : ''}
     <div class="actions sticky">
       ${q.enough
-        ? `<button class="btn accent block" data-action="confirm-bid" ${running ? 'disabled' : ''}>${running ? 'Bitte warten…' : 'Verbindlich bieten'}</button>`
-        : '<button class="btn accent block" data-action="open-fund">Konto aufladen</button>'}
+        ? `<button class="btn accent block" data-action="confirm-bid" ${running ? 'disabled' : ''}>${running ? t('common.wait') : t('bid.confirmDeposit')}</button>`
+        : `<button class="btn accent block" data-action="open-fund">${t('fund.title')}</button>`}
     </div>`, opts)
 }
 
@@ -188,11 +186,11 @@ function donePage (ui) {
   return page(null, `
     <div class="stack" style="text-align:center;align-items:center">
       <div class="big-check">✓</div>
-      <h1 style="font-size:26px">${r.mode === 'invoice' ? 'Dein Gebot steht' : 'Dein Gebot liegt im Treuhandkonto'}</h1>
-      <p class="muted">${fmt(done.pledgeAfter)} ${esc(r.symbol)} ${p.per} · ${r.mode === 'invoice' ? 'bezahlt wird mit jeder Rechnung' : `${fmt(done.deposit)} ${esc(r.symbol)} hinterlegt`}</p>
+      <h1 style="font-size:26px">${t(r.mode === 'invoice' ? 'bid.doneInvoice' : 'bid.doneDeposit')}</h1>
+      <p class="muted">${fmt(done.pledgeAfter)} ${esc(r.symbol)} ${p.per} · ${r.mode === 'invoice' ? t('bid.paidPerInvoice') : t('bid.deposited', { amount: fmt(done.deposit), symbol: esc(r.symbol) })}</p>
     </div>
     ${stepper(null, true)}
-    <p class="small muted">Bis ${esc(dayTime(r.biddingEnd))} kannst du erhöhen oder zurückziehen. Wir melden uns, sobald feststeht, ob das Ziel erreicht ist.</p>
-    <div class="actions sticky"><button class="btn accent block" data-action="close-sheet">Zur Runde</button></div>`,
-  { steps: BID_STEPS, at: 2, back: false })
+    <p class="small muted">${t('bid.factChange', { end: esc(dayTime(r.biddingEnd)) })} ${t('bid.doneNote')}</p>
+    <div class="actions sticky"><button class="btn accent block" data-action="close-sheet">${t('bid.toRound')}</button></div>`,
+  { steps: bidSteps(), at: 2, back: false })
 }

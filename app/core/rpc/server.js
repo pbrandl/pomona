@@ -12,6 +12,7 @@
  * @module core/rpc/server
  */
 import { LIMITS } from '../config/limits.js'
+import { t } from '../../i18n/index.js'
 
 /**
  * @param {import('stream').Duplex} stream
@@ -42,7 +43,7 @@ export function serve (stream, app, methods) {
     try { req = JSON.parse(line) } catch { return }
     if (!req || typeof req !== 'object' || !Number.isInteger(req.id)) return
     const spec = Object.hasOwn(methods, req.method) ? methods[req.method] : null
-    if (!spec) return send({ id: req.id, error: { code: 'NO_METHOD', message: 'Unbekannte Methode.' } })
+    if (!spec) return send({ id: req.id, error: { code: 'NO_METHOD', message: t('err.noMethod') } })
     try {
       const params = validate(spec.params || {}, req.params)
       const result = await spec.run(app, params)
@@ -61,7 +62,7 @@ export function serve (stream, app, methods) {
  */
 export function validate (schema, params) {
   params = params ?? {}
-  if (typeof params !== 'object' || Array.isArray(params)) throw Object.assign(new Error('Ungültige Parameter.'), { code: 'BAD_PARAMS' })
+  if (typeof params !== 'object' || Array.isArray(params)) throw Object.assign(new Error(t('err.badParams')), { code: 'BAD_PARAMS' })
   const out = {}
   for (const [key, type] of Object.entries(schema)) {
     const v = params[key]
@@ -71,7 +72,7 @@ export function validate (schema, params) {
     else if (kind === 'number' && typeof v === 'number' && Number.isFinite(v)) out[key] = v
     else if (kind === 'boolean' && typeof v === 'boolean') out[key] = v
     else if (kind === 'amount' && (typeof v === 'string' || typeof v === 'number') && String(v).length <= 40) out[key] = String(v)
-    else throw Object.assign(new Error(`Ungültiger Parameter: ${key}`), { code: 'BAD_PARAMS' })
+    else throw Object.assign(new Error(t('err.badParam', { key })), { code: 'BAD_PARAMS' })
   }
   return out
 }

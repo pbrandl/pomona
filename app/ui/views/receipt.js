@@ -11,12 +11,13 @@
  */
 import { esc, fmt, date, dayTime, short, per } from '../format.js'
 import { btn, field, page, spinner } from './parts.js'
+import { t } from '../../i18n/index.js'
 
 /** The verification line under a receipt. */
 function verdict (v) {
-  if (!v) return `<p class="verify pending">${spinner} Wird geprüft…</p>`
-  if (!v.valid) return `<p class="verify bad">✕ ${esc(v.reason || 'Ungültig')}</p>`
-  return '<p class="verify ok">✓ Echt und bezahlt</p>'
+  if (!v) return `<p class="verify pending">${spinner} ${t('onboarding.checking')}</p>`
+  if (!v.valid) return `<p class="verify bad">✕ ${esc(v.reason || t('receipt.invalid'))}</p>`
+  return `<p class="verify ok">${t('receipt.genuine')}</p>`
 }
 
 export function receiptSheet (ui) {
@@ -24,66 +25,66 @@ export function receiptSheet (ui) {
   const rc = ui.receipt
   const inv = r.myInvoices[rc.index]
   const p = per(r.intervalName)
-  return page('Beleg', `
+  return page(t('label.receipt'), `
     <div class="receipt">
       <div class="receipt-head">
-        <span class="small muted">Zahlungsbeleg</span>
+        <span class="small muted">${t('receipt.kind')}</span>
         <strong>${esc(r.title)}</strong>
       </div>
       <dl>
-        <dt>Rate</dt><dd>${rc.index + 1} von ${r.installments} · ${esc(p.adj)}</dd>
-        <dt>Betrag</dt><dd><strong>${fmt(inv.amount)} ${esc(r.symbol)}</strong></dd>
-        <dt>Bezahlt am</dt><dd>${esc(dayTime(inv.paidAt))}</dd>
-        <dt>Von</dt><dd class="mono">${esc(short(ui.status.wallet.address))}</dd>
-        <dt>${r.mode === 'invoice' ? 'An' : 'Treuhandkonto'}</dt><dd class="mono">${esc(short(r.mode === 'invoice' ? r.organizer : r.address))}</dd>
+        <dt>${t('receipt.installment')}</dt><dd>${t('receipt.of', { i: rc.index + 1, n: r.installments })} · ${esc(p.adj)}</dd>
+        <dt>${t('label.amount')}</dt><dd><strong>${fmt(inv.amount)} ${esc(r.symbol)}</strong></dd>
+        <dt>${t('receipt.paidAt')}</dt><dd>${esc(dayTime(inv.paidAt))}</dd>
+        <dt>${t('receipt.from')}</dt><dd class="mono">${esc(short(ui.status.wallet.address))}</dd>
+        <dt>${r.mode === 'invoice' ? t('pay.to') : t('round.escrow')}</dt><dd class="mono">${esc(short(r.mode === 'invoice' ? r.organizer : r.address))}</dd>
       </dl>
       <div class="qr receipt-qr">${rc.qr || ''}</div>
       ${verdict(rc.verified)}
     </div>
-    <p class="small muted">Zeig diesen QR-Code beim Anbieter vor. Er prüft ihn in Pomona unter „Beleg prüfen“ direkt an der Blockchain. Der Code ist mit deinem Konto unterschrieben und 10 Minuten gültig; solange diese Seite offen ist, erneuert er sich von selbst.</p>
-    <button class="btn ghost small" data-action="copy-receipt">Code kopieren</button>`)
+    <p class="small muted">${t('receipt.note')}</p>
+    <button class="btn ghost small" data-action="copy-receipt">${t('receipt.copy')}</button>`)
 }
 
 export function invoiceSheet (ui) {
   const r = ui.status.round
   if (r.mode === 'invoice') return paygInvoiceSheet(ui)
   const inv = r.invoices[ui.invoiceIndex]
-  return page(`Rechnung ${ui.invoiceIndex + 1}`, `
+  return page(t('pay.one', { i: ui.invoiceIndex + 1 }), `
     <div class="receipt">
       <dl>
-        <dt>Status</dt><dd><span class="pill-s ok">Bezahlt</span></dd>
-        <dt>Betrag</dt><dd><strong>${fmt(inv.amount)} ${esc(r.symbol)}</strong></dd>
-        <dt>Fällig ab</dt><dd>${esc(date(inv.dueAt))}</dd>
-        <dt>Abgerechnet am</dt><dd>${esc(dayTime(inv.paidAt))}</dd>
-        <dt>Bietende</dt><dd>${r.bidders}</dd>
+        <dt>${t('receipt.status')}</dt><dd><span class="pill-s ok">${t('pay.done')}</span></dd>
+        <dt>${t('label.amount')}</dt><dd><strong>${fmt(inv.amount)} ${esc(r.symbol)}</strong></dd>
+        <dt>${t('receipt.dueFrom')}</dt><dd>${esc(date(inv.dueAt))}</dd>
+        <dt>${t('receipt.billedAt')}</dt><dd>${esc(dayTime(inv.paidAt))}</dd>
+        <dt>${t('round.bidders', { n: 2 })}</dt><dd>${r.bidders}</dd>
       </dl>
     </div>
-    <p class="small muted">Jede bietende Person hat für diese Rate einen Beleg mit ihrem Anteil. Du kannst ihn per QR-Code prüfen.</p>
-    <button class="btn accent block" data-action="open-scan">Beleg prüfen</button>`)
+    <p class="small muted">${t('receipt.everyone')}</p>
+    <button class="btn accent block" data-action="open-scan">${t('agent.action.page.scan')}</button>`)
 }
 
 /** Organizer, round "Per Rechnung": who paid this invoice, who has not yet. */
 function paygInvoiceSheet (ui) {
   const d = ui.invoiceDetails
-  const title = `Rechnung ${ui.invoiceIndex + 1}`
-  if (!d) return page(title, `<p class="verify pending">${spinner} Wird geladen…</p>`)
+  const title = t('pay.one', { i: ui.invoiceIndex + 1 })
+  if (!d) return page(title, `<p class="verify pending">${spinner} ${t('receipt.loading')}</p>`)
   const open = d.unpaid.length
     ? `<div class="card-inset stack">
-        <strong>Noch offen (${d.unpaid.length})</strong>
+        <strong>${t('receipt.stillOpen', { n: d.unpaid.length })}</strong>
         ${d.unpaid.map((u) => `<div class="row"><span class="mono small">${esc(short(u.bidder))}</span><span>${fmt(u.amount)} ${esc(d.symbol)}</span></div>`).join('')}
-        <p class="small muted">Offene Rechnungen können später noch bezahlt werden. Nur du siehst diese Liste in Pomona.</p>
+        <p class="small muted">${t('receipt.openNote')}</p>
       </div>`
-    : '<p class="verify ok">✓ Alle haben bezahlt</p>'
+    : `<p class="verify ok">${t('receipt.allPaid')}</p>`
   return page(title, `
     <div class="receipt">
       <dl>
-        <dt>Verschickt am</dt><dd>${esc(date(d.dueAt))}</dd>
-        <dt>Bezahlt</dt><dd><strong>${d.paidCount} von ${d.bidders}</strong></dd>
-        <dt>Eingegangen</dt><dd><strong>${fmt(d.paidSum)} von ${fmt(d.total)} ${esc(d.symbol)}</strong></dd>
+        <dt>${t('receipt.sentAt')}</dt><dd>${esc(date(d.dueAt))}</dd>
+        <dt>${t('pay.done')}</dt><dd><strong>${t('receipt.ofN', { i: d.paidCount, n: d.bidders })}</strong></dd>
+        <dt>${t('receipt.received')}</dt><dd><strong>${t('receipt.ofSum', { paid: fmt(d.paidSum), total: fmt(d.total), symbol: esc(d.symbol) })}</strong></dd>
       </dl>
     </div>
     ${open}
-    ${d.paidCount ? '<button class="btn accent block" data-action="open-scan">Beleg prüfen</button>' : ''}`)
+    ${d.paidCount ? `<button class="btn accent block" data-action="open-scan">${t('agent.action.page.scan')}</button>` : ''}`)
 }
 
 export function scanSheet (ui) {
@@ -92,17 +93,17 @@ export function scanSheet (ui) {
   if (v) {
     result = v.valid
       ? `<div class="receipt ok-border">
-          <p class="verify ok" style="margin:0 0 12px">✓ Gültiger Beleg</p>
+          <p class="verify ok" style="margin:0 0 12px">${t('receipt.valid')}</p>
           <dl>
-            ${v.title ? `<dt>Runde</dt><dd>${esc(v.title)}</dd>` : ''}
-            <dt>Rate</dt><dd>${v.installment} von ${v.installments}</dd>
-            <dt>Betrag</dt><dd><strong>${fmt(v.amount)} ${esc(v.symbol)}</strong></dd>
-            <dt>Bezahlt am</dt><dd>${esc(dayTime(v.paidAt))}</dd>
-            <dt>Von</dt><dd class="mono">${esc(short(v.bidder))}</dd>
+            ${v.title ? `<dt>${t('create.round')}</dt><dd>${esc(v.title)}</dd>` : ''}
+            <dt>${t('receipt.installment')}</dt><dd>${t('receipt.of', { i: v.installment, n: v.installments })}</dd>
+            <dt>${t('label.amount')}</dt><dd><strong>${fmt(v.amount)} ${esc(v.symbol)}</strong></dd>
+            <dt>${t('receipt.paidAt')}</dt><dd>${esc(dayTime(v.paidAt))}</dd>
+            <dt>${t('receipt.from')}</dt><dd class="mono">${esc(short(v.bidder))}</dd>
           </dl>
         </div>`
-      : `<div class="receipt bad-border"><p class="verify bad" style="margin:0">✕ ${esc(v.reason || 'Dieser Beleg ist nicht gültig.')}</p></div>`
-    result += '<button class="btn ghost block" data-action="scan-again">Nächsten Beleg prüfen</button>'
+      : `<div class="receipt bad-border"><p class="verify bad" style="margin:0">✕ ${esc(v.reason || t('receipt.notValid'))}</p></div>`
+    result += `<button class="btn ghost block" data-action="scan-again">${t('receipt.next')}</button>`
   }
 
   const camera = v
@@ -110,15 +111,15 @@ export function scanSheet (ui) {
     : ui.scanError
       ? `<p class="small muted">${esc(ui.scanError)}</p>`
       : `<div class="scanner"><div id="scanner-slot"></div><div class="scanner-frame"></div></div>
-         <p class="small muted" style="text-align:center">Halte den QR-Code des Belegs vor die Kamera.</p>`
+         <p class="small muted" style="text-align:center">${t('receipt.hold')}</p>`
 
-  return page('Beleg prüfen', `
+  return page(t('agent.action.page.scan'), `
     ${result}
     ${camera}
     ${v
 ? ''
 : `<div class="stack">
-      ${field(ui, 'verify', 'Oder Code einfügen', { mono: true, placeholder: 'pomona-beleg://…' })}
-      ${btn(ui, 'verify-receipt', 'Prüfen', 'ghost block', { busy: 'Wird geprüft…' })}
+      ${field(ui, 'verify', t('receipt.paste'), { mono: true, placeholder: 'pomona-beleg://…' })}
+      ${btn(ui, 'verify-receipt', t('receipt.check'), 'ghost block', { busy: t('onboarding.checking') })}
     </div>`}`)
 }

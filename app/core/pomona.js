@@ -27,6 +27,7 @@ import { encodeInvite, decodeInvite, encodeReceipt, decodeReceipt, receiptMessag
 import { parseAmount, formatAmount } from './units.js'
 import { INTERVALS, MODES, intervalName, canInvoice, dueAt, DAY } from './schedule.js'
 import { PomonaError, fail } from './errors.js'
+import { t, setLanguage } from '../i18n/index.js'
 import { VERSION } from './version.js'
 import { Assistant } from './agent/agent.js'
 import { QvacEngine } from './agent/qvac.js'
@@ -137,7 +138,7 @@ export class Pomona extends EventEmitter {
    * @returns {Promise<{ seed: string, address: string }>}
    */
   async createWallet ({ password }) {
-    if (this._sealed) fail('WALLET_EXISTS', 'Es gibt bereits eine Wallet.')
+    if (this._sealed) fail('WALLET_EXISTS', 'walletExists')
     checkPassword(password)
     const seed = WDK.getRandomSeedPhrase(12)
     await this._storeSeed(seed, password)
@@ -150,9 +151,9 @@ export class Pomona extends EventEmitter {
    */
   async restoreWallet ({ seed, password }) {
     // Never overwrite an existing vault: that could destroy access to funds.
-    if (this._sealed) fail('WALLET_EXISTS', 'Es gibt bereits eine Wallet auf diesem Gerät.')
+    if (this._sealed) fail('WALLET_EXISTS', 'walletExists')
     seed = String(seed ?? '').slice(0, LIMITS.seed).trim().toLowerCase().split(/\s+/).join(' ')
-    if (!WDK.isValidSeed(seed)) fail('BAD_SEED', 'Diese Wiederherstellungsphrase ist ungültig.')
+    if (!WDK.isValidSeed(seed)) fail('BAD_SEED', 'badSeed')
     checkPassword(password)
     await this._storeSeed(seed, password)
     return { address: await this.account.address() }
@@ -161,7 +162,7 @@ export class Pomona extends EventEmitter {
   /** @param {{ password: string }} p */
   async unlock ({ password }) {
     if (this.account) return { address: await this.account.address() }
-    if (!this._sealed) fail('NO_WALLET', 'Es gibt noch keine Wallet.')
+    if (!this._sealed) fail('NO_WALLET', 'noWallet')
     this._openAccount(this._openVault(password))
     this._changed()
     return { address: await this.account.address() }
@@ -183,14 +184,14 @@ export class Pomona extends EventEmitter {
    * @param {{ password: string }} p
    */
   revealSeed ({ password }) {
-    if (!this._sealed) fail('NO_WALLET', 'Es gibt noch keine Wallet.')
+    if (!this._sealed) fail('NO_WALLET', 'noWallet')
     return this._openVault(password)
   }
 
   /** Dev chain only: 5,000 test USDT. */
   async faucet () {
     this._needAccount()
-    if (!this.net.dev) fail('NOT_DEV', 'Testguthaben gibt es nur auf der lokalen Entwicklungs-Chain.')
+    if (!this.net.dev) fail('NOT_DEV', 'notDev')
     await this.account.faucet(5000_000000n)
     this._changed()
   }
@@ -204,11 +205,11 @@ export class Pomona extends EventEmitter {
   async sendUsdt ({ to, amount, password }) {
     this._needAccount()
     this._openVault(password)
-    if (!isAddress(String(to))) fail('BAD_ADDRESS', 'Bitte eine gültige Adresse (0x…) angeben.')
+    if (!isAddress(String(to))) fail('BAD_ADDRESS', 'badAddress')
     const meta = await this._token()
     const units = parseAmount(amount, meta.decimals)
-    if (units === 0n) fail('BAD_AMOUNT', 'Bitte einen Betrag eingeben.')
-    if (await this.account.usdtBalance() < units) fail('NO_FUNDS', 'Nicht genug USDT.')
+    if (units === 0n) fail('BAD_AMOUNT', 'noAmount')
+    if (await this.account.usdtBalance() < units) fail('NO_FUNDS', 'notEnoughUsdt')
     return this._exclusive('send', (onStep) => this.account.sendUsdt(getAddress(to), units, { onStep }))
   }
 
@@ -217,7 +218,7 @@ export class Pomona extends EventEmitter {
   /**
    * @param {Object} p
    * @param {string} p.title
-   * @param {string} [p.website] - the project's website, e.g. lindenhof.de
+   * @param {string} [p.website] - the project's website, e.g. beispiel.de
    * @param {string} [p.network]
    * @param {string} p.target        - per installment, e.g. "4.000"
    * @param {string} [p.minBid]      - per installment
@@ -233,32 +234,32 @@ export class Pomona extends EventEmitter {
    */
   async createRound (p) {
     this._needAccount()
-    if (this.round) fail('HAS_ROUND', 'Diese App hat bereits eine Runde.')
+    if (this.round) fail('HAS_ROUND', 'hasRound')
     const title = String(p.title ?? '').trim().slice(0, LIMITS.title)
     const website = p.website ? cleanWebsite(p.website) : null
-    if (p.website && !website) fail('BAD_INPUT', 'Bitte eine gültige Website angeben, z. B. lindenhof.de.')
-    if (!title) fail('BAD_INPUT', 'Bitte gib der Runde einen Namen.')
-    if (!Object.hasOwn(INTERVALS, p.interval)) fail('BAD_INPUT', 'Bitte Woche oder Monat als Intervall wählen.')
+    if (p.website && !website) fail('BAD_INPUT', 'badWebsite')
+    if (!title) fail('BAD_INPUT', 'noTitle')
+    if (!Object.hasOwn(INTERVALS, p.interval)) fail('BAD_INPUT', 'badInterval')
     const mode = p.mode ?? 'deposit'
-    if (!MODES.includes(mode)) fail('BAD_INPUT', 'Bitte „Vorab hinterlegen“ oder „Per Rechnung“ wählen.')
+    if (!MODES.includes(mode)) fail('BAD_INPUT', 'badMode')
     const installments = Number(p.installments)
     if (!Number.isInteger(installments) || installments < 1 || installments > LIMITS.maxInstallments) {
-      fail('BAD_INPUT', `Anzahl der Rechnungen: 1 bis ${LIMITS.maxInstallments}.`)
+      fail('BAD_INPUT', 'installments', { max: LIMITS.maxInstallments })
     }
 
     if (p.network && p.network !== this.net.id) this._useNetwork(p.network, { reopen: true })
-    if (!isReady(this.net)) fail('NOT_READY', 'Dieses Netzwerk ist noch nicht eingerichtet.')
+    if (!isReady(this.net)) fail('NOT_READY', 'netNotReady')
 
     const meta = await this._token()
-    const target = parseAmount(p.target, meta.decimals, 'Zielbetrag')
-    if (target === 0n) fail('BAD_INPUT', 'Der Zielbetrag muss größer als 0 sein.')
-    const minBid = p.minBid ? parseAmount(p.minBid, meta.decimals, 'Mindestgebot') : 0n
-    const guide = p.guide ? parseAmount(p.guide, meta.decimals, 'Richtwert') : 0n
-    if (guide > 0n && guide < minBid) fail('BAD_INPUT', 'Der Richtwert darf nicht unter dem Mindestgebot liegen.')
+    const target = parseAmount(p.target, meta.decimals, 'target')
+    if (target === 0n) fail('BAD_INPUT', 'targetZero')
+    const minBid = p.minBid ? parseAmount(p.minBid, meta.decimals, 'minBid') : 0n
+    const guide = p.guide ? parseAmount(p.guide, meta.decimals, 'guide') : 0n
+    if (guide > 0n && guide < minBid) fail('BAD_INPUT', 'guideBelowMin')
     const now = (await this.provider.getBlock('latest')).timestamp
     const biddingEnd = p.biddingEnd != null ? Math.floor(Number(p.biddingEnd)) : now + Math.round(Number(p.biddingDays) * DAY)
-    if (!(biddingEnd >= now + 3600)) fail('BAD_INPUT', 'Die Bietphase muss mindestens eine Stunde dauern.')
-    if (biddingEnd > now + LIMITS.maxBiddingDays * DAY) fail('BAD_INPUT', `Die Bietphase darf höchstens ${LIMITS.maxBiddingDays} Tage dauern.`)
+    if (!(biddingEnd >= now + 3600)) fail('BAD_INPUT', 'biddingTooShort')
+    if (biddingEnd > now + LIMITS.maxBiddingDays * DAY) fail('BAD_INPUT', 'biddingTooLong', { days: LIMITS.maxBiddingDays })
     const invite = p.inviteOnly !== false ? KeyWallet.createRandom() : null
     const factory = new FactoryContract(this.net.factory, this.provider)
     const me = await this.account.address()
@@ -275,7 +276,7 @@ export class Pomona extends EventEmitter {
         inviteSigner: invite?.address ?? null
       })], { onStep })
       const after = await factory.roundsOf(me)
-      if (after.length !== before.length + 1) fail('TX_FAILED', 'Runde wurde nicht erstellt.')
+      if (after.length !== before.length + 1) fail('TX_FAILED', 'notCreated')
       return after.at(-1)
     })
 
@@ -305,18 +306,18 @@ export class Pomona extends EventEmitter {
    */
   async join ({ link }) {
     this._needAccount()
-    if (this.round) fail('HAS_ROUND', 'Diese App hat bereits eine Runde.')
+    if (this.round) fail('HAS_ROUND', 'hasRound')
     const inv = decodeInvite(link)
-    if (!networkIds().includes(inv.network)) fail('BAD_LINK', 'Unbekanntes Netzwerk im Link.')
+    if (!networkIds().includes(inv.network)) fail('BAD_LINK', 'linkNetwork')
     this._useNetwork(inv.network, { reopen: true })
-    if (!isReady(this.net)) fail('NOT_READY', 'Dieses Netzwerk ist in deiner App noch nicht eingerichtet.')
+    if (!isReady(this.net)) fail('NOT_READY', 'netNotReadyHere')
     await this._verifyRound(inv.round)
     if (inv.inviteKey) {
       const info = await new RoundContract(inv.round, this.provider).info()
-      if (!same(new KeyWallet(inv.inviteKey).address, info.inviteSigner)) fail('BAD_LINK', 'Die Einladung passt nicht zu dieser Runde.')
+      if (!same(new KeyWallet(inv.inviteKey).address, info.inviteSigner)) fail('BAD_LINK', 'inviteMismatch')
     }
     const manifest = await this.p2p.openRemoteManifest(inv.manifest)
-    if (!same(manifest.round, inv.round) || manifest.chainId !== this.net.chainId) fail('BAD_LINK', 'Link und Runde passen nicht zusammen.')
+    if (!same(manifest.round, inv.round) || manifest.chainId !== this.net.chainId) fail('BAD_LINK', 'linkMismatch')
     const saved = { role: 'bidder', network: inv.network, manifest: inv.manifest, round: inv.round, inviteKey: inv.inviteKey }
     await this.p2p.setSetting('round', saved)
     await this._restore(saved)
@@ -362,7 +363,7 @@ export class Pomona extends EventEmitter {
   async bid ({ amount }) {
     const b = await this._prepareBid(amount)
     if (!b.enough) {
-      fail('NO_FUNDS', `Dafür brauchst du ${formatAmount(b.cost, b.meta.decimals)} ${b.meta.symbol}. Dir fehlen ${formatAmount(b.cost - b.balance, b.meta.decimals)} ${b.meta.symbol}.`)
+      fail('NO_FUNDS', 'missingFunds', { cost: formatAmount(b.cost, b.meta.decimals), missing: formatAmount(b.cost - b.balance, b.meta.decimals), symbol: b.meta.symbol })
     }
     await this._exclusive('bid', (onStep) => this.account.execute(b.calls, { onStep }))
   }
@@ -376,18 +377,18 @@ export class Pomona extends EventEmitter {
     const { info, me } = await this._roundContext('bidding')
     const meta = await this._token()
     const units = parseAmount(amount, meta.decimals)
-    if (units === 0n) fail('BAD_AMOUNT', 'Bitte einen Betrag eingeben.')
+    if (units === 0n) fail('BAD_AMOUNT', 'noAmount')
     const previous = await this.round.pledgeOf(me)
-    if (previous + units < info.minBid) fail('BELOW_MIN', `Das Mindestgebot ist ${formatAmount(info.minBid, meta.decimals)} ${meta.symbol} pro Rate.`)
+    if (previous + units < info.minBid) fail('BELOW_MIN', 'belowMin', { min: formatAmount(info.minBid, meta.decimals), symbol: meta.symbol })
     // Invoice mode: a bid is a promise; money moves with each paid invoice.
     const cost = info.mode === 'invoice' ? 0n : units * BigInt(info.installments)
     const balance = await this.account.usdtBalance()
 
     let invite = '0x'
     if (previous === 0n && info.inviteSigner) {
-      if (!this.saved.inviteKey) fail('NO_INVITE', 'Für diese Runde brauchst du den Einladungslink.')
+      if (!this.saved.inviteKey) fail('NO_INVITE', 'needInvite')
       const signer = new KeyWallet(this.saved.inviteKey)
-      if (!same(signer.address, info.inviteSigner)) fail('NO_INVITE', 'Die Einladung passt nicht zu dieser Runde.')
+      if (!same(signer.address, info.inviteSigner)) fail('NO_INVITE', 'inviteMismatch')
       invite = await signer.signMessage(getBytes(await this.round.inviteDigest(me)))
     }
 
@@ -411,7 +412,7 @@ export class Pomona extends EventEmitter {
     const { me } = await this._roundContext('bidding')
     const meta = await this._token()
     const units = amount === 'all' ? await this.round.pledgeOf(me) : parseAmount(amount, meta.decimals)
-    if (units === 0n) fail('NOTHING', 'Du hast kein Gebot.')
+    if (units === 0n) fail('NOTHING', 'noPledge')
     await this._simulateAndRun('withdraw', this.round.withdraw(units))
   }
 
@@ -448,7 +449,7 @@ export class Pomona extends EventEmitter {
     const q = await this._preparePay(index)
     if (!q.enough) {
       const f = (v) => formatAmount(v, q.meta.decimals)
-      fail('NO_FUNDS', `Dafür brauchst du ${f(q.cost)} ${q.meta.symbol}. Dir fehlen ${f(q.cost - q.balance)} ${q.meta.symbol}. Ohne Zahlung gibt es keinen Beleg.`)
+      fail('NO_FUNDS', 'missingFundsPay', { cost: f(q.cost), missing: f(q.cost - q.balance), symbol: q.meta.symbol })
     }
     await this._exclusive('pay', (onStep) => this.account.execute(q.calls, { onStep }))
   }
@@ -456,12 +457,12 @@ export class Pomona extends EventEmitter {
   /** @private */
   async _preparePay (index) {
     const { info, me } = await this._roundContext(null)
-    if (info.mode !== 'invoice') fail('WRONG_MODE', 'In dieser Runde wird nicht per Rechnung bezahlt.')
+    if (info.mode !== 'invoice') fail('WRONG_MODE', 'notInvoiceMode')
     const pledge = await this.round.pledgeOf(me)
-    if (pledge === 0n) fail('NOT_BIDDER', 'Du hast in dieser Runde nicht geboten.')
+    if (pledge === 0n) fail('NOT_BIDDER', 'notBidder')
     const open = await this._openInvoices(info, me)
     const list = index == null ? open : open.filter((i) => i === Number(index))
-    if (!list.length) fail('NOTHING', index == null ? 'Es gibt keine offene Rechnung.' : 'Diese Rechnung ist schon bezahlt oder noch nicht da.')
+    if (!list.length) fail('NOTHING', index == null ? 'noOpenInvoice' : 'invoicePaidOrMissing')
     const meta = await this._token()
     const amount = pledge * BigInt(list.length)
     // The organizer's own bid is their own money: the contract only records it.
@@ -509,9 +510,9 @@ export class Pomona extends EventEmitter {
    */
   async invoiceDetails ({ index }) {
     const { info } = await this._roundContext(null, { organizer: true })
-    if (info.mode !== 'invoice') fail('WRONG_MODE', 'In dieser Runde wird nicht per Rechnung bezahlt.')
+    if (info.mode !== 'invoice') fail('WRONG_MODE', 'notInvoiceMode')
     index = Number(index)
-    if (!(index >= 0 && index < info.invoiceCount)) fail('NOTHING', 'Diese Rechnung gibt es noch nicht.')
+    if (!(index >= 0 && index < info.invoiceCount)) fail('NOTHING', 'noSuchInvoice')
     const meta = await this._token()
     const fmt = (v) => formatAmount(v, meta.decimals)
     const [stats, unpaid] = await Promise.all([this.round.paidStats(index), this.round.unpaid(index)])
@@ -530,8 +531,8 @@ export class Pomona extends EventEmitter {
   /** Organizer, deposit mode: release the next installment of all bids. */
   async invoice () {
     const { info, now } = await this._roundContext('running', { organizer: true })
-    if (info.mode !== 'deposit') fail('WRONG_MODE', 'In dieser Runde kommen die Rechnungen automatisch.')
-    if (!canInvoice(info, now)) fail('NOT_DUE', 'Die nächste Rechnung ist noch nicht fällig.')
+    if (info.mode !== 'deposit') fail('WRONG_MODE', 'autoInvoices')
+    if (!canInvoice(info, now)) fail('NOT_DUE', 'notDue')
     await this._simulateAndRun('invoice', this.round.invoice())
   }
 
@@ -550,13 +551,13 @@ export class Pomona extends EventEmitter {
   /** Bidder: take back what was not invoiced. */
   async refund () {
     const { me } = await this._roundContext(null)
-    if (await this.round.refundable(me) === 0n) fail('NOTHING', 'Es gibt nichts zurückzuzahlen.')
+    if (await this.round.refundable(me) === 0n) fail('NOTHING', 'nothingToRefund')
     await this._simulateAndRun('refund', this.round.refund())
   }
 
   /** @param {{ text: string }} p */
   async postNews ({ text }) {
-    if (this.saved?.role !== 'organizer') fail('NOT_ORGANIZER', 'Nur der Organisator kann Neuigkeiten posten.')
+    if (this.saved?.role !== 'organizer') fail('NOT_ORGANIZER', 'newsOrganizer')
     text = String(text ?? '').trim().slice(0, LIMITS.news)
     if (text) await this.p2p.postNews(text)
   }
@@ -567,7 +568,7 @@ export class Pomona extends EventEmitter {
    * @returns {{ link: string, qr: string }}
    */
   invite () {
-    if (!this.saved) fail('NO_ROUND', 'Noch keine Runde.')
+    if (!this.saved) fail('NO_ROUND', 'noRound')
     return { link: this.link, qr: qrSvg(this.link) }
   }
 
@@ -578,10 +579,10 @@ export class Pomona extends EventEmitter {
    */
   async receipt ({ index }) {
     this._needAccount()
-    if (!this.round) fail('NO_ROUND', 'Noch keine Runde.')
+    if (!this.round) fail('NO_ROUND', 'noRound')
     const me = await this.account.address()
     const r = await this.round.receipt(me, Number(index))
-    if (r.amount === 0n) fail('NO_RECEIPT', 'Für diese Rate gibt es keinen Beleg.')
+    if (r.amount === 0n) fail('NO_RECEIPT', 'noReceipt')
     const base = { network: this.net.id, round: this.round.address, bidder: me, index: Number(index), at: Math.floor(Date.now() / 1000) }
     const message = receiptMessage(base)
     const sig = await this.account.signText(message)
@@ -600,30 +601,30 @@ export class Pomona extends EventEmitter {
     const r = decodeReceipt(code)
     const age = Math.floor(Date.now() / 1000) - r.at
     if (age > RECEIPT_TTL || age < -RECEIPT_TTL) {
-      return { valid: false, reason: 'Dieser Beleg ist abgelaufen. Bitte den QR-Code in der App neu öffnen lassen.' }
+      return { valid: false, reason: t('verify.expired') }
     }
     let signer = null
     try { signer = verifyMessage(receiptMessage(r), r.sig) } catch {}
-    if (!same(signer, r.owner)) return { valid: false, reason: 'Die Unterschrift des Belegs passt nicht.' }
-    if (!networkIds().includes(r.network)) fail('BAD_LINK', 'Unbekanntes Netzwerk im Beleg.')
+    if (!same(signer, r.owner)) return { valid: false, reason: t('verify.badSignature') }
+    if (!networkIds().includes(r.network)) fail('BAD_LINK', 'receiptNetwork')
     const net = this._network(r.network)
     const own = net.id === this.net.id
     const provider = own ? this.provider : providerFor(net)
     try {
       if (!net.factory || !(await new FactoryContract(net.factory, provider).isRound(r.round))) {
-        return { valid: false, reason: 'Diese Runde wurde nicht mit Pomona erstellt.' }
+        return { valid: false, reason: t('verify.notPomona') }
       }
       if (!same(r.owner, r.bidder)) {
         // Smart account: the signing key must be an owner of the paying Safe.
         const safe = new Contract(r.bidder, ['function isOwner(address owner) view returns (bool)'], provider)
         const owns = await safe.isOwner(r.owner).catch(() => false)
-        if (!owns) return { valid: false, reason: 'Der Beleg wurde nicht vom zahlenden Konto unterschrieben.' }
+        if (!owns) return { valid: false, reason: t('verify.notPayer') }
       }
       const round = new RoundContract(r.round, provider)
       const [{ amount, paidAt }, info] = await Promise.all([round.receipt(r.bidder, r.index), round.info()])
       const meta = await new TokenContract(info.token, provider).meta()
       const title = own && same(r.round, this.round?.address) ? this.manifest?.title ?? null : null
-      if (amount === 0n) return { valid: false, reason: 'Für diese Rate ist keine Zahlung verbucht.', title }
+      if (amount === 0n) return { valid: false, reason: t('verify.notPaid'), title }
       return {
         valid: true,
         title,
@@ -646,10 +647,10 @@ export class Pomona extends EventEmitter {
   async status () {
     const s = {
       wallet: { state: this.walletState, kind: this.account?.kind ?? null, address: null, usdt: null, symbol: 'USDT' },
-      network: { id: this.net.id, name: this.net.name, dev: !!this.net.dev, explorer: this.net.explorer },
+      network: { id: this.net.id, name: t('network.' + this.net.id), dev: !!this.net.dev, explorer: this.net.explorer },
       networks: networkIds()
         .filter((id) => this.allowDev || !getNetwork(id).dev)
-        .map((id) => { const n = this._network(id); return { id, name: n.name, ready: isReady(n) } }),
+        .map((id) => { const n = this._network(id); return { id, name: t('network.' + id), ready: isReady(n) } }),
       peers: this.p2p.peers,
       version: VERSION,
       busy: this._busy,
@@ -725,6 +726,17 @@ export class Pomona extends EventEmitter {
     return s
   }
 
+  /**
+   * Language of messages and assistant answers (i18n/); the UI sets it at
+   * start and when the person switches.
+   * @param {{ lang: string }} p
+   */
+  setLanguage ({ lang }) {
+    const used = setLanguage(lang)
+    this._changed()
+    return { lang: used }
+  }
+
   // ---------------------------------------------------------------- assistant
 
   /** @param {{ text?: string, topic?: string }} p */
@@ -746,7 +758,7 @@ export class Pomona extends EventEmitter {
   _openVault (password) {
     const now = Date.now()
     if (now < this._passwordBlockedUntil) {
-      fail('TOO_MANY_ATTEMPTS', `Zu viele falsche Versuche. Bitte in ${Math.ceil((this._passwordBlockedUntil - now) / 1000)} Sekunden erneut.`)
+      fail('TOO_MANY_ATTEMPTS', 'tooManyAttempts', { seconds: Math.ceil((this._passwordBlockedUntil - now) / 1000) })
     }
     try {
       const seed = open(this._sealed, password)
@@ -819,7 +831,7 @@ export class Pomona extends EventEmitter {
   /** @private */
   _network (id) {
     const net = getNetwork(id, this.overrides[id])
-    if (net.dev && !this.allowDev) fail('NOT_DEV', 'Die Entwicklungs-Chain ist nur im Entwicklermodus verfügbar.')
+    if (net.dev && !this.allowDev) fail('NOT_DEV', 'devOnly')
     return net
   }
 
@@ -928,10 +940,10 @@ export class Pomona extends EventEmitter {
   async _verifyRound (address) {
     const factory = new FactoryContract(this.net.factory, this.provider)
     if (!(await factory.isRound(address))) {
-      fail('FORGED_ROUND', 'Diese Runde wurde nicht von der Pomona-Factory erstellt. Bitte nicht bieten.')
+      fail('FORGED_ROUND', 'forgedRound')
     }
     const info = await new RoundContract(address, this.provider).info()
-    if (!same(info.token, this.net.token)) fail('FORGED_ROUND', 'Diese Runde läuft nicht in USDT.')
+    if (!same(info.token, this.net.token)) fail('FORGED_ROUND', 'notUsdt')
     return info
   }
 
@@ -954,10 +966,10 @@ export class Pomona extends EventEmitter {
    */
   async _roundContext (phase, { organizer = false } = {}) {
     this._needAccount()
-    if (!this.round) fail('NO_ROUND', 'Noch keine Runde.')
+    if (!this.round) fail('NO_ROUND', 'noRound')
     const [info, me, block] = await Promise.all([this.round.info(), this.account.address(), this.provider.getBlock('latest')])
-    if (organizer && !same(info.organizer, me)) fail('NOT_ORGANIZER', 'Nur der Organisator darf das.')
-    if (phase && info.phase !== phase) fail('WRONG_PHASE', 'Das ist in der aktuellen Phase der Runde nicht möglich.')
+    if (organizer && !same(info.organizer, me)) fail('NOT_ORGANIZER', 'onlyOrganizer')
+    if (phase && info.phase !== phase) fail('WRONG_PHASE', 'wrongPhase')
     return { info, me, now: block.timestamp }
   }
 
@@ -984,7 +996,7 @@ export class Pomona extends EventEmitter {
    * @param {(onStep: (step: string) => void) => Promise<any>} fn
    */
   async _exclusive (what, fn) {
-    if (this._busy) fail('BUSY', 'Bitte warten, eine Transaktion läuft noch.')
+    if (this._busy) fail('BUSY', 'busy')
     this._busy = what
     this._busyStep = 'prepare'
     this._changed()

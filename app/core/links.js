@@ -12,6 +12,7 @@
  */
 import b4a from 'b4a'
 import { fail } from './errors.js'
+import { t } from '../i18n/index.js'
 import { LIMITS } from './config/limits.js'
 
 const INVITE = 'pomona://'
@@ -27,14 +28,14 @@ function pack (prefix, obj) {
 
 function unpack (prefix, code, what, version = 1) {
   code = String(code ?? '').trim()
-  if (code.length > LIMITS.link) fail('BAD_LINK', `${what} ist zu lang.`)
-  if (!code.startsWith(prefix)) fail('BAD_LINK', `Das ist kein ${what}.`)
+  if (code.length > LIMITS.link) fail('BAD_LINK', 'linkTooLong', { what: t('label.' + what) })
+  if (!code.startsWith(prefix)) fail('BAD_LINK', 'linkWrongKind', { what: t('label.' + what) })
   try {
     const json = b4a.toString(b4a.from(code.slice(prefix.length).replace(/-/g, '+').replace(/_/g, '/'), 'base64'))
     const obj = JSON.parse(json)
     if (obj && typeof obj === 'object' && obj.v === version) return obj
   } catch {}
-  return fail('BAD_LINK', `${what} ist beschädigt.`)
+  return fail('BAD_LINK', 'linkBroken', { what: t('label.' + what) })
 }
 
 /**
@@ -54,9 +55,9 @@ export function encodeInvite (i) {
 
 /** @param {string} link @returns {Invite} */
 export function decodeInvite (link) {
-  const p = unpack(INVITE, link, 'Einladungslink')
-  if (!/^[0-9a-f]{64}$/.test(p.m) || !isNetworkId(p.n) || !isAddress(p.r)) fail('BAD_LINK', 'Einladungslink ist ungültig.')
-  if (p.k !== undefined && !/^0x[0-9a-f]{64}$/i.test(p.k)) fail('BAD_LINK', 'Einladungslink ist ungültig.')
+  const p = unpack(INVITE, link, 'invite')
+  if (!/^[0-9a-f]{64}$/.test(p.m) || !isNetworkId(p.n) || !isAddress(p.r)) fail('BAD_LINK', 'inviteInvalid')
+  if (p.k !== undefined && !/^0x[0-9a-f]{64}$/i.test(p.k)) fail('BAD_LINK', 'inviteInvalid')
   return { manifest: p.m, network: p.n, round: p.r, inviteKey: p.k || null }
 }
 
@@ -92,10 +93,10 @@ export function encodeReceipt (r) {
 
 /** @param {string} code @returns {Receipt} */
 export function decodeReceipt (code) {
-  const p = unpack(RECEIPT, code, 'Beleg', 2)
+  const p = unpack(RECEIPT, code, 'receipt', 2)
   if (!isNetworkId(p.n) || !isAddress(p.r) || !isAddress(p.b) || !Number.isInteger(p.i) || p.i < 0 || p.i >= LIMITS.maxInstallments ||
     !Number.isInteger(p.t) || !isAddress(p.o) || typeof p.s !== 'string' || !/^0x[0-9a-fA-F]{130}$/.test(p.s)) {
-    fail('BAD_LINK', 'Beleg ist ungültig.')
+    fail('BAD_LINK', 'receiptInvalid')
   }
   return { network: p.n, round: p.r, bidder: p.b, index: p.i, at: p.t, owner: p.o, sig: p.s }
 }
