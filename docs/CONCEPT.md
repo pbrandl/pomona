@@ -70,7 +70,7 @@ Schlüssel.
 - **Ausgangslage:** Die Trennlinie gibt es schon: Der Kern bereitet Aufrufe vor
   (`_prepareBid` → `calls`), `core/wallet/` führt sie aus.
 - **Produkt:** eigene Pear-App (Desktop und Handy) auf WDK, mit Smart Account,
-  Gebühren in der Währung selbst, Passphrase, eigener Bestätigungsoberfläche.
+  Gebühren in der Währung selbst, Seedphrase, eigener Bestätigungsoberfläche.
 - **Verbindung:** peer-to-peer über HyperDHT mit verschlüsseltem Kanal, gekoppelt
   per QR-Code, ohne Relay-Server. Etwa die Wallet auf dem Handy, Pomona auf dem Laptop.
 - **Sitzungen mit Rechten:** z. B. „Runde 0x…: bieten, bezahlen, zurückholen,
@@ -97,7 +97,7 @@ Verbindungen, die dieselben vorbereiteten Aufrufe übergeben:
 3. **WalletConnect** für andere Wallets.
 4. **Zahladresse** für jede Wallet ohne Verbindung (siehe unten).
 
-Nicht empfohlen: dieselbe Passphrase in zwei Apps eingeben.
+Nicht empfohlen: dieselbe Seedphrase in zwei Apps eingeben.
 
 ### Zahladresse (für Wallets ohne Verbindung)
 

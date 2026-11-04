@@ -2,7 +2,7 @@
 export default {
   err: {
     walletExists: 'Es gibt bereits eine Wallet auf diesem Gerät.',
-    badSeed: 'Diese Passphrase ist ungültig.',
+    badSeed: 'Diese Seedphrase ist ungültig.',
     noWallet: 'Es gibt noch keine Wallet.',
     createWalletFirst: 'Bitte zuerst eine Wallet anlegen.',
     locked: 'Die Wallet ist gesperrt.',

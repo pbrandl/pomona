@@ -152,7 +152,7 @@ Jeder Ablauf ist eine Folge ganzer Seiten mit Schrittleiste oben (`page()` in `u
 
 | Ablauf | Schritte |
 |---|---|
-| Konto anlegen | Passwort → Passphrase → Aufladen |
+| Konto anlegen | Passwort → Seedphrase → Aufladen |
 | Finanzierungsrunde starten | Projekt → Phase 1 → Raten → Prüfen |
 | Bieten | Betrag → Prüfen → Fertig |
 | Einzelseiten | Beitreten, Aufladen, Konto, Beleg, Rechnung, Beleg prüfen |
@@ -174,7 +174,7 @@ Deutsch und Spanisch. Die Texte stehen in `app/i18n/<sprache>/`, eine Datei pro 
 - **Benutzen:** `t('wallet.title')`, mit Werten `t('bid.missing', { amount, symbol })`. Mehrzahl: `{ one, other }`, gewählt über `n`. Listen (Schritte, Monate, Stichwörter) mit `raw()`. Werte von außen (Titel, Adressen) escaped die Ansicht vor dem Einsetzen; die Katalogtexte selbst dürfen einfaches Markup (`<strong>`) enthalten.
 - **Auswahl:** gespeicherte Wahl (`localStorage` `pomona.lang`), sonst die Systemsprache, sonst Deutsch. Umschalten auf der Kontoseite und beim ersten Start. Die Oberfläche meldet die Sprache per RPC `setLanguage` an den Worker; der schreibt Fehler und Assistenten-Antworten dann in derselben Sprache.
 - **Zahlen** schreibt Pomona in jeder Sprache gleich (`1.234,5`), passend zur Eingabe. Datumsangaben folgen der Sprache.
-- **Begriffe:** Finanzierungsrunde = *ronda de financiación*, Gebot = *compromiso*, bieten = *comprometerse*, Phase 1 (Bieten) = *fase 1*, Rate = *cuota*, Rechnung = *factura*, Beleg = *comprobante*, Treuhandkonto = *cuenta de garantía*, Passphrase = *frase de recuperación*; Anrede *tú*, ohne Landesvarianten.
+- **Begriffe:** Finanzierungsrunde = *ronda de financiación*, Gebot = *compromiso*, bieten = *comprometerse*, Phase 1 (Bieten) = *fase 1*, Phase 2 (Raten) = *fase 2*, Rate = *cuota*, Rechnung = *factura*, Beleg = *comprobante*, Treuhandkonto = *cuenta de garantía*, Seedphrase = *frase semilla*; Anrede *tú*, ohne Landesvarianten.
 - **Neue Sprache:** `i18n/de/` nach `i18n/xx/` kopieren, Werte übersetzen (Schlüssel und `{platzhalter}` bleiben), in `i18n/index.js` unter `LANGUAGES` eintragen. Die Befehlsmuster (`agent.match`) und Stichwörter (`agent.topic.*.keywords`) sind sprachabhängig und brauchen eigene Wörter. `npm test` (`test/i18n.test.js`) meldet fehlende oder überzählige Schlüssel und abweichende Platzhalter.
 
 ## Assistent „Frag Pomona“ (QVAC)

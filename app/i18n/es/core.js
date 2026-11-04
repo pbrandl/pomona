@@ -2,7 +2,7 @@
 export default {
   err: {
     walletExists: 'Ya existe una billetera en este dispositivo.',
-    badSeed: 'Esta frase de recuperación no es válida.',
+    badSeed: 'Esta frase semilla no es válida.',
     noWallet: 'Todavía no hay ninguna billetera.',
     createWalletFirst: 'Primero crea una billetera.',
     locked: 'La billetera está bloqueada.',
