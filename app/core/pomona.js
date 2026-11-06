@@ -107,6 +107,13 @@ export class Pomona extends EventEmitter {
     this.saved = await this.p2p.getSetting('round')
     await this.assistant.ready()
     this._useNetwork(this.saved?.network ?? this.defaultNetwork)
+    // The local dev chain lives in memory: after a restart the saved round is
+    // gone. Forget it instead of failing on every status call.
+    if (this.saved && this.net.dev && (await this.provider.getCode(this.saved.round).catch(() => null)) === '0x') {
+      console.warn('[pomona] Die gespeicherte Runde gibt es auf der lokalen Chain nicht mehr (Chain neu gestartet). Sie wird vergessen.')
+      await this.p2p.setSetting('round', null)
+      this.saved = null
+    }
     // Restoring the round needs no password: reads and seeding work while locked.
     if (this.saved) await this._restore(this.saved, { wait: false }).catch((e) => this.emit('error', e))
     return this

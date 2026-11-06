@@ -424,3 +424,17 @@ test('the organizer bids from their own wallet: the project page keeps the whole
   assert.equal(s.round.invoices[0].amount, '60')
   assert.deepEqual(s.round.invoices, s.round.myInvoices)
 })
+
+test('dev chain restarted: a saved round that is gone is forgotten, not an endless error', async () => {
+  const { mkdtempSync } = await import('node:fs')
+  const { tmpdir } = await import('node:os')
+  const { join } = await import('node:path')
+  const storage = mkdtempSync(join(tmpdir(), 'pomona-gone-'))
+  const a = await env.make({ storage })
+  await a.p2p.setSetting('round', { network: 'local', round: Wallet.createRandom().address, role: 'bidder', manifest: '00'.repeat(32) })
+  await a.close()
+  const b = await env.make({ storage })
+  assert.equal(b.saved, null)
+  assert.equal((await b.status()).round, null)
+  await b.close()
+})
