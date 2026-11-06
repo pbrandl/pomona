@@ -42,7 +42,28 @@ export async function startChain ({ port } = {}) {
   }
 }
 
+/** Is there already an Ethereum node answering on this port? */
+async function chainAt (url) {
+  try {
+    const res = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_chainId', params: [] }) })
+    return (await res.json()).result ?? null
+  } catch { return null }
+}
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const { url } = await startChain({ port: Number(process.env.PORT ?? 8545) })
+  const port = Number(process.env.PORT ?? 8545)
+  const url = `http://127.0.0.1:${port}`
+  if (await chainAt(url)) {
+    console.log(`Die Dev-Chain läuft schon auf ${url}. Nichts zu tun; \`npm start\` in app/ nutzt sie.`)
+    console.log(`Neu starten: alte Chain beenden (lsof -ti tcp:${port} | xargs kill), dann erneut \`npm run chain\`.`)
+    process.exit(0)
+  }
+  try {
+    await startChain({ port })
+  } catch (e) {
+    if (!/EADDRINUSE/.test(e.message)) throw e
+    console.error(`Port ${port} ist belegt, aber nicht von einer Chain. Welches Programm: lsof -i tcp:${port}`)
+    process.exit(1)
+  }
   console.log('dev chain running at', url)
 }
