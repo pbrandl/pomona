@@ -138,6 +138,8 @@ function createWindow () {
 }
 
 if (!app.requestSingleInstanceLock()) {
+  // Same storage already open in another window: that one comes to the front.
+  console.log('Pomona läuft schon in einem anderen Fenster (mit älterem Code, falls du inzwischen aktualisiert hast). Dieses Fenster nach vorn geholt; zum Neustart dort mit Cmd+Q beenden.')
   app.quit()
 } else {
   app.on('second-instance', () => {
