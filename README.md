@@ -1,126 +1,128 @@
 # Pomona
 
-**Eine dezentrale Finanzierungsrunde auf Tethers Stack, nur in USDT.**
+**English** · [Deutsch](README.de.md)
 
-Jemand startet eine Finanzierungsrunde für ein Projekt und legt fest: das Ziel pro Rate, ob wöchentlich oder monatlich abgerechnet wird, wie oft, und **wie bezahlt wird**. Dann teilt er einen Link. Wer mitmacht, bietet einen Betrag pro Rate.
+**A decentralised funding round on Tether's stack, in USDT only.**
 
-**Per Rechnung** (Standard, gut für kleine Projekte): Bieten kostet nichts. Ist das Ziel erreicht, kommt jede Woche bzw. jeden Monat automatisch eine Rechnung. Jede bietende Person bezahlt sie mit einer Signatur aus ihrem Konto direkt an den Organisator und bekommt dafür einen Beleg. Ohne Zahlung gibt es keinen Beleg. Der Organisator sieht, wer bezahlt hat.
+Someone starts a funding round for a project and sets the target per instalment, whether it is settled weekly or monthly, how many times, and **how backers pay**. Then they share a link. Anyone who joins pledges an amount per instalment.
 
-**Vorab hinterlegen** (Treuhand): Beim Bieten liegen alle Raten in einem Smart Contract.
+**By invoice** (default, good for small projects): Pledging costs nothing. Once the target is reached, an invoice arrives automatically every week or month. Each backer pays it with a signature from their own account, directly to the organiser, and receives a receipt in return. No payment, no receipt. The organiser sees who has paid.
 
-- **Ziel verfehlt:** Alle bekommen ihr Geld zurück.
-- **Ziel erreicht:** Der Organisator stellt Rate für Rate eine Rechnung, höchstens einmal pro Intervall und höchstens so oft wie festgelegt. Jede Rechnung zahlt eine Rate aus dem Contract an ihn aus.
-- **Belege:** Für jede abgerechnete Rate bekommen die Bietenden einen Beleg als QR-Code, den jeder gegen die Blockchain prüfen kann.
-- **Vorzeitiges Ende:** Was nicht abgerechnet wird, geht an die Bietenden zurück.
+**Deposit upfront** (escrow): When pledging, all instalments are locked in a smart contract.
 
-Es gibt keinen Server und keinen Account, und niemand muss einen anderen Token als USDT halten.
+- **Target missed:** Everyone gets their money back.
+- **Target reached:** The organiser invoices instalment by instalment, at most once per interval and at most as often as agreed. Each invoice releases one instalment from the contract to the organiser.
+- **Receipts:** For every settled instalment, backers receive a receipt as a QR code that anyone can verify against the blockchain.
+- **Early end:** Whatever has not been invoiced goes back to the backers.
 
-Pomona ist der Nachfolger von [Contrib](https://github.com/pbrandl/contrib) (Flutter + Parse Server) und als technisches Vorzeigeprodukt gedacht.
+There is no server and no account, and nobody needs to hold any token other than USDT.
 
-![Runde aus Sicht einer Bieterin](docs/bidder.png)
+Pomona is the successor to [Contrib](https://github.com/pbrandl/contrib) (Flutter + Parse Server) and is meant as a technical showcase.
 
-| Organisator rechnet ab | Ratenliste | Beleg als QR |
+![A funding round from a backer's point of view](docs/bidder.png)
+
+| Organiser invoices | Instalment list | Receipt as QR code |
 |---|---|---|
 | ![](docs/organizer-invoice.png) | ![](docs/receipts.png) | ![](docs/receipt.png) |
 
-## Technik
+## Technology
 
-| Schicht | Technik | Aufgabe |
+| Layer | Technology | Role |
 |---|---|---|
-| Desktop-App | [Pear](https://pears.com) 3: Electron mit `pear-runtime` | Oberfläche im abgeschotteten Renderer. Wallet, P2P und Chain laufen in einem Bare-Worker, den `pear-runtime` startet. |
-| P2P | Hyperswarm, Corestore, Hyperbee | Der Organisator veröffentlicht das Manifest (Titel, Website, Neuigkeiten). Alle Teilnehmer replizieren und seeden es mit. |
-| Wallet | [WDK](https://docs.wdk.tether.io): `wdk`, `wdk-wallet-evm-erc-4337` | Self-custodial Smart Account (Safe). Gebühren werden in USDT über einen Paymaster bezahlt, eine WDK-Policy begrenzt die Rechte. |
-| Tresor | libsodium: Argon2id + XSalsa20-Poly1305 | Die Seed-Phrase wird nur verschlüsselt gespeichert. |
-| Geld | `PomonaRound`, `PomonaFactory` (Solidity) | Escrow, Raten-Abrechnung und Belege, ohne Admin-Keys. |
-| Assistent | [QVAC](https://qvac.tether.io) (`@qvac/inference`, llama.cpp) | „Frag Pomona“: erklärt die Runde und bereitet Schritte vor. Läuft lokal, Modell (Qwen3) wird einmalig peer-to-peer geladen. Bestätigen muss immer die Person. |
+| Desktop app | [Pear](https://pears.com) 3: Electron with `pear-runtime` | UI in a sandboxed renderer. Wallet, P2P and chain run in a Bare worker started by `pear-runtime`. |
+| P2P | Hyperswarm, Corestore, Hyperbee | The organiser publishes the manifest (title, website, news). All participants replicate and seed it. |
+| Wallet | [WDK](https://docs.wdk.tether.io): `wdk`, `wdk-wallet-evm-erc-4337` | Self-custodial smart account (Safe). Fees are paid in USDT via a paymaster; a WDK policy limits what the account may do. |
+| Vault | libsodium: Argon2id + XSalsa20-Poly1305 | The seed phrase is only ever stored encrypted. |
+| Money | `PomonaRound`, `PomonaFactory` (Solidity) | Escrow, instalment settlement and receipts, without admin keys. |
+| Assistant | [QVAC](https://qvac.tether.io) (`@qvac/inference`, llama.cpp) | "Ask Pomona": explains the round and prepares steps. Runs locally; the model (Qwen3) is downloaded once, peer-to-peer. The user always has to confirm. |
 
-Mehr dazu:
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): Module, Abläufe und wie man Pomona erweitert
-- [docs/CONTRACT.md](docs/CONTRACT.md): Phasen, Funktionen und Invarianten der Contracts
-- [docs/SECURITY.md](docs/SECURITY.md): Bedrohungsmodell, Prüfungsergebnisse und offene Risiken
-- [docs/RPC.md](docs/RPC.md): Schnittstelle zwischen UI und Worker, Format des Status
-- [docs/DEV.md](docs/DEV.md): Entwicklermodus ohne Pear, Sprachmodell als Datei
-- [docs/ASSISTANT.md](docs/ASSISTANT.md): der Assistent „Frag Pomona“ (QVAC), Werkzeuge, Grenzen, Sicherheit
-- [docs/CONCEPT.md](docs/CONCEPT.md): Konzept (noch nicht umgesetzt): Rundentypen, Wallet-Dienst, Swap-Dienst
+More detail (in German for now):
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): modules, flows and how to extend Pomona
+- [docs/CONTRACT.md](docs/CONTRACT.md): phases, functions and invariants of the contracts
+- [docs/SECURITY.md](docs/SECURITY.md): threat model, review findings and open risks
+- [docs/RPC.md](docs/RPC.md): interface between UI and worker, status format
+- [docs/DEV.md](docs/DEV.md): developer mode without Pear, language model as a file
+- [docs/ASSISTANT.md](docs/ASSISTANT.md): the "Ask Pomona" assistant (QVAC), tools, limits, security
+- [docs/CONCEPT.md](docs/CONCEPT.md): concept (not yet implemented): round types, wallet service, swap service
 
-## Loslegen
+## Getting started
 
-Voraussetzungen: Node.js 22. Seit Pear 3 ist die App eine normale Electron-App mit `pear-runtime` (Vorlage: [hello-pear-electron](https://github.com/holepunchto/hello-pear-electron)); `pear run` gibt es nicht mehr. Die Pear-CLI braucht es erst zum Veröffentlichen.
+Requirements: Node.js 22. Since Pear 3 the app is a regular Electron app with `pear-runtime` (template: [hello-pear-electron](https://github.com/holepunchto/hello-pear-electron)); `pear run` no longer exists. The Pear CLI is only needed for publishing.
 
 ```bash
-# Contracts bauen und testen (20 Tests)
+# Build and test the contracts (20 tests)
 cd contracts && npm install && npm test
 
-# App testen (39 Tests) und starten
+# Test and start the app
 cd ../app && npm install && npm test
-npm start                             # startet lokale Chain + Contracts und öffnet das Fenster
-npm run start:second                  # zweite Instanz mit eigener Wallet (nutzt dieselbe Chain)
+npm start                             # starts a local chain + contracts and opens the window
+npm run start:second                  # second instance with its own wallet (uses the same chain)
 ```
 
-`npm start` baut die Contracts, startet die lokale Chain auf 127.0.0.1:8545 und deployt sie, falls dort noch keine läuft. Eine laufende Chain samt Contracts wird wiederverwendet. Die Chain endet, wenn das Fenster geschlossen wird, das sie gestartet hat.
+`npm start` builds the contracts, starts the local chain on 127.0.0.1:8545 and deploys them if no chain is running there yet. A running chain with its contracts is reused. The chain stops when the window that started it is closed.
 
-`npm install` lädt dabei Electron herunter. Scheitert das hinter einer Firmen-Firewall mit einem Zertifikatsfehler, hilft `NODE_EXTRA_CA_CERTS=/pfad/zum/firmen-zertifikat.pem npm install`. Die Entwicklerwerkzeuge im Fenster öffnet ⌥⌘I (macOS) bzw. Strg+Umschalt+I.
+`npm install` downloads Electron. If that fails behind a corporate firewall with a certificate error, `NODE_EXTRA_CA_CERTS=/path/to/corporate-certificate.pem npm install` helps. Developer tools in the window open with ⌥⌘I (macOS) or Ctrl+Shift+I.
 
-Im Entwicklermodus läuft die App gegen die lokale Chain. In der Wallet gibt es einen **Faucet** für Test-USDT. Die Gebühren in ETH füllt die App dort unsichtbar auf, weil es lokal weder Bundler noch Paymaster gibt.
+In developer mode the app runs against the local chain. The wallet has a **faucet** for test USDT. The app silently tops up the ETH fees there, because there is no bundler or paymaster locally.
 
-### Ohne Pear (z. B. hinter einer Firmen-Firewall)
+### Without Pear (e.g. behind a corporate firewall)
 
 ```bash
 cd contracts && npm install && cd ../app && npm install
-npm run dev     # lokale Chain, lokales P2P-Netz, Kern in Bare, zwei Profile im Browser
+npm run dev     # local chain, local P2P network, core in Bare, two profiles in the browser
 ```
 
-Derselbe Code wie in Pear, nur im Browser und komplett offline. Das Sprachmodell kommt dort als Datei aus `~/pomona-models`. Anleitung: [docs/DEV.md](docs/DEV.md).
+Same code as in Pear, just in the browser and fully offline. There, the language model comes as a file from `~/pomona-models`. Instructions: [docs/DEV.md](docs/DEV.md).
 
-### Testnet und Mainnet
+### Testnet and mainnet
 
-1. Factory deployen:
+1. Deploy the factory:
    ```bash
    cd contracts
    RPC=https://ethereum-sepolia-rpc.publicnode.com PRIVATE_KEY=0x… node scripts/deploy.js sepolia
    ```
-   Auf Testnets wird ein Test-USDT mit öffentlichem `mint` mitdeployt. Für echtes USDT `TOKEN=0x…` setzen.
-2. In `app/core/config/networks.js` unter `aa` einen Bundler und einen **USDT-Token-Paymaster** eintragen, zum Beispiel von Candide oder Pimlico (siehe die [WDK-Konfiguration](https://docs.wdk.tether.io/sdk/wallet-modules/wallet-evm-erc-4337/configuration)).
-3. Die App ohne `--dev` starten. Netzwerke, die nicht vollständig eingerichtet sind, lassen sich nicht auswählen.
+   On testnets, a test USDT with a public `mint` is deployed alongside. For real USDT, set `TOKEN=0x…`.
+2. In `app/core/config/networks.js`, enter a bundler and a **USDT token paymaster** under `aa`, for example from Candide or Pimlico (see the [WDK configuration](https://docs.wdk.tether.io/sdk/wallet-modules/wallet-evm-erc-4337/configuration)).
+3. Start the app without `--dev`. Networks that are not fully configured cannot be selected.
 
-### Design-Vorschau ohne Pear
+### Design preview without Pear
 
 ```bash
 cd app && npm run preview   # http://localhost:4173/preview.html?s=bidder
 ```
 
-Szenarien: `onboarding`, `locked`, `start`, `bidder`, `organizer`, `invoice`, `receipts`, `completed`, `failed`. Per Rechnung: `payg-bidding`, `payg`, `payg-organizer`.
+Scenarios: `onboarding`, `locked`, `start`, `bidder`, `organizer`, `invoice`, `receipts`, `completed`, `failed`. By invoice: `payg-bidding`, `payg`, `payg-organizer`.
 
-## Qualität
+## Quality
 
-- `npm test` in `contracts/` umfasst 19 Tests: beide Bezahlarten (vorab hinterlegen, per Rechnung), Zeitplan, nachgeholte Rechnungen, Belege, Erstattung bei Abbruch, Ablauf und verfehltem Ziel, Einladungen (auch Wiederverwendung in einer anderen Runde), Fee-Tokens, Factory-Register und Parameterprüfung.
-- `npm test` in `app/` umfasst 36 Tests:
-  - Unit-Tests: Beträge, Links, Zeitplan, Policy, Tresor, Manifest-Bereinigung, RPC-Validierung, Benachrichtigungen
-  - Assistent: Befehle, Wissen, Rollen- und Phasenprüfung jeder Aktion, Prompt Injection, keine Werkzeuge zum Geldbewegen
-  - End-to-End mit echter Chain, WDK und Hyperswarm: Runde „Per Rechnung“ (Zahlung, fehlendes Guthaben, offene Rechnungen), Raten-Runde inklusive Beitritt bei offline Organisator, Belege, gefälschte Runden, Policy-Blockade, Senden und Sperren
-  - ein Test, der den Kern **in Bare** ausführt, inklusive QVAC
-- `npm run lint` in `app/` prüft den Code mit [standard](https://standardjs.com).
+- `npm test` in `contracts/` runs 20 tests: both payment modes (deposit upfront, by invoice), schedule, catch-up invoices, receipts, refunds on cancellation, expiry and missed target, invitations (including reuse in another round), fee tokens, factory registry and parameter checks.
+- `npm test` in `app/` covers:
+  - Unit tests: amounts, links, schedule, policy, vault, manifest sanitising, RPC validation, notifications
+  - Assistant: commands, knowledge, role and phase checks for every action, prompt injection, no tools that move money
+  - End-to-end with a real chain, WDK and Hyperswarm: "by invoice" round (payment, insufficient balance, open invoices), instalment round including joining while the organiser is offline, receipts, forged rounds, policy block, sending and locking
+  - a test that runs the core **in Bare**, including QVAC
+- `npm run lint` in `app/` checks the code with [standard](https://standardjs.com).
 
-## Stand
+## Status
 
-- [x] Contracts mit Raten, Rechnungen, Belegen und Factory-Register
-- [x] Nur USDT: ERC-4337 Smart Account mit Gebühren über den Paymaster (WDK)
-- [x] Tresor, Sperre, WDK-Policy, CSP und Sicherheitsprüfung ([SECURITY.md](docs/SECURITY.md))
-- [x] Desktop-App auf Pear 3 (Electron + `pear-runtime`), Ablauf Konto → Runde → Gebot im echten Fenster geprüft
-- [ ] Paketieren (electron-forge) und P2P-Updates über `pear-runtime` mit Release-Link
-- [ ] Sepolia: Bundler und Paymaster eintragen und den kompletten Ablauf testen
-- [ ] Automatische Sperre bei Inaktivität, stärkere Argon2id-Parameter
-- [x] Assistent „Frag Pomona“ auf QVAC (lokal, nur vorbereitend)
-- [x] Deutsch, Englisch und Spanisch, erweiterbar (`app/i18n/`, siehe [ARCHITECTURE.md](docs/ARCHITECTURE.md#sprachen))
-- [ ] Assistent mit echtem Modell auf einem Desktop testen (Qualität auf Deutsch und Spanisch, Tool-Aufrufe)
-- [ ] Spanische Texte von Muttersprachlern gegenlesen lassen
-- [ ] Telegram-Bot im Worker des Organisators
-- [ ] Externes Audit vor dem Mainnet
+- [x] Contracts with instalments, invoices, receipts and factory registry
+- [x] USDT only: ERC-4337 smart account with fees via the paymaster (WDK)
+- [x] Vault, lock, WDK policy, CSP and security review ([SECURITY.md](docs/SECURITY.md))
+- [x] Desktop app on Pear 3 (Electron + `pear-runtime`), account → round → pledge flow verified in a real window
+- [ ] Packaging (electron-forge) and P2P updates via `pear-runtime` with a release link
+- [ ] Sepolia: configure bundler and paymaster and test the full flow
+- [ ] Automatic lock on inactivity, stronger Argon2id parameters
+- [x] "Ask Pomona" assistant on QVAC (local, preparing steps only)
+- [x] German, English and Spanish, extensible (`app/i18n/`, see [ARCHITECTURE.md](docs/ARCHITECTURE.md#sprachen))
+- [ ] Test the assistant with a real model on a desktop (quality in German and Spanish, tool calls)
+- [ ] Have the Spanish texts proofread by native speakers
+- [ ] Telegram bot in the organiser's worker
+- [ ] External audit before mainnet
 
-## Lizenz
+## Distributing updates
 
-MIT. Die Schrift Inter steht unter der SIL Open Font License.
+With Pear 3, updates come through `pear-runtime`: the packaged app (electron-forge) checks its `pear://` link peer-to-peer for new versions and installs them. This is not set up yet. The steps are in the [hello-pear-electron](https://github.com/holepunchto/hello-pear-electron) template: create a link with `pear touch`, add it to the `upgrade` field in `package.json`, package the app, publish the folder with `pear stage` and keep it available with `pear seed`. The UI already shows "A new version of Pomona is ready · Restart"; it will be wired up to the updater. Keep the release key safe: whoever holds it can push updates to everyone.
 
-## Updates verteilen
+## Licence
 
-Mit Pear 3 kommen Updates über `pear-runtime`: Die paketierte App (electron-forge) prüft unter ihrem `pear://`-Link peer-to-peer auf neue Versionen und spielt sie ein. Das ist noch nicht eingerichtet. Der Weg steht in der Vorlage [hello-pear-electron](https://github.com/holepunchto/hello-pear-electron): Link mit `pear touch` anlegen, im `upgrade`-Feld der `package.json` eintragen, App paketieren, Ordner mit `pear stage` veröffentlichen und mit `pear seed` verfügbar halten. Die Oberfläche hat die Anzeige „Neue Version von Pomona ist bereit · Neu starten“ schon; sie wird mit dem Updater verbunden. Den Release-Schlüssel sicher verwahren: Wer ihn hat, kann allen Updates einspielen.
+MIT. The Inter typeface is licensed under the SIL Open Font License.
