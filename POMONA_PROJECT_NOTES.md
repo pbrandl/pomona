@@ -34,7 +34,6 @@ Systems: repo pbrandl/pomona (`main`). Locally: `cd app && npm start` (starts ch
 - 2026-11-03 Switch to Pear 3 (Electron), `npm start` with chain, desktop start page, model file selection.
 - 2026-11-07 README and docs translated to English, GitHub Actions CI (contracts, lint, app tests) with badge, test counts corrected (20 + 47).
 - 2026-11-08 New screenshots of the current design (one image with four phone screens); model size and receipt title follow the UI language; `ui-check` and Playwright removed.
-
 - 2026-11-08 Flaky CI fixed: ethers' log polling has no error handling, so a reset socket during `eth_getLogs` became an unhandled rejection. `RetryingProvider` (`core/chain/provider.js`) retries reads up to twice, never `eth_sendRawTransaction`; covered by a unit test (48 app tests).
 
 ## Files
