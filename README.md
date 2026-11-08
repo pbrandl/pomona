@@ -21,7 +21,7 @@ There is no server and no account, and nobody needs to hold any token other than
 
 Pomona is the successor to [Contrib](https://github.com/pbrandl/contrib) (Flutter + Parse Server) and is meant as a technical showcase.
 
-**Authored by Claude, prompted by [Peter Brandl](https://github.com/pbrandl).** Code, tests and docs were written by [Claude Code](https://claude.com/claude-code); the idea, the requirements and the product decisions come from me. Decisions are logged in [POMONA_PROJECT_NOTES.md](POMONA_PROJECT_NOTES.md).
+Authored by Claude, prompted by [pbrandl](https://github.com/pbrandl).
 
 <p align="center"><img src="docs/bidder.png" alt="A funding round from a backer's point of view" width="320"></p>
 
