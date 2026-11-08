@@ -157,7 +157,7 @@ Every flow is a sequence of full pages with a step bar at the top (`page()` in `
 | Pledge | amount → review → done |
 | Single pages | join, top-up, account, receipt, invoice, verify receipt |
 
-An open page replaces the round view (`ui.sheet`). Its "← Back" is placed by `render()` at the top of the header, where the "Pomona" label would be, on one line with chat and balance. On phones the main button stays reachable at the bottom (`.actions.sticky`). Screenshots in `docs/mobile/`.
+An open page replaces the round view (`ui.sheet`). Its "← Back" is placed by `render()` at the top of the header, where the "Pomona" label would be, on one line with chat and balance. On phones the main button stays reachable at the bottom (`.actions.sticky`). Every view can be opened in the design preview (`npm run preview`).
 
 ## Maintaining the UI
 
