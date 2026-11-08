@@ -21,11 +21,7 @@ Es gibt keinen Server und keinen Account, und niemand muss einen anderen Token a
 
 Pomona ist der Nachfolger von [Contrib](https://github.com/pbrandl/contrib) (Flutter + Parse Server) und als technisches Vorzeigeprodukt gedacht.
 
-<p align="center"><img src="docs/bidder.png" alt="Runde aus Sicht einer Bieterin" width="320"></p>
-
-| Organisator rechnet ab | Ratenliste | Beleg als QR |
-|---|---|---|
-| ![](docs/organizer-invoice.png) | ![](docs/receipts.png) | ![](docs/receipt.png) |
+<img src="docs/app.png" alt="Vier Handy-Bildschirme: eine Finanzierungsrunde aus Sicht einer Bieterin, Gebot über den Ziffernblock, der lokale QVAC-Assistent bereitet ein Gebot vor, und ein Beleg mit QR-Code im dunklen Modus">
 
 ## Technik
 

@@ -23,11 +23,7 @@ Pomona is the successor to [Contrib](https://github.com/pbrandl/contrib) (Flutte
 
 Authored by Claude, prompted by [pbrandl](https://github.com/pbrandl).
 
-<p align="center"><img src="docs/bidder.png" alt="A funding round from a backer's point of view" width="320"></p>
-
-| Organiser invoices | Instalment timeline | Receipt as QR code |
-|---|---|---|
-| ![](docs/organizer-invoice.png) | ![](docs/receipts.png) | ![](docs/receipt.png) |
+<img src="docs/app.png" alt="Four phone screens: a funding round from a backer's point of view, entering a pledge on the keypad, the local QVAC assistant preparing a pledge, and a receipt with QR code in dark mode">
 
 ## Technology
 
