@@ -12,6 +12,8 @@ import { sanitizeManifest } from '../core/p2p/manifest.js'
 import { serve, validate } from '../core/rpc/server.js'
 import { METHODS } from '../core/rpc/methods.js'
 import abi from '../core/chain/abi.js'
+import { RetryingProvider } from '../core/chain/provider.js'
+import { createServer } from 'node:http'
 
 const A = (n) => '0x' + String(n).repeat(40).slice(0, 40)
 
@@ -158,5 +160,32 @@ test('project website: only plain http(s) addresses survive', async () => {
   assert.equal(cleanWebsite('https://solawi.example/runde?x=1'), 'https://solawi.example/runde?x=1')
   for (const bad of ['javascript:alert(1)', 'data:text/html,hi', 'https://user:pw@evil.example', 'ftp://x.example', 'localhost', '', null, 'x'.repeat(400) + '.de']) {
     assert.equal(cleanWebsite(bad), null, String(bad).slice(0, 40))
+  }
+})
+
+test('rpc provider: a dropped connection is retried for reads, never for sending a transaction', async () => {
+  let calls = 0
+  const server = createServer((req, res) => {
+    let body = ''
+    req.on('data', (c) => { body += c })
+    req.on('end', () => {
+      calls++
+      if (calls % 2 === 1) return req.socket.destroy() // every first try: connection reset
+      const { id } = JSON.parse(body)
+      res.setHeader('content-type', 'application/json')
+      res.end(JSON.stringify({ jsonrpc: '2.0', id, result: '0x2a' }))
+    })
+  })
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+  const provider = new RetryingProvider(`http://127.0.0.1:${server.address().port}`, 31337, { staticNetwork: true, cacheTimeout: -1 })
+  try {
+    assert.equal(await provider.send('eth_blockNumber', []), '0x2a')
+    assert.equal(calls, 2)
+    calls = 0
+    await assert.rejects(provider.send('eth_sendRawTransaction', ['0x00']))
+    assert.equal(calls, 1)
+  } finally {
+    provider.destroy()
+    await new Promise((resolve) => server.close(resolve))
   }
 })

@@ -53,7 +53,7 @@ Requirements: Node.js 22. Since Pear 3 the app is a regular Electron app with `p
 # Build and test the contracts (20 tests)
 cd contracts && npm install && npm test
 
-# Test and start the app (47 tests)
+# Test and start the app (48 tests)
 cd ../app && npm install && npm test
 npm start                             # starts a local chain + contracts and opens the window
 npm run start:second                  # second instance with its own wallet (uses the same chain)
@@ -96,7 +96,7 @@ Scenarios: `onboarding`, `locked`, `start`, `bidder`, `organizer`, `invoice`, `r
 ## Quality
 
 - `npm test` in `contracts/` runs 20 tests: both payment modes (deposit upfront, by invoice), schedule, catch-up invoices, receipts, refunds on cancellation, expiry and missed target, invitations (including reuse in another round), fee tokens, factory registry and parameter checks.
-- `npm test` in `app/` runs 47 tests:
+- `npm test` in `app/` runs 48 tests:
   - Unit tests: amounts, links, schedule, policy, vault, manifest sanitising, RPC validation, notifications
   - Assistant: commands, knowledge, role and phase checks for every action, prompt injection, no tools that move money
   - End-to-end with a real chain, WDK and Hyperswarm: "by invoice" round (payment, insufficient balance, open invoices), instalment round including joining while the organiser is offline, receipts, forged rounds, policy block, sending and locking

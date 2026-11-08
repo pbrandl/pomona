@@ -51,7 +51,7 @@ Voraussetzungen: Node.js 22. Seit Pear 3 ist die App eine normale Electron-App m
 # Contracts bauen und testen (20 Tests)
 cd contracts && npm install && npm test
 
-# App testen (47 Tests) und starten
+# App testen (48 Tests) und starten
 cd ../app && npm install && npm test
 npm start                             # startet lokale Chain + Contracts und öffnet das Fenster
 npm run start:second                  # zweite Instanz mit eigener Wallet (nutzt dieselbe Chain)
@@ -94,7 +94,7 @@ Szenarien: `onboarding`, `locked`, `start`, `bidder`, `organizer`, `invoice`, `r
 ## Qualität
 
 - `npm test` in `contracts/` umfasst 20 Tests: beide Bezahlarten (vorab hinterlegen, per Rechnung), Zeitplan, nachgeholte Rechnungen, Belege, Erstattung bei Abbruch, Ablauf und verfehltem Ziel, Einladungen (auch Wiederverwendung in einer anderen Runde), Fee-Tokens, Factory-Register und Parameterprüfung.
-- `npm test` in `app/` umfasst 47 Tests:
+- `npm test` in `app/` umfasst 48 Tests:
   - Unit-Tests: Beträge, Links, Zeitplan, Policy, Tresor, Manifest-Bereinigung, RPC-Validierung, Benachrichtigungen
   - Assistent: Befehle, Wissen, Rollen- und Phasenprüfung jeder Aktion, Prompt Injection, keine Werkzeuge zum Geldbewegen
   - End-to-End mit echter Chain, WDK und Hyperswarm: Runde „Per Rechnung“ (Zahlung, fehlendes Guthaben, offene Rechnungen), Raten-Runde inklusive Beitritt bei offline Organisator, Belege, gefälschte Runden, Policy-Blockade, Senden und Sperren
