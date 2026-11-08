@@ -1,50 +1,50 @@
-# RPC zwischen UI und Worker
+# RPC between UI and worker
 
-Das Protokoll ist JSON, eine Nachricht pro Zeile, zwischen Renderer und Bare-Worker (Electron-IPC über `electron/preload.cjs` und `electron/main.cjs`, dann `Bare.IPC`). Implementiert ist es in `app/core/rpc/server.js` und `app/ui/electron.js`. Erreichbar sind **nur** die Methoden unten (`app/core/rpc/methods.js`). Jeder Parameter wird gegen ein Schema geprüft.
+The protocol is JSON, one message per line, between renderer and Bare worker (Electron IPC via `electron/preload.cjs` and `electron/main.cjs`, then `Bare.IPC`). It is implemented in `app/core/rpc/server.js` and `app/ui/electron.js`. **Only** the methods below are reachable (`app/core/rpc/methods.js`). Every parameter is checked against a schema.
 
 ```json
 → {"id":1,"method":"bid","params":{"amount":"100"}}
 ← {"id":1,"result":null}
-← {"id":2,"error":{"code":"BELOW_MIN","message":"Das Mindestgebot ist 25 USDT pro Rate."}}
+← {"id":2,"error":{"code":"BELOW_MIN","message":"The minimum pledge is 25 USDT per instalment."}}
 ← {"event":"change"}
 ```
 
-Events: `ready`, `change` (der Status kann sich geändert haben) und `error` (Fehler im Hintergrund).
+Events: `ready`, `change` (the status may have changed) and `error` (error in the background).
 
-## Methoden
+## Methods
 
-| Methode | Parameter | Ergebnis |
+| Method | Parameters | Result |
 |---|---|---|
-| `status` | – | siehe unten |
-| `createWallet` | `password` | `{ seed, address }`. Der Seed wird **nur hier** einmal zurückgegeben. |
-| `restoreWallet` | `seed`, `password` | `{ address }`. Nur möglich, wenn noch keine Wallet existiert. |
+| `status` | – | see below |
+| `createWallet` | `password` | `{ seed, address }`. The seed is returned **only here**, once. |
+| `restoreWallet` | `seed`, `password` | `{ address }`. Only possible if no wallet exists yet. |
 | `unlock` | `password` | `{ address }` |
 | `lock` | – | – |
-| `revealSeed` | `password` | Seed als String |
+| `revealSeed` | `password` | seed as a string |
 | `sendUsdt` | `to`, `amount`, `password` | `{ hash }` |
-| `faucet` | – | Nur auf der lokalen Chain: 5.000 Test-USDT |
-| `createRound` | `title`, `website?` (nur http/https, z. B. `beispiel.de`), `mode?` (`invoice` = per Rechnung, `deposit` = vorab hinterlegen, Standard `deposit`), `network?`, `target`, `minBid?`, `interval` (`week`/`month`), `installments`, `biddingEnd` (Unix-Sekunden) oder `biddingDays`, `guide?` (Richtwert pro Rate), `inviteOnly?` | `{ link }` |
-| `join` | `link` | Status |
-| `quoteBid` | `amount` (pro Rate) | `{ amount, pledgeAfter, installments, deposit, fee, balance, enough, missing, symbol }`. Rechnet nur, sendet nichts. `fee` ist die Netzwerkgebühr in USDT (`null` auf der lokalen Chain). |
-| `bid` | `amount` (pro Rate) | – |
-| `withdraw` | `amount` oder `"all"` | – |
-| `invoice` | – | – (Organisator, nur `deposit`) |
-| `quotePay` | `index?` (0-basiert, sonst alle offenen) | `{ invoices: [3], amount, self, fee, balance, enough, missing, symbol }`. Nur `invoice`; `enough` berücksichtigt auch die Gebühr. `self`: die eigene Rechnung des Organisators, wird nur vermerkt, nichts wird überwiesen. |
-| `pay` | `index?` | – Bezahlt offene Rechnungen aus der eigenen Wallet an den Organisator (Freigabe und Zahlung in einer Signatur). Danach gibt es den Beleg. |
-| `invoiceDetails` | `index` | `{ index, dueAt, paidCount, paidSum, total, bidders, unpaid: [{ bidder, amount }], symbol }` (Organisator, nur `invoice`) |
-| `terminate` | – | – (Organisator) |
-| `cancel` | – | – (Organisator) |
+| `faucet` | – | Local chain only: 5,000 test USDT |
+| `createRound` | `title`, `website?` (http/https only, e.g. `example.com`), `mode?` (`invoice` = by invoice, `deposit` = deposit upfront, default `deposit`), `network?`, `target`, `minBid?`, `interval` (`week`/`month`), `installments`, `biddingEnd` (Unix seconds) or `biddingDays`, `guide?` (suggested amount per instalment), `inviteOnly?` | `{ link }` |
+| `join` | `link` | status |
+| `quoteBid` | `amount` (per instalment) | `{ amount, pledgeAfter, installments, deposit, fee, balance, enough, missing, symbol }`. Only calculates, sends nothing. `fee` is the network fee in USDT (`null` on the local chain). |
+| `bid` | `amount` (per instalment) | – |
+| `withdraw` | `amount` or `"all"` | – |
+| `invoice` | – | – (organiser, `deposit` only) |
+| `quotePay` | `index?` (0-based, otherwise all open ones) | `{ invoices: [3], amount, self, fee, balance, enough, missing, symbol }`. `invoice` only; `enough` also takes the fee into account. `self`: the organiser's own invoice, which is only recorded; nothing is transferred. |
+| `pay` | `index?` | – Pays open invoices from the user's own wallet to the organiser (approval and payment in one signature). Afterwards there is a receipt. |
+| `invoiceDetails` | `index` | `{ index, dueAt, paidCount, paidSum, total, bidders, unpaid: [{ bidder, amount }], symbol }` (organiser, `invoice` only) |
+| `terminate` | – | – (organiser) |
+| `cancel` | – | – (organiser) |
 | `refund` | – | – |
-| `postNews` | `text` | – (Organisator) |
-| `invite` | – | `{ link, qr }` (alle Teilnehmer; geteilt wird in Phase 1) |
-| `receipt` | `index` (0-basiert) | `{ code, qr, validUntil }`. Der Code ist vom Konto unterschrieben und 10 Minuten gültig. |
+| `postNews` | `text` | – (organiser) |
+| `invite` | – | `{ link, qr }` (all participants; shared during Phase 1) |
+| `receipt` | `index` (0-based) | `{ code, qr, validUntil }`. The code is signed by the account and valid for 10 minutes. |
 | `verifyReceipt` | `code` | `{ valid, reason? , title?, installment, installments, amount, symbol, paidAt, bidder, round }` |
-| `qr` | `text` | SVG-Markup |
-| `assistantAsk` | `text` (max. 500) oder `topic` (Vorschlag) | `{ reply, actions, source }`. `actions` sind nur Vorschläge (`bid`, `open`, `receipt`, `invoice`, `withdraw`, `refund`, `news`, `install`), geprüft gegen Rolle und Phase. `source`: `topic`, `rules`, `model`, `faq`, `none`. |
-| `assistantInstall` | `model` (`small`/`better`) | Startet Download und Laden im Hintergrund, Fortschritt über `status().assistant` |
-| `assistantReset` | – | Vergisst das Gespräch (passiert auch beim Sperren) |
+| `qr` | `text` | SVG markup |
+| `assistantAsk` | `text` (max. 500) or `topic` (suggestion) | `{ reply, actions, source }`. `actions` are only suggestions (`bid`, `open`, `receipt`, `invoice`, `withdraw`, `refund`, `news`, `install`), checked against role and phase. `source`: `topic`, `rules`, `model`, `faq`, `none`. |
+| `assistantInstall` | `model` (`small`/`better`) | Starts download and loading in the background; progress via `status().assistant` |
+| `assistantReset` | – | Forgets the conversation (also happens on lock) |
 
-Beträge sind Strings in deutscher oder englischer Schreibweise, also `"1.234,56"`, `"12,5"` oder `"12.5"`.
+Amounts are strings in German or English notation, i.e. `"1.234,56"`, `"12,5"` or `"12.5"`.
 
 ## `status()`
 
@@ -58,51 +58,51 @@ Beträge sind Strings in deutscher oder englischer Schreibweise, also `"1.234,56
     symbol: 'USDT'
   },
   network: { id: 'sepolia', name: 'Ethereum Sepolia (Test)', dev: false, explorer: 'https://…' },
-  networks: [{ id, name, ready }],        // ready = Factory + Token (+ Bundler/Paymaster) konfiguriert
-  peers: 6,                               // Hyperswarm-Verbindungen
+  networks: [{ id, name, ready }],        // ready = factory + token (+ bundler/paymaster) configured
+  peers: 6,                               // Hyperswarm connections
   version: '0.3.0',
-  assistant: {                            // „Frag Pomona“
+  assistant: {                            // "Ask Pomona"
     state: 'none' | 'installed' | 'downloading' | 'loading' | 'ready' | 'error',
     model: 'small' | 'better' | null, progress: 0.34 | null, error: null,
     models: [{ key, label, size, note, file, url }],
-    manual: null | { dir },               // Entwicklermodus: Modell als Datei aus diesem Ordner
-    missing: false,                       // true: Datei liegt noch nicht im Ordner
-    suggestions: [{ topic, question }]    // passend zu Rolle und Phase
+    manual: null | { dir },               // developer mode: model as a file from this folder
+    missing: false,                       // true: the file is not in the folder yet
+    suggestions: [{ topic, question }]    // matching role and phase
   },
-  busy: null | 'bid' | 'invoice' | …,     // laufende Transaktion
-  busyStep: null | 'prepare' | 'sign' | 'confirm', // Fortschritt der laufenden Transaktion
+  busy: null | 'bid' | 'invoice' | …,     // running transaction
+  busyStep: null | 'prepare' | 'sign' | 'confirm', // progress of the running transaction
   round: null | {
-    mode: 'invoice' | 'deposit',          // per Rechnung oder vorab hinterlegt
+    mode: 'invoice' | 'deposit',          // by invoice or deposited upfront
     role: 'organizer' | 'bidder',
-    title, website,                       // website: http(s) oder null, als Icon neben dem Titel
-    guide: '100' | null,                  // Richtwert pro Rate (aus dem Manifest, nur Anzeige)
-    verified: true,                       // Manifest-Organisator == Contract-Organisator
+    title, website,                       // website: http(s) or null, shown as an icon next to the title
+    guide: '100' | null,                  // suggested amount per instalment (from the manifest, display only)
+    verified: true,                       // manifest organiser == contract organiser
     address, organizer, symbol,
-    target, total, minBid,                // pro Rate, als Strings
+    target, total, minBid,                // per instalment, as strings
     progress: 0.81,                       // total / target
     interval: 2592000, intervalName: 'month' | 'week' | null,
     installments: 12, invoiceCount: 3,
-    biddingEnd, nextInvoiceAt, expiresAt, now,   // Unix-Sekunden (Chain-Zeit)
+    biddingEnd, nextInvoiceAt, expiresAt, now,   // Unix seconds (chain time)
     phase: 'bidding' | 'failed' | 'running' | 'completed',
     canInvoice: true,
     inviteOnly: true,
     bidders: 27,
-    average: '120.37', median: '108',     // pro Rate, über alle aktuellen Gebote (null ohne Gebote)
-    myPledge: '100',                      // pro Rate
-    myDeposit: '1200',                    // myPledge × installments (per Rechnung: '0')
-    openInvoices: 1, openAmount: '100',   // per Rechnung: meine offenen Rechnungen
+    average: '120.37', median: '108',     // per instalment, over all current pledges (null without pledges)
+    myPledge: '100',                      // per instalment
+    myDeposit: '1200',                    // myPledge × installments (by invoice: '0')
+    openInvoices: 1, openAmount: '100',   // by invoice: my open invoices
     refundable: '0',
-    invoices: [{ index, dueAt, paidAt, amount, status, mine, paidCount?, paidSum? }], // Plan der Rundenseite: Organisator immer die ganze Runde, sonst das eigene Gebot
-    myInvoices: [ … ],                    // eigene Raten (Belege, offene Rechnungen); [] ohne Gebot
-    // status: vorab hinterlegt  "paid" | "due" | "scheduled" | "void"
-    //         per Rechnung      Bieter: "paid" | "open" | "scheduled" | "void"
-    //                           Organisator: "issued" (mit paidCount, paidSum) | "scheduled" | "void"
-    biddingStart,                         // aus dem Manifest (nur Anzeige)
-    news: [{ text, at }]                  // neueste zuerst
+    invoices: [{ index, dueAt, paidAt, amount, status, mine, paidCount?, paidSum? }], // plan of the round page: the organiser always sees the whole round, everyone else their own pledge
+    myInvoices: [ … ],                    // own instalments (receipts, open invoices); [] without a pledge
+    // status: deposit upfront  "paid" | "due" | "scheduled" | "void"
+    //         by invoice       backer: "paid" | "open" | "scheduled" | "void"
+    //                          organiser: "issued" (with paidCount, paidSum) | "scheduled" | "void"
+    biddingStart,                         // from the manifest (display only)
+    news: [{ text, at }]                  // newest first
   }
 }
 ```
 
-## Fehlercodes (Auswahl)
+## Error codes (selection)
 
 `WRONG_MODE`, `NOT_BIDDER`, `WRONG_PASSWORD`, `WEAK_PASSWORD`, `LOCKED`, `NO_WALLET`, `WALLET_EXISTS`, `BAD_SEED`, `BAD_AMOUNT`, `BAD_LINK`, `BAD_PARAMS`, `NO_METHOD`, `NOT_READY`, `NOT_DEV`, `FORGED_ROUND`, `NO_PEERS`, `NO_INVITE`, `NO_FUNDS`, `BELOW_MIN`, `NOT_DUE`, `WRONG_PHASE`, `NOT_ORGANIZER`, `POLICY`, `FEE_TOO_HIGH`, `NO_USDT_FOR_FEE`, `BUSY`, `TX_FAILED`, `REVERT_<ContractError>`.

@@ -1,123 +1,123 @@
-# Sicherheit
+# Security
 
-Stand: Version 0.2. Dieses Dokument enthält das Bedrohungsmodell, die Ergebnisse der Prüfung von Version 0.1 und die Risiken, die bewusst offen bleiben. Die Prüfung ersetzt **kein** externes Audit.
+Status: version 0.2. This document contains the threat model, the results of the review of version 0.1 and the risks that deliberately remain open. The review does **not** replace an external audit.
 
-## Was geschützt wird
+## What is protected
 
-| Gut | Wo es liegt |
+| Asset | Where it lives |
 |---|---|
-| USDT der Bietenden im Escrow | `PomonaRound` |
-| Seed-Phrase / Wallet | verschlüsselt im lokalen Hyperbee des Workers |
-| USDT in der Wallet | Smart Account (Safe) auf der Chain |
-| Echtheit der Runde (wer, wofür, wie viel) | Contract + Manifest |
+| Backers' USDT in escrow | `PomonaRound` |
+| Seed phrase / wallet | encrypted in the worker's local Hyperbee |
+| USDT in the wallet | smart account (Safe) on the chain |
+| Authenticity of the round (who, for what, how much) | contract + manifest |
 
-**Angreifer, die betrachtet werden:**
-- ein Fremder mit einem manipulierten Einladungslink
-- ein bösartiger Peer im Hyperswarm
-- ein Bieter, der zu viel zurückholen will
-- ein Organisator, der mehr oder früher kassieren will
-- jemand mit Zugriff auf die Festplatte
-- Schadcode in der UI, etwa über eingeschleustes HTML
+**Attackers considered:**
+- a stranger with a manipulated invitation link
+- a malicious peer in the Hyperswarm
+- a backer who wants to get back too much
+- an organiser who wants to collect more or earlier
+- someone with access to the disk
+- malicious code in the UI, e.g. via injected HTML
 
-## Ergebnisse der Prüfung von Version 0.1 und was in 0.2 geändert wurde
+## Review of version 0.1 and what changed in 0.2
 
-| # | Befund in 0.1 | Schwere | Status in 0.2 |
+| # | Finding in 0.1 | Severity | Status in 0.2 |
 |---|---|---|---|
-| 1 | **Gefälschte Runde per Link.** Der Link enthielt eine beliebige Contract-Adresse. Die App hätte dafür `approve` signiert, und ein nachgebauter Contract hätte das Geld abziehen können. | Hoch | **Behoben.** `PomonaFactory.isRound` ist ein Register. Die App bricht ab, wenn die Runde nicht von der konfigurierten Factory stammt oder nicht in USDT läuft. Getestet in `flow.test.js` („forged rounds“). |
-| 2 | **Seed im Klartext** auf der Festplatte. | Hoch | **Behoben.** Argon2id (libsodium `crypto_pwhash`) und XSalsa20-Poly1305 (`crypto_secretbox`). Die Wallet ist nach dem Start gesperrt. Seed anzeigen und Überweisungen nach außen verlangen das Passwort erneut. |
-| 3 | **Unbegrenzte Rechte der Wallet.** Jeder Fehler in Kern oder UI hätte beliebige Transaktionen signieren können. | Mittel | **Behoben.** Eine WDK-Policy (default-deny) erlaubt nur: Calls an die eigene Runde, `createRound` an der Factory, `approve` von USDT ausschließlich an die eigene Runde, `transfer` nur in USDT. Native Werte sind nie erlaubt. Getestet in `unit.test.js` und `flow.test.js`. |
-| 4 | **Ungeprüfte Daten von Peers** (Titel, Website, Neuigkeiten): beliebig groß, beliebige Typen. | Mittel | **Behoben.** Schema-Prüfung und Längenlimits (`p2p/manifest.js`, `config/limits.js`). Angezeigt werden die Daten nur escaped, und Beträge sowie der Organisator kommen immer vom Contract. |
-| 5 | **Keine CSP** im Renderer. | Mittel | **Behoben.** CSP mit `script-src 'self'`, ohne Remote-Code, `object-src 'none'`. Alles, was in HTML landet, läuft durch `esc()`. |
-| 6 | **RPC ohne Parameterprüfung.** | Niedrig | **Behoben.** Whitelist mit Schema (`rpc/methods.js`), `Object.hasOwn` statt Prototyp-Lookup, Größenlimit pro Nachricht. |
-| 7 | **Faucet mit dem öffentlichen Hardhat-Key** wäre in jeder Version verfügbar gewesen. | Niedrig | **Behoben.** Die lokale Chain ist nur im Entwicklermodus erreichbar (`--dev`). |
-| 8 | **Gebühren-Token (ETH) nötig.** | – | **Behoben.** Mit ERC-4337 und USDT-Paymaster gibt es eine Gebührenobergrenze von 5 USDT pro Transaktion (`transactionMaxFee`). |
-| 9 | Geld konnte im Contract hängen bleiben, wenn der Organisator verschwindet. | Mittel | **Behoben.** Ab `expiresAt` gilt die Runde als abgeschlossen, und die Bietenden holen den Rest zurück. |
-| 10 | „Wiederherstellen“ hätte eine bestehende Wallet überschreiben können. | Mittel | **Behoben.** Ist bereits ein Tresor vorhanden, wird das abgelehnt. |
+| 1 | **Forged round via link.** The link contained an arbitrary contract address. The app would have signed `approve` for it, and a copycat contract could have drained the money. | High | **Fixed.** `PomonaFactory.isRound` is a registry. The app aborts if the round does not come from the configured factory or does not run in USDT. Tested in `flow.test.js` ("forged rounds"). |
+| 2 | **Seed in plain text** on disk. | High | **Fixed.** Argon2id (libsodium `crypto_pwhash`) and XSalsa20-Poly1305 (`crypto_secretbox`). The wallet is locked after start. Showing the seed and outgoing transfers require the password again. |
+| 3 | **Unlimited wallet permissions.** Any bug in core or UI could have signed arbitrary transactions. | Medium | **Fixed.** A WDK policy (default deny) only allows: calls to the user's own round, `createRound` on the factory, `approve` of USDT exclusively to the user's own round, `transfer` only in USDT. Native value is never allowed. Tested in `unit.test.js` and `flow.test.js`. |
+| 4 | **Unchecked data from peers** (title, website, news): arbitrarily large, arbitrary types. | Medium | **Fixed.** Schema check and length limits (`p2p/manifest.js`, `config/limits.js`). The data is only displayed escaped, and amounts and the organiser always come from the contract. |
+| 5 | **No CSP** in the renderer. | Medium | **Fixed.** CSP with `script-src 'self'`, no remote code, `object-src 'none'`. Everything that ends up in HTML goes through `esc()`. |
+| 6 | **RPC without parameter checks.** | Low | **Fixed.** Whitelist with schema (`rpc/methods.js`), `Object.hasOwn` instead of prototype lookup, size limit per message. |
+| 7 | **Faucet with the public Hardhat key** would have been available in every build. | Low | **Fixed.** The local chain is only reachable in developer mode (`--dev`). |
+| 8 | **Fee token (ETH) required.** | – | **Fixed.** With ERC-4337 and a USDT paymaster there is a fee cap of 5 USDT per transaction (`transactionMaxFee`). |
+| 9 | Money could get stuck in the contract if the organiser disappears. | Medium | **Fixed.** From `expiresAt` the round counts as completed, and backers get the rest back. |
+| 10 | "Restore" could have overwritten an existing wallet. | Medium | **Fixed.** If a vault already exists, this is rejected. |
 
-## Contract-Prüfung (0.2)
+## Contract review (0.2)
 
-- **Reentrancy:** Alle Funktionen, die Geld bewegen, sind `nonReentrant`, und der Zustand wird vor der Überweisung gesetzt.
-- **Rundung und Overflow:** Es gibt keine Division. Multiplikationen sind checked (Solidity ≥ 0.8). Gezahlt wird exakt `amount × installments` bzw. `total` pro Rechnung.
-- **Fee-on-Transfer:** Das wird erkannt und abgelehnt (`UnsupportedToken`, getestet mit `FeeToken`).
-- **Einladung:** Der Digest ist an `chainid`, die Contract-Adresse und `msg.sender` gebunden. Eine Signatur lässt sich weder für eine andere Adresse noch für eine andere Runde oder Chain verwenden (getestet). Abgefangene Signaturen sind für Dritte wertlos.
-- **Zeit:** Es zählt `block.timestamp`, Abweichungen liegen im Bereich von Sekunden und sind bei Intervallen ab einem Tag unerheblich.
-- **USDT-Blacklist:** Wird der Organisator gesperrt, schlagen Rechnungen fehl. Ab `expiresAt` holen die Bietenden den Rest zurück. Ist ein Bieter gesperrt, betrifft das nur ihn.
-- **Keine Admin-Funktionen, kein Upgrade, kein `selfdestruct`.**
+- **Reentrancy:** all functions that move money are `nonReentrant`, and the state is set before the transfer.
+- **Rounding and overflow:** there is no division. Multiplications are checked (Solidity ≥ 0.8). Exactly `amount × installments` or `total` per invoice is paid.
+- **Fee-on-transfer:** detected and rejected (`UnsupportedToken`, tested with `FeeToken`).
+- **Invitation:** the digest is bound to `chainid`, the contract address and `msg.sender`. A signature can be used neither for another address nor for another round or chain (tested). Intercepted signatures are worthless to third parties.
+- **Time:** `block.timestamp` counts; deviations are in the range of seconds and irrelevant for intervals of a day or more.
+- **USDT blacklist:** if the organiser is blacklisted, invoices fail. From `expiresAt` backers get the rest back. If a backer is blacklisted, it only affects them.
+- **No admin functions, no upgrade, no `selfdestruct`.**
 
-## Bewusst offene Risiken
+## Deliberately open risks
 
-| Risiko | Einschätzung und Umgang |
+| Risk | Assessment and handling |
 |---|---|
-| **Der Contract ist nicht extern auditiert.** | Vor echtem Geld ist ein Audit Pflicht. |
-| **WDK-Pakete sind Beta.** | Versionen sind über die Lockfiles fixiert. Vor einem Release erneut prüfen. |
-| **Kompromittierte UI (XSS):** Sie kann den Seed nicht lesen und nicht nach außen überweisen, weil beides das Passwort braucht. Sie könnte aber bei einer neuen Wallet einer fremden, echten Runde beitreten und bieten. | Durch CSP und Escaping unwahrscheinlich. Nur eine Runde pro Instanz. Optional könnte man künftig auch Gebote mit dem Passwort bestätigen lassen. |
-| **Sybil:** Der Organisator kann mit eigenem Geld (oder über Strohleute) bieten, damit das Ziel erreicht wirkt. | Lässt sich technisch nicht verhindern. Die Gebote sind öffentlich auf der Chain sichtbar. |
-| **Invite-Key im Link:** Wer den Link hat, kann bieten. | Das ist so gewollt (Link = Berechtigung). Der Key schützt vor Spam, nicht das Geld. Den Link nicht öffentlich posten. |
-| **Bieten in offenen Runden ohne Mindestgebot:** Kleinstbeträge sind möglich. | Kostet den Spammer Gebühren und schadet sonst nicht. Ein Mindestgebot setzen. |
-| **Belege lassen sich weitergeben.** Ein Beleg beweist die Zahlung einer Adresse, nicht die Identität der Person, die ihn vorzeigt. | Für Abholnachweise reicht das. Für mehr bräuchte es eine Challenge-Response-Signatur der Bieter-Wallet. |
-| **Vertrauen in den RPC-Anbieter:** Ein lügender RPC könnte falsche Stände anzeigen. Signieren und damit Geld bewegen kann er nicht. | Eigenen Node oder mehrere Anbieter nutzen (WDK unterstützt Failover über ein Array von Providern). |
-| **Paymaster und Bundler:** Der Paymaster bekommt eine USDT-Freigabe für die Gebühren. | WDK prüft die Paymaster-Adresse gegen die Konfiguration. Seriöse Anbieter wählen und die Gebührenobergrenze aktiv lassen. |
-| **IP-Adressen:** Peers im selben Hyperswarm-Topic sehen ihre IP-Adressen gegenseitig. | So funktioniert P2P. In der App erklären. |
-| **Öffentliche Chain:** Gebote und Beträge sind öffentlich und pseudonym. | Für jede Person eine eigene Wallet nutzen. |
-| **Per Rechnung: keine Zahlungsgarantie.** Gebote sind Zusagen, niemand muss eine Rechnung bezahlen. | So gewollt, damit niemand vorstrecken muss. Der Organisator sieht pro Rechnung, wer offen ist. Wer Sicherheit braucht, wählt „Vorab hinterlegen“. |
-| **Per Rechnung: Sybil ohne Kosten.** Da Bieten nichts hinterlegt, lassen sich Zusagen leicht aufblähen, damit das Ziel erreicht wirkt. | Einladungslink (Standard) und Mindestgebot nutzen. Es zählt, was bezahlt wird: Die Ratenliste zeigt die echten Eingänge. |
-| **Per Rechnung: offene Rechnungen sind öffentlich.** Wer die Runde kennt, kann auf der Chain sehen, welche Adresse nicht bezahlt hat (`unpaid`). | Pseudonym, nicht anonym. Die App zeigt die Liste nur dem Organisator, Bietende sehen nur Summen. |
-| **Offline-Brute-Force auf den Tresor:** Mit Zugriff auf die Festplatte lassen sich Passwörter raten. | Mindestens 8 Zeichen, Argon2id mit Parametern für interaktive Nutzung. Für Mainnet die Parameter erhöhen (sie werden im Tresor mitgespeichert, eine Migration ist also möglich) und eine automatische Sperre bei Inaktivität einbauen. |
-| **Seed im Arbeitsspeicher**, solange die Wallet entsperrt ist. | JavaScript-Strings lassen sich nicht zuverlässig löschen. `lock()` entfernt alle Referenzen. |
+| **The contract has not been externally audited.** | An audit is mandatory before real money. |
+| **WDK packages are in beta.** | Versions are pinned via the lockfiles. Check again before a release. |
+| **Compromised UI (XSS):** it cannot read the seed and cannot transfer outward, because both require the password. With a new wallet, however, it could join a foreign real round and pledge. | Unlikely thanks to CSP and escaping. Only one round per instance. Optionally, pledges could also require the password in the future. |
+| **Sybil:** the organiser can pledge with their own money (or via straw men) to make the target appear reached. | Cannot be prevented technically. Pledges are publicly visible on the chain. |
+| **Invite key in the link:** whoever has the link can pledge. | This is intended (link = permission). The key protects against spam, not the money. Do not post the link publicly. |
+| **Pledging in open rounds without a minimum pledge:** tiny amounts are possible. | Costs the spammer fees and does no other harm. Set a minimum pledge. |
+| **Receipts can be passed on.** A receipt proves the payment of an address, not the identity of the person showing it. | Sufficient for proof of collection. For more, a challenge-response signature from the backer's wallet would be needed. |
+| **Trust in the RPC provider:** a lying RPC could show false balances. It cannot sign and therefore cannot move money. | Use your own node or several providers (WDK supports failover via an array of providers). |
+| **Paymaster and bundler:** the paymaster gets a USDT approval for the fees. | WDK checks the paymaster address against the configuration. Choose reputable providers and keep the fee cap active. |
+| **IP addresses:** peers in the same Hyperswarm topic see each other's IP addresses. | That is how P2P works. Explain it in the app. |
+| **Public chain:** pledges and amounts are public and pseudonymous. | Use a separate wallet per person. |
+| **By invoice: no payment guarantee.** Pledges are commitments; nobody has to pay an invoice. | Intended, so that nobody has to pay in advance. The organiser sees per invoice who has not paid. Anyone who needs certainty chooses "deposit upfront". |
+| **By invoice: Sybil at no cost.** Since pledging deposits nothing, commitments are easy to inflate so that the target appears reached. | Use the invitation link (default) and a minimum pledge. What counts is what gets paid: the instalment list shows the real incoming payments. |
+| **By invoice: open invoices are public.** Anyone who knows the round can see on chain which address has not paid (`unpaid`). | Pseudonymous, not anonymous. The app only shows the list to the organiser; backers only see totals. |
+| **Offline brute force on the vault:** with access to the disk, passwords can be guessed. | At least 8 characters, Argon2id with parameters for interactive use. For mainnet, raise the parameters (they are stored in the vault, so a migration is possible) and add an automatic lock on inactivity. |
+| **Seed in memory** while the wallet is unlocked. | JavaScript strings cannot be reliably erased. `lock()` removes all references. |
 
-## Prüfung von Version 0.4 (November 2026)
+## Review of version 0.4 (November 2026)
 
-| # | Befund | Schwere | Status |
+| # | Finding | Severity | Status |
 |---|---|---|---|
-| 11 | **Belege ließen sich fälschen.** Ein Beleg enthielt nur öffentliche Daten (Netz, Runde, Adresse, Rate). Wer die Adresse eines zahlenden Mitglieds von der Blockchain abliest, konnte einen gültigen Beleg erzeugen, etwa für eine Abholung, ohne selbst bezahlt zu haben. | Hoch | **Behoben.** Belege (Format v2) sind mit dem Schlüssel des zahlenden Kontos unterschrieben (EIP-191). Beim Smart Account prüft der Anbieter on-chain `isOwner` am Safe. Sie gelten nur 10 Minuten, und die App erneuert den QR-Code, solange er offen ist. Manipulierte, fremd unterschriebene und alte Belege werden abgelehnt (`flow.test.js`). Die Wallet-Policy erlaubt `sign` nur für Beleg-Nachrichten. |
-| 12 | **Passwort-Raten über die App** (z. B. bei kompromittierter Oberfläche) war unbegrenzt möglich. | Mittel | **Behoben.** Nach drei Fehlversuchen kommt eine exponentiell wachsende Sperre (5 s bis 5 min) für Entsperren, Seedphrase und Senden. |
-| 13 | **Last auf dem RPC-Anbieter:** Jede Statusabfrage las bis zu 520 Rechnungszeiten. Bei öffentlichen Anbietern drohte Drosselung. | Niedrig | **Behoben.** Die Zeiten ändern sich nie und werden zwischengespeichert. |
-| 14 | Escaping in der Oberfläche: alle Werte geprüft. Werte aus dem Contract (z. B. Token-Symbol) laufen ebenfalls durch `esc()`. | – | Kein Befund. |
+| 11 | **Receipts could be forged.** A receipt only contained public data (network, round, address, instalment). Anyone reading the address of a paying member from the blockchain could create a valid receipt, e.g. for a pickup, without having paid themselves. | High | **Fixed.** Receipts (format v2) are signed with the key of the paying account (EIP-191). For the smart account, the verifier checks `isOwner` on the Safe on chain. They are only valid for 10 minutes, and the app renews the QR code as long as it is open. Manipulated, foreign-signed and old receipts are rejected (`flow.test.js`). The wallet policy only allows `sign` for receipt messages. |
+| 12 | **Password guessing via the app** (e.g. with a compromised UI) was unlimited. | Medium | **Fixed.** After three failed attempts an exponentially growing lockout (5 s to 5 min) applies to unlocking, seed phrase and sending. |
+| 13 | **Load on the RPC provider:** every status query read up to 520 invoice times. Public providers risked throttling. | Low | **Fixed.** The times never change and are cached. |
+| 14 | Escaping in the UI: all values checked. Values from the contract (e.g. token symbol) also go through `esc()`. | – | No finding. |
 
-Verbleibend: Ein Beleg kann innerhalb seiner 10 Minuten weitergegeben werden (Screenshot). Für mehr bräuchte es eine Rückfrage an das Gerät der bietenden Person (Challenge-Response).
+Remaining: a receipt can be passed on within its 10 minutes (screenshot). For more, a challenge to the backer's device would be needed (challenge-response).
 
-## Assistent „Frag Pomona“ (QVAC)
+## "Ask Pomona" assistant (QVAC)
 
-| Risiko | Gegenmaßnahme |
+| Risk | Countermeasure |
 |---|---|
-| Das Sprachmodell bewegt Geld | Es gibt kein Werkzeug dafür. Die Werkzeuge lesen (`calculate_bid`) oder schlagen eine Aktion vor. Eine Aktion öffnet nur eine Seite der App, signiert wird dort durch die Person. Der Assistent hat keinen Zugriff auf Wallet, Passwort oder Seedphrase. |
-| Prompt Injection über Titel oder Neuigkeiten (kommen von anderen Peers) | Die Texte werden bereinigt (Chat-Template-Tokens, Tags, Begrenzer entfernt), gekürzt und als Daten eingezäunt. Der Systemprompt verbietet, Anweisungen daraus zu befolgen. Selbst wenn ein Modell gehorcht, entsteht höchstens ein Vorschlag, den die Person auf der Prüfseite sieht. Getestet in `test/assistant.test.js`. |
-| Unpassende Vorschläge (falsche Rolle, Phase, Rate) | Jede Aktion wird gegen den aktuellen Status geprüft (`core/agent/actions.js`). Gebote werden vorher mit `quoteBid` gegen die Regeln des Contracts gerechnet. |
-| Falsche Antworten (Halluzination) | Knopf-Vorschläge und Befehle laufen ohne Modell über geprüfte Texte. Antworten des Modells sind sichtbar gekennzeichnet („Lokale KI · kann sich irren“). Zahlen kommen aus dem Status, nicht aus dem Modell. |
-| Privatsphäre | Das Modell läuft lokal (QVAC, llama.cpp). Fragen verlassen das Gerät nicht. Das Gespräch wird nicht gespeichert und beim Sperren gelöscht. |
-| Manipuliertes Modell | QVAC prüft heruntergeladene Modelle gegen die SHA-256-Prüfsumme aus seinem Katalog. Der Katalog kommt mit dem npm-Paket, dessen Version über den Lockfile fixiert ist. |
-| Modelldatei von Hand (Entwicklermodus, `modelsDir`) | Pomona nimmt eine selbst heruntergeladene Datei nur, wenn Größe und SHA-256 zum QVAC-Katalog passen (`core/agent/qvac.js`). Das Ergebnis wird mit Größe und Änderungszeit gemerkt, eine ausgetauschte Datei wird neu geprüft. |
-| Download | Das Modell wird peer-to-peer aus der QVAC-Registry geladen. Dabei sind wie bei Hyperswarm IP-Adressen für die Gegenstellen sichtbar. |
+| The language model moves money | There is no tool for it. The tools read (`calculate_bid`) or suggest an action. An action only opens a page of the app; signing happens there, by the user. The assistant has no access to wallet, password or seed phrase. |
+| Prompt injection via title or news (they come from other peers) | The texts are sanitised (chat template tokens, tags and delimiters removed), truncated and fenced in as data. The system prompt forbids following instructions from them. Even if a model obeys, the result is at most a suggestion that the user sees on the review page. Tested in `test/assistant.test.js`. |
+| Inappropriate suggestions (wrong role, phase, instalment) | Every action is checked against the current status (`core/agent/actions.js`). Pledges are calculated beforehand with `quoteBid` against the contract's rules. |
+| Wrong answers (hallucination) | Suggestion buttons and commands run without a model on checked texts. Model answers are visibly labelled ("Local AI · may be wrong"). Numbers come from the status, not from the model. |
+| Privacy | The model runs locally (QVAC, llama.cpp). Questions never leave the device. The conversation is not stored and is deleted on lock. |
+| Manipulated model | QVAC checks downloaded models against the SHA-256 checksum from its catalogue. The catalogue ships with the npm package, whose version is pinned via the lockfile. |
+| Model file by hand (developer mode, `modelsDir`) | Pomona only uses a self-downloaded file if size and SHA-256 match the QVAC catalogue (`core/agent/qvac.js`). The result is remembered together with size and modification time; a replaced file is checked again. |
+| Download | The model is loaded peer-to-peer from the QVAC registry. As with Hyperswarm, IP addresses are visible to the other side. |
 
-## Desktop-App (Electron + pear-runtime)
+## Desktop app (Electron + pear-runtime)
 
-- **Renderer abgeschottet:** `sandbox`, `contextIsolation`, kein Node (`nodeIntegration: false`), dieselbe CSP wie bisher (kein fremder Code, keine Inline-Skripte).
-- **Eine Tür:** Der Renderer erreicht den Hauptprozess nur über `window.bridge` aus `electron/preload.cjs`. Der Hauptprozess nimmt IPC nur von der eigenen Seite (`index.html`) an und startet nur den einen Worker, keinen Pfad aus dem Renderer.
-- **Keine Navigation:** Das Fenster kann die eigene Seite nicht verlassen. Web-Links (die Website eines Projekts, aus dem bereinigten Manifest, nur http/https) öffnen im Standard-Browser.
-- **Rechte:** nur die Kamera (QR-Codes scannen); alles andere wird abgelehnt. macOS fragt einmal nach.
-- **Schlüssel nur im Worker:** Der Hauptprozess reicht RPC-Zeilen durch und hält keine Geheimnisse.
+- **Sandboxed renderer:** `sandbox`, `contextIsolation`, no Node (`nodeIntegration: false`), the same CSP as before (no foreign code, no inline scripts).
+- **One door:** the renderer reaches the main process only via `window.bridge` from `electron/preload.cjs`. The main process only accepts IPC from its own page (`index.html`) and only starts the one worker, never a path from the renderer.
+- **No navigation:** the window cannot leave its own page. Web links (a project's website, from the sanitised manifest, http/https only) open in the default browser.
+- **Permissions:** only the camera (scanning QR codes); everything else is denied. macOS asks once.
+- **Keys only in the worker:** the main process passes RPC lines through and holds no secrets.
 
-## Entwicklermodus ohne Pear (`npm run dev`)
+## Developer mode without Pear (`npm run dev`)
 
-Im Browser liegt zwischen Oberfläche und Kern ein lokaler HTTP-Server statt der Electron-IPC. Er lauscht nur auf 127.0.0.1. Jeder Aufruf braucht ein Token, das bei jedem Start zufällig neu erzeugt wird und mit `timingSafeEqual` geprüft wird. Ein eigener Header erzwingt bei fremden Seiten eine CORS-Vorabprüfung, die nie beantwortet wird. Fremde `Host`-Header (DNS-Rebinding) werden abgelehnt. Ausgeliefert werden nur `index.html` und `ui/`. Es gelten dieselbe CSP wie in Pear und zusätzlich `frame-ancestors 'none'`. Der Modus nutzt immer die lokale Chain mit Testgeld. Details in [DEV.md](DEV.md).
+In the browser, a local HTTP server sits between UI and core instead of Electron IPC. It only listens on 127.0.0.1. Every call needs a token that is randomly generated on every start and checked with `timingSafeEqual`. A custom header forces a CORS preflight for foreign pages that is never answered. Foreign `Host` headers (DNS rebinding) are rejected. Only `index.html` and `ui/` are served. The same CSP as in Pear applies, plus `frame-ancestors 'none'`. This mode always uses the local chain with test money. Details in [DEV.md](DEV.md).
 
-## Modus „Per Rechnung“ (`pay`)
+## "By invoice" mode (`pay`)
 
-- `pay(i)` zieht per `transferFrom` genau das eigene Gebot vom Bieter direkt zum Organisator. Der Contract hält dabei kein Geld, prüft aber, dass beim Organisator genau dieser Betrag ankommt (Fee-Tokens werden abgelehnt).
-- Doppelt zahlen geht nicht (`AlreadyPaid`), nicht gestellte Rechnungen auch nicht (`NotIssued`), Fremde ebenfalls nicht (`NotBidder`).
-- Die Freigabe (`approve`) gilt nur für den Betrag der zu zahlenden Rechnungen und nur für die eigene Runde. Sie geht mit der Zahlung in derselben Signatur raus. Die WDK-Policy erlaubt Freigaben weiterhin nur an die eigene Runde.
-- Vor jeder Zahlung zeigt die App Betrag, Empfänger, Gebühr und Guthaben. Reicht das Guthaben nicht (inklusive der Gebühr in USDT), bietet sie Aufladen statt einer Zahlung an, die scheitern würde.
-- Der Assistent kann die Bezahlseite nur öffnen. Bezahlen muss die Person selbst.
+- `pay(i)` uses `transferFrom` to move exactly the backer's own pledge directly from the backer to the organiser. The contract holds no money in the process, but checks that exactly this amount arrives at the organiser (fee tokens are rejected).
+- Paying twice is impossible (`AlreadyPaid`), as is paying invoices that have not been issued (`NotIssued`) or paying as an outsider (`NotBidder`).
+- The approval (`approve`) only covers the amount of the invoices to be paid and only the user's own round. It goes out in the same signature as the payment. The WDK policy still only allows approvals to the user's own round.
+- Before every payment the app shows amount, recipient, fee and balance. If the balance is insufficient (including the fee in USDT), it offers a top-up instead of a payment that would fail.
+- The assistant can only open the payment page. The user has to pay themselves.
 
-## Vor einem Mainnet-Einsatz
+## Before any mainnet use
 
-1. Externes Audit von `PomonaRound` und `PomonaFactory`.
-2. Bundler und Paymaster (USDT) eines seriösen Anbieters konfigurieren und auf Sepolia testen.
-3. Argon2id-Parameter erhöhen und eine automatische Sperre bei Inaktivität einbauen.
-4. Mehrere RPC-Anbieter als Failover eintragen.
-5. Den Pear-Release-Key sicher verwahren (er signiert die App-Updates).
-6. Abhängigkeiten prüfen (`npm audit`) und Versionen der WDK-Pakete neu bewerten.
+1. External audit of `PomonaRound` and `PomonaFactory`.
+2. Configure bundler and paymaster (USDT) from a reputable provider and test on Sepolia.
+3. Raise the Argon2id parameters and add an automatic lock on inactivity.
+4. Add several RPC providers as failover.
+5. Keep the Pear release key safe (it signs the app updates).
+6. Check dependencies (`npm audit`) and re-evaluate the versions of the WDK packages.
 
-## Melden
+## Reporting
 
-Sicherheitslücken bitte nicht öffentlich als Issue melden, sondern direkt an den Maintainer.
+Please do not report security vulnerabilities publicly as an issue, but directly to the maintainer.

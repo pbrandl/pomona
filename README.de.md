@@ -2,6 +2,8 @@
 
 [English](README.md) · **Deutsch**
 
+> Die englische [README](README.md) ist die maßgebliche Fassung; die Dokumentation in `docs/` ist auf Englisch.
+
 **Eine dezentrale Finanzierungsrunde auf Tethers Stack, nur in USDT.**
 
 Jemand startet eine Finanzierungsrunde für ein Projekt und legt fest: das Ziel pro Rate, ob wöchentlich oder monatlich abgerechnet wird, wie oft, und **wie bezahlt wird**. Dann teilt er einen Link. Wer mitmacht, bietet einen Betrag pro Rate.
@@ -53,7 +55,7 @@ Voraussetzungen: Node.js 22. Seit Pear 3 ist die App eine normale Electron-App m
 # Contracts bauen und testen (20 Tests)
 cd contracts && npm install && npm test
 
-# App testen (39 Tests) und starten
+# App testen (47 Tests) und starten
 cd ../app && npm install && npm test
 npm start                             # startet lokale Chain + Contracts und öffnet das Fenster
 npm run start:second                  # zweite Instanz mit eigener Wallet (nutzt dieselbe Chain)
@@ -95,8 +97,8 @@ Szenarien: `onboarding`, `locked`, `start`, `bidder`, `organizer`, `invoice`, `r
 
 ## Qualität
 
-- `npm test` in `contracts/` umfasst 19 Tests: beide Bezahlarten (vorab hinterlegen, per Rechnung), Zeitplan, nachgeholte Rechnungen, Belege, Erstattung bei Abbruch, Ablauf und verfehltem Ziel, Einladungen (auch Wiederverwendung in einer anderen Runde), Fee-Tokens, Factory-Register und Parameterprüfung.
-- `npm test` in `app/` umfasst 36 Tests:
+- `npm test` in `contracts/` umfasst 20 Tests: beide Bezahlarten (vorab hinterlegen, per Rechnung), Zeitplan, nachgeholte Rechnungen, Belege, Erstattung bei Abbruch, Ablauf und verfehltem Ziel, Einladungen (auch Wiederverwendung in einer anderen Runde), Fee-Tokens, Factory-Register und Parameterprüfung.
+- `npm test` in `app/` umfasst 47 Tests:
   - Unit-Tests: Beträge, Links, Zeitplan, Policy, Tresor, Manifest-Bereinigung, RPC-Validierung, Benachrichtigungen
   - Assistent: Befehle, Wissen, Rollen- und Phasenprüfung jeder Aktion, Prompt Injection, keine Werkzeuge zum Geldbewegen
   - End-to-End mit echter Chain, WDK und Hyperswarm: Runde „Per Rechnung“ (Zahlung, fehlendes Guthaben, offene Rechnungen), Raten-Runde inklusive Beitritt bei offline Organisator, Belege, gefälschte Runden, Policy-Blockade, Senden und Sperren
@@ -113,7 +115,7 @@ Szenarien: `onboarding`, `locked`, `start`, `bidder`, `organizer`, `invoice`, `r
 - [ ] Sepolia: Bundler und Paymaster eintragen und den kompletten Ablauf testen
 - [ ] Automatische Sperre bei Inaktivität, stärkere Argon2id-Parameter
 - [x] Assistent „Frag Pomona“ auf QVAC (lokal, nur vorbereitend)
-- [x] Deutsch, Englisch und Spanisch, erweiterbar (`app/i18n/`, siehe [ARCHITECTURE.md](docs/ARCHITECTURE.md#sprachen))
+- [x] Deutsch, Englisch und Spanisch, erweiterbar (`app/i18n/`, siehe [ARCHITECTURE.md](docs/ARCHITECTURE.md#languages))
 - [ ] Assistent mit echtem Modell auf einem Desktop testen (Qualität auf Deutsch und Spanisch, Tool-Aufrufe)
 - [ ] Spanische Texte von Muttersprachlern gegenlesen lassen
 - [ ] Telegram-Bot im Worker des Organisators

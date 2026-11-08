@@ -1,23 +1,23 @@
-# Entwicklermodus ohne Pear
+# Developer mode without Pear
 
-`npm run dev` startet Pomona komplett auf dem eigenen Rechner, ohne Pear und ohne Verbindung nach draußen. Das ist gedacht für Rechner, auf denen Pear nicht startet, zum Beispiel hinter einer Firmen-Firewall wie Zscaler, die Peer-to-Peer-Verkehr blockiert.
+`npm run dev` runs Pomona entirely on your own machine, without Pear and without any outside connection. It is meant for machines on which Pear does not start, for example behind a corporate firewall such as Zscaler that blocks peer-to-peer traffic.
 
-Es läuft **derselbe Code** wie in Pear. Nur der Startweg ist ein anderer:
+It runs **the same code** as in Pear. Only the way it starts is different:
 
-| | Pear | Entwicklermodus |
+| | Pear | Developer mode |
 |---|---|---|
-| Kern (Wallet, Runde, Belege, Assistent) | `core/` in Bare | `core/` in Bare |
-| Oberfläche | `index.html` und `ui/` im Pear-Fenster | `index.html` und `ui/` im Browser |
-| Verbindung UI ↔ Kern | Electron-IPC und `Bare.IPC` (`ui/electron.js`, `electron/`, `worker/index.js`) | HTTP auf 127.0.0.1 (`ui/dev.js`, `scripts/dev.js`, `worker/dev.js`) |
-| Chain | Arbitrum Sepolia o. a. | lokale Hardhat-Chain mit Test-USDT |
-| P2P | öffentliches Holepunch-DHT | lokales DHT auf 127.0.0.1 |
-| Sprachmodell | Download peer-to-peer über QVAC | Datei aus `~/pomona-models` |
+| Core (wallet, round, receipts, assistant) | `core/` in Bare | `core/` in Bare |
+| UI | `index.html` and `ui/` in the Pear window | `index.html` and `ui/` in the browser |
+| UI ↔ core connection | Electron IPC and `Bare.IPC` (`ui/electron.js`, `electron/`, `worker/index.js`) | HTTP on 127.0.0.1 (`ui/dev.js`, `scripts/dev.js`, `worker/dev.js`) |
+| Chain | Arbitrum Sepolia or similar | local Hardhat chain with test USDT |
+| P2P | public Holepunch DHT | local DHT on 127.0.0.1 |
+| Language model | peer-to-peer download via QVAC | file from `~/pomona-models` |
 
-Was hier gebaut oder geändert wird, läuft danach unverändert in der Desktop-App (`npm start`).
+Whatever is built or changed here then runs unchanged in the desktop app (`npm start`).
 
-## Einrichten (einmalig)
+## Setup (once)
 
-Voraussetzungen: [Node.js](https://nodejs.org) 22 oder neuer und Git.
+Requirements: [Node.js](https://nodejs.org) 22 or newer and Git.
 
 ```bash
 git clone https://github.com/pbrandl/pomona.git
@@ -25,86 +25,86 @@ cd pomona/contracts && npm install
 cd ../app && npm install
 ```
 
-Hinter Zscaler scheitert `npm install` manchmal an TLS-Fehlern (`SELF_SIGNED_CERT_IN_CHAIN`). Dann das Firmen-Root-Zertifikat als Datei exportieren (Schlüsselbundverwaltung → Zscaler Root CA → Exportieren als `.pem`) und npm bekannt machen:
+Behind Zscaler, `npm install` sometimes fails with TLS errors (`SELF_SIGNED_CERT_IN_CHAIN`). In that case export the corporate root certificate as a file (Keychain Access → Zscaler Root CA → export as `.pem`) and tell npm about it:
 
 ```bash
 npm config set cafile ~/zscaler-root.pem
 ```
 
-## Starten
+## Start
 
 ```bash
 cd pomona/app
 npm run dev
 ```
 
-Nach etwa 20 Sekunden öffnen sich zwei Browser-Tabs:
+After about 20 seconds, two browser tabs open:
 
-- **Anna** (http://127.0.0.1:4180) und **Ben** (http://127.0.0.1:4181) sind zwei Personen mit eigener Wallet. So lässt sich eine Runde von beiden Seiten ausprobieren: Anna organisiert, Ben bietet.
-- Test-USDT gibt es beim Aufladen über „5.000 Test-USDT holen“.
-- **Ctrl+C** im Terminal beendet alles. Chain, Wallets und Runden sind dann gelöscht, es ist eine reine Testumgebung.
+- **Anna** (http://127.0.0.1:4180) and **Ben** (http://127.0.0.1:4181) are two people with their own wallets. This lets you try a round from both sides: Anna organises, Ben pledges.
+- Test USDT is available on the top-up page via the faucet button (5,000 test USDT).
+- **Ctrl+C** in the terminal stops everything. Chain, wallets and rounds are then deleted; it is a pure test environment.
 
-Optionen:
+Options:
 
 | | |
 |---|---|
-| `npm run dev -- --one` | nur ein Profil |
-| `npm run dev -- --no-open` | keinen Browser öffnen, Links stehen im Terminal |
-| `PORT=5000 npm run dev` | anderer erster Port |
-| `POMONA_DEBUG=1 npm run dev` | Logs der Kerne im Terminal anzeigen |
+| `npm run dev -- --one` | one profile only |
+| `npm run dev -- --no-open` | do not open a browser; the links are printed in the terminal |
+| `PORT=5000 npm run dev` | different first port |
+| `POMONA_DEBUG=1 npm run dev` | show the cores' logs in the terminal |
 
-Den Link nur mit dem Teil `#t=…` öffnen, so wie er im Terminal steht. Ohne dieses Token nimmt der Kern keine Befehle an.
+Only open the link with the `#t=…` part, exactly as printed in the terminal. Without this token the core accepts no commands.
 
-## Sprachmodell für „Frag Pomona“
+## Language model for "Ask Pomona"
 
-Vorschläge und einfache Fragen beantwortet der Assistent auch ohne Modell. Für freie Fragen braucht er ein lokales Sprachmodell. Hier wird es nicht peer-to-peer geladen, sondern einmal im Browser heruntergeladen. Das ist normales HTTPS und geht meist auch hinter Zscaler.
+The assistant answers suggestions and simple questions even without a model. For free-form questions it needs a local language model. Here it is not loaded peer-to-peer but downloaded once in the browser. That is normal HTTPS and usually works behind Zscaler too.
 
-1. Modell **Kompakt** (1,1 GB) herunterladen:
+1. Download the **Compact** model (1.1 GB):
    https://huggingface.co/unsloth/Qwen3-1.7B-GGUF/resolve/d7f544eead698dbd1f15126ef60b45a1e1933222/Qwen3-1.7B-Q4_0.gguf
-2. In den Ordner `pomona-models` im Benutzerordner legen:
+2. Put it in the `pomona-models` folder in your home directory:
    ```bash
    mkdir -p ~/pomona-models
    mv ~/Downloads/Qwen3-1.7B-Q4_0.gguf ~/pomona-models/
    ```
-3. In Pomona „Frag Pomona“ öffnen und auf **Einrichten** tippen.
+3. In Pomona, open "Ask Pomona" and tap **Set up**.
 
-Diese drei Schritte zeigt Pomona in „Frag Pomona“ auch selbst an, mit Download-Link und dem Ordnerpfad zum Kopieren.
+Pomona also shows these three steps itself in "Ask Pomona", with the download link and the folder path to copy.
 
-Beim ersten Mal prüft Pomona die SHA-256-Prüfsumme der Datei gegen den QVAC-Katalog. Das dauert einige Sekunden. Ist die Datei beschädigt oder ein anderes Modell, lehnt Pomona sie ab. Danach läuft der Assistent offline.
+The first time, Pomona checks the file's SHA-256 checksum against the QVAC catalogue. This takes a few seconds. If the file is damaged or a different model, Pomona rejects it. After that the assistant runs offline.
 
-Das Modell **Genauer** (`Qwen3-4B-Q4_K_M.gguf`, 2,5 GB) kommt im QVAC-Katalog nicht von Hugging Face. Eine Datei gleichen Namens von dort hat wahrscheinlich eine andere Prüfsumme und wird dann abgelehnt. Erstmal **Kompakt** nehmen.
+The **More accurate** model (`Qwen3-4B-Q4_K_M.gguf`, 2.5 GB) does not come from Hugging Face in the QVAC catalogue. A file of the same name from there probably has a different checksum and is then rejected. Start with **Compact**.
 
-Ein anderer Ordner geht mit `POMONA_MODELS=/pfad npm run dev`. Wer den Peer-to-Peer-Download von QVAC trotzdem versuchen will (z. B. ohne Firewall): `POMONA_MODELS_P2P=1 npm run dev`.
+A different folder works with `POMONA_MODELS=/path npm run dev`. To try QVAC's peer-to-peer download anyway (e.g. without a firewall): `POMONA_MODELS_P2P=1 npm run dev`.
 
-## Oberfläche prüfen (`npm run ui-check`)
+## Checking the UI (`npm run ui-check`)
 
-Für Änderungen an der Oberfläche, besonders Aufräumen und Umbauen ohne sichtbare Änderung. Das Skript geht in der Vorschau (Mock) jede Ansicht durch: alle Szenarien, jede Seite, die man von dort öffnen kann, Bieten und Bezahlen bis „Fertig“ und den Chat. Das passiert auf vier Bildschirmen (iPhone 13, iPhone SE, dunkel, Desktop). Für jedes Element merkt es sich Position, Größe, Text und berechneten Style.
+For changes to the UI, especially clean-ups and refactors without a visible change. The script goes through every view in the preview (mock): all scenarios, every page that can be opened from there, pledging and paying through to "Done", and the chat. It does this on four screens (iPhone 13, iPhone SE, dark, desktop). For every element it records position, size, text and computed style.
 
 ```bash
-npm run ui-check                    # vergleicht mit der Baseline (legt sie beim ersten Mal an)
-npm run ui-check -- --baseline      # Baseline neu aufnehmen, z. B. nach einer gewollten Änderung
-npm run ui-check -- --only phone    # nur ein Bildschirm: phone, small, dark oder desk
+npm run ui-check                    # compares with the baseline (creates it the first time)
+npm run ui-check -- --baseline      # record a new baseline, e.g. after an intended change
+npm run ui-check -- --only phone    # one screen only: phone, small, dark or desk
 ```
 
-Ablauf: Vor dem Umbau die Baseline aufnehmen, danach `npm run ui-check`. Der Bericht trennt „Verschoben oder andere Größe“ und „Text“, also sichtbare Änderungen, von „Nur berechnete Styles“. Letzteres sind meist Werte ohne sichtbare Wirkung, etwa `gap` an einem Element ohne Lücken. Ohne Unterschiede endet das Skript mit 0, sonst mit 1. Ergebnisse liegen in `app/.ui-check/` (nicht im Repo). Ein Lauf dauert gut vier Minuten.
+Workflow: record the baseline before the refactor, then run `npm run ui-check`. The report separates "Moved or resized" and "Text", i.e. visible changes, from "Computed styles only". The latter are usually values without visible effect, such as `gap` on an element without gaps. Without differences the script exits with 0, otherwise with 1. Results are stored in `app/.ui-check/` (not in the repo). A run takes a little over four minutes.
 
-Einmalig braucht es Chromium für Playwright: `npx playwright install chromium`. Hinter einem Proxy wie Zscaler kann der Download scheitern. Dann zeigt `PLAYWRIGHT_BROWSERS_PATH` auf einen vorhandenen Chromium-Ordner.
+Playwright needs Chromium once: `npx playwright install chromium`. Behind a proxy such as Zscaler the download can fail. In that case point `PLAYWRIGHT_BROWSERS_PATH` to an existing Chromium folder.
 
-Nicht abgedeckt sind Hover, die Handy-Tastatur und echte Geräte. Das bleibt Handarbeit.
+Not covered: hover, the phone keyboard and real devices. That remains manual work.
 
-## Sicherheit
+## Security
 
-Der Kern hält die Wallet, deshalb ist der lokale Server abgesichert:
+The core holds the wallet, so the local server is locked down:
 
-- Er lauscht nur auf `127.0.0.1` und ist im Netzwerk nicht erreichbar.
-- Jeder Aufruf braucht ein zufälliges Token, das bei jedem Start neu erzeugt wird. Es steht nur im Link aus dem Terminal und wird danach aus der Adresszeile entfernt.
-- Andere Webseiten im selben Browser können den Kern nicht ansprechen. Das Token fehlt ihnen, und ein eigener Header erzwingt eine CORS-Vorabprüfung, die der Server nie beantwortet.
-- DNS-Rebinding: Anfragen mit fremdem `Host` werden abgelehnt.
-- Ausgeliefert werden nur `index.html` und `ui/`, nie `core/` oder `worker/`. Dazu kommen dieselbe CSP wie in Pear und `frame-ancestors 'none'`.
-- Die lokale Chain nutzt den öffentlichen Hardhat-Schlüssel und ist deshalb nur hier aktiv (`allowDev`).
+- It only listens on `127.0.0.1` and is not reachable from the network.
+- Every call needs a random token that is generated anew on every start. It is only contained in the link from the terminal and is then removed from the address bar.
+- Other websites in the same browser cannot reach the core. They lack the token, and a custom header forces a CORS preflight that the server never answers.
+- DNS rebinding: requests with a foreign `Host` are rejected.
+- Only `index.html` and `ui/` are served, never `core/` or `worker/`. In addition, the same CSP as in Pear and `frame-ancestors 'none'`.
+- The local chain uses the public Hardhat key and is therefore only active here (`allowDev`).
 
-## Ablauf intern
+## How it works internally
 
-1. `scripts/dev.js` baut die Contracts, startet Hardhat, deployt Factory und Test-USDT und startet ein HyperDHT-Testnetz auf 127.0.0.1.
-2. Pro Profil startet es `worker/dev.js` mit `bare` (aus `bare-runtime`). Der Worker erzeugt `Pomona` mit lokalem DHT, lokaler Chain und `modelsDir` und spricht das RPC-Protokoll aus [RPC.md](RPC.md) über stdin/stdout.
-3. Pro Profil läuft ein HTTP-Server. `POST /rpc` reicht Aufrufe an den Worker weiter, `GET /events` liefert Events als Server-Sent Events, und `index.html` wird mit `ui/dev.js` statt `ui/electron.js` ausgeliefert.
+1. `scripts/dev.js` builds the contracts, starts Hardhat, deploys factory and test USDT and starts a HyperDHT testnet on 127.0.0.1.
+2. For each profile it starts `worker/dev.js` with `bare` (from `bare-runtime`). The worker creates `Pomona` with the local DHT, local chain and `modelsDir`, and speaks the RPC protocol from [RPC.md](RPC.md) over stdin/stdout.
+3. One HTTP server runs per profile. `POST /rpc` passes calls to the worker, `GET /events` delivers events as server-sent events, and `index.html` is served with `ui/dev.js` instead of `ui/electron.js`.

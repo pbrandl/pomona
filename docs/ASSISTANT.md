@@ -1,71 +1,71 @@
-# Assistent „Frag Pomona“
+# "Ask Pomona" assistant
 
-Der Assistent ist eine Gesprächsschicht über der App. Er beantwortet Fragen in einfachen Worten und bereitet Schritte vor, etwa „Biete 100 im Monat“, „Zeig meinen Beleg für Rate 2“ oder „Rechnung stellen“. **Er führt nie selbst etwas aus.** Jede Aktion öffnet eine bestehende Seite der App, und die Person bestätigt dort wie gewohnt.
+The assistant is a conversational layer on top of the app. It answers questions in plain words and prepares steps such as "Pledge 100 a month", "Show my receipt for instalment 2" or "Send invoice". **It never executes anything itself.** Every action opens an existing page of the app, and the user confirms there as usual.
 
-![Befehl ohne Sprachmodell](mobile/assistant-command.png)
+![Command without a language model](mobile/assistant-command.png)
 
-## Woher die Antworten kommen
+## Where the answers come from
 
-| Reihenfolge | Quelle | Braucht Modell | Datei |
+| Order | Source | Needs model | File |
 |---|---|---|---|
-| 1 | **Vorschlag** (Knopf): geprüfter Text mit den aktuellen Zahlen | nein | `core/agent/knowledge.js` |
-| 2 | **Befehl** (Regeln): „biete 100“, „aufladen“, „Beleg Rate 2“, „Rechnung stellen“, „zurückziehen“ | nein | `core/agent/intents.js` |
-| 3 | **Sprachmodell** (QVAC) mit Werkzeugen für freie Fragen | ja | `core/agent/agent.js`, `tools.js`, `qvac.js` |
-| – | Ohne Modell: Stichwortsuche im Wissen, sonst Angebot zur Einrichtung | nein | `knowledge.js` |
+| 1 | **Suggestion** (button): checked text with the current numbers | no | `core/agent/knowledge.js` |
+| 2 | **Command** (rules): "pledge 100", "top up", "receipt instalment 2", "send invoice", "withdraw" | no | `core/agent/intents.js` |
+| 3 | **Language model** (QVAC) with tools for free-form questions | yes | `core/agent/agent.js`, `tools.js`, `qvac.js` |
+| – | Without a model: keyword search in the knowledge base, otherwise an offer to set one up | no | `knowledge.js` |
 
-Damit funktioniert der Assistent sofort und auf schwachen Geräten. Das Sprachmodell kommt nur für freie Fragen dazu.
+This way the assistant works immediately and on weak devices. The language model only comes in for free-form questions.
 
-## Was das Modell darf
+## What the model may do
 
-Die Werkzeuge (`core/agent/tools.js`) lesen oder bereiten nur vor:
+The tools (`core/agent/tools.js`) only read or prepare:
 
-| Werkzeug | Wirkung |
+| Tool | Effect |
 |---|---|
-| `calculate_bid(amount)` | rechnet über `quoteBid`: Hinterlegung, Gebühr, ob das Guthaben reicht (nur lesen) |
-| `prepare_bid(amount)` | Vorschlag „Gebot prüfen“, öffnet die Prüfseite |
-| `open_page(page)` | Aufladen, Konto, Beleg prüfen, Beitreten, Runde starten |
-| `show_receipt(installment)` | Beleg einer bezahlten Rate |
-| `prepare_invoice()` | nur Organisator, nur wenn fällig |
-| `prepare_withdraw()` / `prepare_refund()` | nur wenn möglich |
-| `draft_news(text)` | nur Organisator; füllt das Feld, sendet nicht |
+| `calculate_bid(amount)` | calculates via `quoteBid`: deposit, fee, whether the balance is sufficient (read only) |
+| `prepare_bid(amount)` | suggestion "Review pledge", opens the review page |
+| `open_page(page)` | top-up, account, verify receipt, join, start round |
+| `show_receipt(installment)` | receipt of a paid instalment |
+| `prepare_invoice()` | organiser only, only when due |
+| `prepare_withdraw()` / `prepare_refund()` | only when possible |
+| `draft_news(text)` | organiser only; fills the field, does not send |
 
-Jeder Vorschlag wird gegen Rolle, Phase und Status geprüft (`core/agent/actions.js`). Unbekannte Werkzeuge werden abgelehnt.
+Every suggestion is checked against role, phase and status (`core/agent/actions.js`). Unknown tools are rejected.
 
-## Was das Modell sieht
+## What the model sees
 
-`core/agent/context.js` baut den Systemprompt:
-- **Regeln:** nichts behaupten, was nicht passiert ist, nie nach Passwort oder Seedphrase fragen.
-- **Hintergrundwissen** über Pomona.
-- **Aktuelle Lage** als Fakten aus Contract und Wallet.
+`core/agent/context.js` builds the system prompt:
+- **Rules:** never claim anything that has not happened, never ask for the password or seed phrase.
+- **Background knowledge** about Pomona.
+- **Current situation** as facts from contract and wallet.
 
-Texte anderer Peers (Titel, Neuigkeiten) werden bereinigt und als **Daten** eingezäunt. Das Modell soll darin stehende Anweisungen ignorieren. Selbst wenn es das nicht tut, kann es nur einen Vorschlag erzeugen, den die Person auf der Prüfseite sieht.
+Texts from other peers (title, news) are sanitised and fenced in as **data**. The model is told to ignore any instructions in them. Even if it does not, it can only produce a suggestion that the user sees on the review page.
 
-## Modelle (QVAC-Registry)
+## Models (QVAC registry)
 
-| Wahl | QVAC-Konstante | Größe |
+| Choice | QVAC constant | Size |
 |---|---|---|
-| Kompakt | `QWEN3_1_7B_INST_Q4` | 1,1 GB |
-| Genauer | `QWEN3_4B_INST_Q4_K_M` | 2,5 GB |
+| Compact | `QWEN3_1_7B_INST_Q4` | 1.1 GB |
+| More accurate | `QWEN3_4B_INST_Q4_K_M` | 2.5 GB |
 
-- **Download:** einmalig, peer-to-peer aus der QVAC-Registry, in den Speicher-Ordner des Workers (`models/`). QVAC prüft die SHA-256-Prüfsumme.
-- **Danach** läuft alles offline im Bare-Worker (`@qvac/inference`, llama.cpp). Das Gespräch verlässt das Gerät nicht, wird nicht gespeichert und beim Sperren gelöscht.
-- **Ohne Peer-to-Peer** (Firmennetz, Entwicklermodus): Die Modelldatei lässt sich auch von Hand herunterladen und in `modelsDir` legen (`~/pomona-models` in `npm run dev`). Pomona nimmt sie nur, wenn Größe und SHA-256 zum QVAC-Katalog passen, und lädt sie dann mit `modelType: llamacpp-completion` direkt. Siehe [DEV.md](DEV.md).
-- **Andere Modelle:** In `MODELS` in `core/agent/qvac.js` lässt sich jede QVAC-Konstante eintragen, z. B. Qwen 3.5.
+- **Download:** once, peer-to-peer from the QVAC registry, into the worker's storage folder (`models/`). QVAC checks the SHA-256 checksum.
+- **Afterwards** everything runs offline in the Bare worker (`@qvac/inference`, llama.cpp). The conversation never leaves the device, is not stored and is deleted when the app locks.
+- **Without peer-to-peer** (corporate network, developer mode): the model file can also be downloaded by hand and placed in `modelsDir` (`~/pomona-models` in `npm run dev`). Pomona only uses it if size and SHA-256 match the QVAC catalogue, and then loads it directly with `modelType: llamacpp-completion`. See [DEV.md](DEV.md).
+- **Other models:** any QVAC constant can be added to `MODELS` in `core/agent/qvac.js`, e.g. Qwen 3.5.
 
-## Erweitern
+## Extending
 
-- **Neue Frage:** einen Eintrag in `TOPICS` (`knowledge.js`) anlegen, mit Frage, Stichwörtern und Antwortfunktion, und ihn optional in `suggestions()` aufnehmen.
-- **Neuer Befehl:** ein Muster in `matchIntent` (`intents.js`).
-- **Neues Werkzeug:** Definition in `TOOLS` und Abbildung in `TO_ACTION` (`tools.js`), Prüfung in `validateAction` (`actions.js`), Umsetzung in der UI (`agent-act` in `ui/app.js`). Ein Werkzeug, das Geld bewegt, gehört **nicht** hierher.
+- **New question:** add an entry to `TOPICS` (`knowledge.js`) with question, keywords and answer function, and optionally include it in `suggestions()`.
+- **New command:** a pattern in `matchIntent` (`intents.js`).
+- **New tool:** definition in `TOOLS` and mapping in `TO_ACTION` (`tools.js`), check in `validateAction` (`actions.js`), implementation in the UI (`agent-act` in `ui/app.js`). A tool that moves money does **not** belong here.
 
 ## Tests
 
-- `test/assistant.test.js`: Befehle, Wissen, Prüfung jeder Aktion, Abschirmung fremder Texte, Prompt-Injection-Szenario, keine Geld-Werkzeuge, Installation, Vergessen. Das Modell ist hier ein skriptbares Fake.
-- `test/flow.test.js` („assistant on a real round“): echte Chain, echter `quoteBid`, Fake-Modell. Danach ist nachweislich kein Geld bewegt.
-- `test/bare.test.js`: QVAC lädt in Bare (Konfiguration, llama.cpp-Plugin, Modell-Katalog), und der Assistent antwortet dort.
+- `test/assistant.test.js`: commands, knowledge, checks on every action, shielding of foreign texts, a prompt injection scenario, no money tools, installation, forgetting. The model here is a scriptable fake.
+- `test/flow.test.js` ("assistant on a real round"): real chain, real `quoteBid`, fake model. Afterwards it is verified that no money has moved.
+- `test/bare.test.js`: QVAC loads in Bare (configuration, llama.cpp plugin, model catalogue), and the assistant answers there.
 
-## Noch offen
+## Still open
 
-- **Kein echtes Modell getestet:** In der Entwicklungsumgebung blockiert das Netz den P2P-Download der Modelle. Die Registry hat das Modell gefunden, der Download kam aber nicht an. Antwortqualität auf Deutsch, Geschwindigkeit und die Zuverlässigkeit der Tool-Aufrufe müssen auf einem echten Rechner geprüft werden.
-- **Größe der Native-Addons:** Das QVAC-Addon für die eigene Plattform ist groß (Linux ca. 350 MB, Windows ca. 260 MB, macOS ca. 17 MB). Für die Verteilung über Pear sollte es später als optionaler Download nachgeladen werden, statt im App-Paket zu stecken. Außerdem enthält ein Pear-Release nur die Binärdateien der Plattform, auf der es gebaut wurde. Das muss beim Staging berücksichtigt werden.
-- **Paket-Versionen:** `@qvac/inference` 0.22 erwartet `@qvac/llm-llamacpp` ^0.61 und `@qvac/langdetect-text` (wird beim Import geladen). Die Versionen sind im Lockfile fixiert.
+- **No real model tested yet:** in the development environment the network blocks the P2P download of the models. The registry found the model, but the download did not arrive. Answer quality in German, speed and the reliability of tool calls still have to be checked on a real machine.
+- **Size of the native add-ons:** the QVAC add-on for one's own platform is large (Linux about 350 MB, Windows about 260 MB, macOS about 17 MB). For distribution via Pear it should later be loaded as an optional download instead of being part of the app package. In addition, a Pear release only contains the binaries of the platform it was built on. This has to be taken into account when staging.
+- **Package versions:** `@qvac/inference` 0.22 expects `@qvac/llm-llamacpp` ^0.61 and `@qvac/langdetect-text` (loaded on import). The versions are pinned in the lockfile.

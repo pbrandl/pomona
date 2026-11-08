@@ -1,182 +1,182 @@
-# Architektur
+# Architecture
 
-Pomona besteht aus drei Teilen, die sich klar voneinander trennen lassen:
+Pomona consists of three clearly separated parts:
 
 ```
-┌──────────────── Desktop-App (Electron + pear-runtime) ────────────────────┐
+┌──────────────── Desktop app (Electron + pear-runtime) ────────────────────┐
 │                                                                           │
-│  UI (Electron-Renderer)          Worker (Bare)                            │
+│  UI (Electron renderer)          Worker (Bare)                            │
 │  app/ui/*                        app/worker/index.js → app/core/*         │
 │  ┌────────────────────┐  RPC    ┌──────────────────────────────────────┐  │
-│  │ views/*  (HTML)    │ ──────▶ │ rpc/      Whitelist + Validierung    │  │
-│  │ app.js   (State,   │ ◀────── │ pomona.js Anwendungsdienst           │  │
-│  │          Actions)  │ events  │   ├─ wallet/  WDK-Accounts, Tresor,  │  │
-│  └────────────────────┘         │   │           Policy                  │  │
-│  Preload ↔ Main ↔ Bare.IPC      │   ├─ chain/   Contracts lesen,       │  │
-│                                 │   │           Calls kodieren          │  │
-│                                 │   ├─ p2p/     Hyperswarm, Manifest   │  │
+│  │ views/*  (HTML)    │ ──────▶ │ rpc/      whitelist + validation     │  │
+│  │ app.js   (state,   │ ◀────── │ pomona.js application service        │  │
+│  │          actions)  │ events  │   ├─ wallet/  WDK accounts, vault,   │  │
+│  └────────────────────┘         │   │           policy                  │  │
+│  Preload ↔ Main ↔ Bare.IPC      │   ├─ chain/   read contracts,        │  │
+│                                 │   │           encode calls            │  │
+│                                 │   ├─ p2p/     Hyperswarm, manifest   │  │
 │                                 │   └─ links, schedule, units, config  │  │
 │                                 └──────────────────────────────────────┘  │
 └───────────────────────────────────────────────────────────────────────────┘
-          │ Hyperswarm (P2P)                         │ JSON-RPC / Bundler
+          │ Hyperswarm (P2P)                         │ JSON-RPC / bundler
           ▼                                          ▼
-   andere Teilnehmer                       EVM-Chain: PomonaFactory,
-   (Manifest, Neuigkeiten)                 PomonaRound, USDT, Paymaster
+   other participants                      EVM chain: PomonaFactory,
+   (manifest, news)                        PomonaRound, USDT, paymaster
 ```
 
-## Grundsätze
+## Principles
 
-1. **Die Chain ist die Wahrheit über Geld.** Beträge, Phasen, Zeitplan, Organisator und Belege kommen immer aus dem Contract. Daten aus dem P2P-Netz (Titel, Website, Neuigkeiten) sind nur Beiwerk. Die App prüft sie gegen den Contract und kürzt sie auf feste Größen.
-2. **Nur USDT.** Nutzer halten keinen anderen Token. Auf echten Netzwerken ist die Wallet ein ERC-4337 Smart Account. Ein Token-Paymaster nimmt die Gebühr in USDT.
-3. **Der Worker besitzt alle Geheimnisse.** Seed, Schlüssel und Netzwerkzugriff liegen im Bare-Worker. Die UI sieht nur JSON und kann nur die Methoden aus `core/rpc/methods.js` aufrufen.
-4. **Eine Runde pro App-Instanz.** Das hält Zustand, UI und Sicherheitsmodell einfach.
-5. **Läuft in Node und Bare.** Der Kern benutzt nur Pakete, die in beiden Runtimes funktionieren. `core/bare.js` mappt die Node-Builtins nach dem Muster der WDK-Pakete. Die Tests laufen in Node, ein Smoke-Test zusätzlich in Bare.
+1. **The chain is the source of truth for money.** Amounts, phases, schedule, organiser and receipts always come from the contract. Data from the P2P network (title, website, news) is only decoration. The app checks it against the contract and truncates it to fixed sizes.
+2. **USDT only.** Users hold no other token. On real networks the wallet is an ERC-4337 smart account. A token paymaster takes the fee in USDT.
+3. **The worker owns all secrets.** Seed, keys and network access live in the Bare worker. The UI only sees JSON and can only call the methods in `core/rpc/methods.js`.
+4. **One round per app instance.** This keeps state, UI and security model simple.
+5. **Runs in Node and Bare.** The core only uses packages that work in both runtimes. `core/bare.js` maps the Node built-ins following the pattern of the WDK packages. The tests run in Node, plus a smoke test in Bare.
 
-## Module
+## Modules
 
-| Pfad | Aufgabe |
+| Path | Role |
 |---|---|
-| `contracts/src/PomonaRound.sol` | Escrow und Raten-Abrechnung einer Runde, siehe [CONTRACT.md](CONTRACT.md) |
-| `contracts/src/PomonaFactory.sol` | Legt Runden an und ist das Register `isRound` gegen gefälschte Contracts |
-| `contracts/scripts/` | `build` (solc-js, erzeugt auch `app/core/chain/abi.js`), `devchain`, `deploy` |
-| `app/electron/main.cjs` | Electron-Hauptprozess: Fenster, startet den Worker mit `pear-runtime`, reicht RPC zwischen UI und Worker durch (hält keine Schlüssel) |
-| `app/electron/preload.cjs` | Einzige Tür zwischen abgeschottetem Renderer und Hauptprozess (`window.bridge`) |
-| `app/worker/index.js` | Startet den Kern und bedient RPC über `Bare.IPC` |
-| `app/core/pomona.js` | **Anwendungsdienst.** Alle Geschäftsregeln, Vorprüfungen, Status |
-| `app/core/wallet/` | `account.js` (Interface), `smart-account.js` (ERC-4337), `dev-account.js` (lokal), `vault.js` (Argon2id + secretbox), `policy.js` (WDK-Policy) |
-| `app/core/chain/` | `contracts.js` (lesen + Calls kodieren), `reverts.js` (Fehlertexte), `provider.js`, `abi.js` (generiert) |
-| `app/core/p2p/` | `node.js` (Corestore, Hyperswarm, lokale Einstellungen), `manifest.js` (Schema und Bereinigung) |
-| `app/core/links.js` | Einladungslinks `pomona://` und Belege `pomona-beleg://` |
-| `app/core/schedule.js` | Zeitplan der Rechnungen, spiegelt die Regeln des Contracts |
-| `app/core/units.js` | Beträge parsen (deutsch/englisch) und formatieren |
-| `app/core/config/` | `networks.js` (Chains, Bundler, Paymaster), `deployments.js` (generiert), `limits.js` |
-| `app/core/rpc/` | `server.js` (Protokoll), `methods.js` (Whitelist mit Parameter-Schema) |
-| `app/ui/` | `app.js` (State, Actions, Events), `views/*` (reine Render-Funktionen), `format.js`, `pear.js` (Bridge), `mock.js` (Vorschau) |
+| `contracts/src/PomonaRound.sol` | Escrow and instalment settlement of one round, see [CONTRACT.md](CONTRACT.md) |
+| `contracts/src/PomonaFactory.sol` | Creates rounds and is the `isRound` registry against forged contracts |
+| `contracts/scripts/` | `build` (solc-js, also generates `app/core/chain/abi.js`), `devchain`, `deploy` |
+| `app/electron/main.cjs` | Electron main process: window, starts the worker with `pear-runtime`, passes RPC between UI and worker (holds no keys) |
+| `app/electron/preload.cjs` | The only door between the sandboxed renderer and the main process (`window.bridge`) |
+| `app/worker/index.js` | Starts the core and serves RPC over `Bare.IPC` |
+| `app/core/pomona.js` | **Application service.** All business rules, pre-checks, status |
+| `app/core/wallet/` | `account.js` (interface), `smart-account.js` (ERC-4337), `dev-account.js` (local), `vault.js` (Argon2id + secretbox), `policy.js` (WDK policy) |
+| `app/core/chain/` | `contracts.js` (read + encode calls), `reverts.js` (error texts), `provider.js`, `abi.js` (generated) |
+| `app/core/p2p/` | `node.js` (Corestore, Hyperswarm, local settings), `manifest.js` (schema and sanitising) |
+| `app/core/links.js` | Invitation links `pomona://` and receipts `pomona-beleg://` |
+| `app/core/schedule.js` | Invoice schedule, mirrors the contract's rules |
+| `app/core/units.js` | Parse amounts (German/English) and format them |
+| `app/core/config/` | `networks.js` (chains, bundler, paymaster), `deployments.js` (generated), `limits.js` |
+| `app/core/rpc/` | `server.js` (protocol), `methods.js` (whitelist with parameter schema) |
+| `app/ui/` | `app.js` (state, actions, events), `views/*` (pure render functions), `format.js`, `pear.js` (bridge), `mock.js` (preview) |
 
-## Abläufe
+## Flows
 
-**Runde starten (Organisator)**
-1. `createRound` prüft die Eingaben und dass das Netzwerk eingerichtet ist.
-2. Die Wallet führt `factory.createRound(...)` aus. Die neue Adresse wird über `factory.roundsOf(organizer)` gelesen.
-3. Das Manifest wird in einen eigenen Hyperbee geschrieben und auf Hyperswarm angekündigt.
-4. Der Einladungslink enthält den Manifest-Key, das Netzwerk, die Round-Adresse und optional den Invite-Key.
+**Start a round (organiser)**
+1. `createRound` checks the inputs and that the network is configured.
+2. The wallet executes `factory.createRound(...)`. The new address is read via `factory.roundsOf(organizer)`.
+3. The manifest is written to its own Hyperbee and announced on Hyperswarm.
+4. The invitation link contains the manifest key, the network, the round address and optionally the invite key.
 
-**Beitreten (Bieter)**
-1. Link dekodieren. Das Netzwerk muss bekannt und eingerichtet sein.
-2. `factory.isRound(round)` muss `true` sein, und der Token muss USDT sein. Sonst wird abgebrochen (Schutz vor gefälschten Contracts).
-3. Der Invite-Key muss zum `inviteSigner` des Contracts passen.
-4. Das Manifest wird über Hyperswarm geladen, von jedem Peer, der es hat, und dann komplett mitgeseedet.
-5. Manifest und Link müssen dieselbe Round und Chain nennen. Der Status zeigt `verified`, wenn auch der Organisator übereinstimmt.
+**Join (backer)**
+1. Decode the link. The network must be known and configured.
+2. `factory.isRound(round)` must be `true`, and the token must be USDT. Otherwise the app aborts (protection against forged contracts).
+3. The invite key must match the contract's `inviteSigner`.
+4. The manifest is loaded via Hyperswarm, from any peer that has it, and is then seeded in full.
+5. Manifest and link must name the same round and chain. The status shows `verified` if the organiser matches as well.
 
-**Bieten**
-1. Vorprüfungen: Phase, Mindestgebot und ein Guthaben von mindestens `Betrag × Raten`.
-2. Die Invite-Signatur wird lokal mit dem Invite-Key erzeugt, gebunden an Chain, Round und Bieter-Adresse.
-3. Die Calls `[approve(round, Betrag×Raten), bid(Betrag, Signatur)]` gehen auf dem Smart Account als **eine** User-Operation raus, die Gebühr wird in USDT bezahlt.
+**Pledge**
+1. Pre-checks: phase, minimum pledge and a balance of at least `amount × instalments`.
+2. The invite signature is created locally with the invite key, bound to chain, round and backer address.
+3. The calls `[approve(round, amount×instalments), bid(amount, signature)]` go out on the smart account as **one** user operation; the fee is paid in USDT.
 
-**Rechnung stellen (Organisator)**
-- `invoice()` ist ab `biddingEnd + i × interval` möglich, höchstens `installments`-mal und nur bis `expiresAt`. Jede Rechnung zahlt `total` (Summe aller Gebote pro Rate) an den Organisator.
+**Invoice (organiser)**
+- `invoice()` is possible from `biddingEnd + i × interval`, at most `installments` times and only until `expiresAt`. Each invoice pays `total` (the sum of all pledges per instalment) to the organiser.
 
-**Belege**
-- `receipt(index)` erzeugt `pomona-beleg://{netz, round, bieter, index}` als QR.
-- `verifyReceipt` prüft den Beleg am Contract: `isRound` und `receipt(bieter, index)`. Das geht ohne Wallet und ohne den Organisator.
+**Receipts**
+- `receipt(index)` creates `pomona-beleg://{network, round, backer, index}` as a QR code.
+- `verifyReceipt` checks the receipt against the contract: `isRound` and `receipt(backer, index)`. This works without a wallet and without the organiser.
 
-## Status und Events
+## Status and events
 
-Die UI hält keinen eigenen Geschäftszustand. Bei jedem `change`-Event des Workers ruft sie `status()` auf und rendert neu. Auslöser für `change` sind eigene Aktionen, neue Manifest-Daten und ein Poll-Timer (8 s, lokal 1,5 s). Wie `status()` aussieht, steht in [RPC.md](RPC.md).
+The UI keeps no business state of its own. On every `change` event from the worker it calls `status()` and re-renders. `change` is triggered by the user's own actions, new manifest data and a poll timer (8 s, locally 1.5 s). The shape of `status()` is described in [RPC.md](RPC.md).
 
-## Erweitern
+## Extending
 
-| Vorhaben | Wo ansetzen |
+| Goal | Where to start |
 |---|---|
-| **Neues EVM-Netzwerk** | Eintrag in `core/config/networks.js`, Factory deployen (`contracts/scripts/deploy.js`) und Bundler und Paymaster in `aa` eintragen. |
-| **Andere Chain (TON, Tron, Solana)** | Neue Account-Klasse nach dem Interface in `core/wallet/account.js` mit dem passenden WDK-Modul, Contract-Gegenstück, `chain/`-Adapter. `pomona.js` spricht nur mit diesen Schnittstellen. |
-| **Monatsrechnungen über Lightning** | Neuer Zahlungsweg neben `invoice()`: WDK `wdk-wallet-spark` im Worker. Die Rechnung geht über das Manifest (`news/` analog zu `invoices/`), das Preimage dient als Beleg in `links.js`. |
-| **Telegram** | Ein zweiter Adapter neben `rpc/server.js`: Der Bot läuft im Worker des Organisators und ruft dieselben Methoden aus `rpc/methods.js` auf. |
-| **Mobile** | Der Kern läuft in Bare und damit auch in Bare Kit (iOS/Android). Nur `ui/` muss neu gebaut werden, das RPC bleibt gleich. |
-| **Neue UI-Funktion** | View-Funktion in `ui/views/`, Button mit `data-action`, Eintrag in `actions` in `ui/app.js`, Methode in `core/rpc/methods.js` und `core/pomona.js`. |
-| **Sprache** | Texte stehen in `ui/views/*`, `core/chain/reverts.js` und den `fail(...)`-Aufrufen. Für i18n die Codes (`PomonaError.code`) als Schlüssel nutzen. |
+| **New EVM network** | Add an entry in `core/config/networks.js`, deploy the factory (`contracts/scripts/deploy.js`) and enter bundler and paymaster under `aa`. |
+| **Another chain (TON, Tron, Solana)** | New account class following the interface in `core/wallet/account.js` with the matching WDK module, a contract counterpart, a `chain/` adapter. `pomona.js` only talks to these interfaces. |
+| **Monthly invoices via Lightning** | New payment path next to `invoice()`: WDK `wdk-wallet-spark` in the worker. The invoice goes through the manifest (`news/` analogous to `invoices/`); the preimage serves as the receipt in `links.js`. |
+| **Telegram** | A second adapter next to `rpc/server.js`: the bot runs in the organiser's worker and calls the same methods from `rpc/methods.js`. |
+| **Mobile** | The core runs in Bare and therefore also in Bare Kit (iOS/Android). Only `ui/` has to be rebuilt; the RPC stays the same. |
+| **New UI feature** | View function in `ui/views/`, button with `data-action`, entry in `actions` in `ui/app.js`, method in `core/rpc/methods.js` and `core/pomona.js`. |
+| **Language** | See [Languages](#languages). |
 
-## Konventionen
+## Conventions
 
-- ES-Module, JavaScript mit JSDoc-Typen, Stil `standard` (`npm run lint`).
-- Fehler, die der Nutzer sieht, sind `PomonaError` mit stabilem Code; `fail(code, key, params)` holt den Text `err.<key>` in der eingestellten Sprache.
-- Beträge sind im Kern immer `bigint` in Basiseinheiten. Strings gibt es nur an der RPC-Grenze.
-- Jede Geschäftsregel steht genau einmal im Contract. `schedule.js` spiegelt sie nur für die Anzeige.
-- Tests: `contracts/test` (Contract), `app/test/unit.test.js` (ohne Netz), `app/test/flow.test.js` (End-to-End), `app/test/bare.test.js` (Bare).
+- ES modules, JavaScript with JSDoc types, `standard` style (`npm run lint`).
+- Errors the user sees are `PomonaError` with a stable code; `fail(code, key, params)` fetches the text `err.<key>` in the selected language.
+- Amounts in the core are always `bigint` in base units. Strings only exist at the RPC boundary.
+- Every business rule exists exactly once, in the contract. `schedule.js` only mirrors it for display.
+- Tests: `contracts/test` (contract), `app/test/unit.test.js` (no network), `app/test/flow.test.js` (end-to-end), `app/test/bare.test.js` (Bare).
 
-## Pear 3: Electron mit pear-runtime
+## Pear 3: Electron with pear-runtime
 
-Seit Pear 3 startet Pear keine Apps mehr (`pear run` entfällt). Eine Pear-App ist eine normale Electron-App, die `pear-runtime` einbindet: Bare-Worker, Speicher und P2P-Updates. Pomona folgt der Vorlage [hello-pear-electron](https://github.com/holepunchto/hello-pear-electron):
+Since Pear 3, Pear no longer launches apps (`pear run` is gone). A Pear app is a regular Electron app that embeds `pear-runtime`: Bare worker, storage and P2P updates. Pomona follows the [hello-pear-electron](https://github.com/holepunchto/hello-pear-electron) template:
 
-- **Hauptprozess** (`electron/main.cjs`): öffnet das Fenster, startet `worker/index.js` mit `PearRuntime.run()` (die Bare-Laufzeit bringt `bare-sidecar` für jede Plattform mit) und reicht die RPC-Zeilen durch. Er hält keine Schlüssel und kennt keine Geschäftsregeln.
-- **Preload** (`electron/preload.cjs`): stellt `window.bridge` bereit (Worker starten, Zeilen schreiben und empfangen, Kopieren, Kamera, Neustart). Der Renderer läuft mit `sandbox`, `contextIsolation` und ohne Node.
-- **Renderer**: `index.html` mit `ui/electron.js`, das daraus `window.pomona` macht.
-- **Worker** (`worker/index.js`): Kern und RPC über `Bare.IPC`. Beim Beenden schickt der Hauptprozess SIGTERM; `graceful-goodbye` schließt Swarm und Speicher sauber.
-- **Start** (`scripts/start.js`, `npm start`): startet bei Bedarf die lokale Chain auf 127.0.0.1:8545, deployt die Contracts (oder nimmt vorhandene) und öffnet Electron mit `--dev --local <Adressen>`.
-- **Speicher**: `<userData>/dev` mit `--dev` (lokale Chain), sonst `<userData>/storage`. `--storage <dir>` setzt einen eigenen Ordner und erlaubt damit eine zweite Instanz.
-- **Updates**: noch nicht eingerichtet; kommen mit dem Paketieren (siehe README).
+- **Main process** (`electron/main.cjs`): opens the window, starts `worker/index.js` with `PearRuntime.run()` (the Bare runtime ships `bare-sidecar` for every platform) and passes the RPC lines through. It holds no keys and knows no business rules.
+- **Preload** (`electron/preload.cjs`): provides `window.bridge` (start worker, write and receive lines, copy, camera, restart). The renderer runs with `sandbox`, `contextIsolation` and without Node.
+- **Renderer**: `index.html` with `ui/electron.js`, which turns it into `window.pomona`.
+- **Worker** (`worker/index.js`): core and RPC over `Bare.IPC`. On exit the main process sends SIGTERM; `graceful-goodbye` closes swarm and storage cleanly.
+- **Start** (`scripts/start.js`, `npm start`): starts the local chain on 127.0.0.1:8545 if needed, deploys the contracts (or reuses existing ones) and opens Electron with `--dev --local <addresses>`.
+- **Storage**: `<userData>/dev` with `--dev` (local chain), otherwise `<userData>/storage`. `--storage <dir>` sets a custom folder and thus allows a second instance.
+- **Updates**: not set up yet; they come with packaging (see README).
 
-## Zwei Startwege, ein Code
+## Two ways to start, one codebase
 
-Kern (`core/`) und Oberfläche (`ui/`, `index.html`) kennen Pear nicht direkt. Sie sprechen nur über `window.pomona` (`call`, `on`, `copy`, `cameraAccess`, `restart`) bzw. über das RPC-Protokoll miteinander. Diese Hülle gibt es zweimal:
+Core (`core/`) and UI (`ui/`, `index.html`) do not know Pear directly. They only talk to each other via `window.pomona` (`call`, `on`, `copy`, `cameraAccess`, `restart`) or the RPC protocol. This shell exists twice:
 
-| | Oberfläche | Kern |
+| | UI | Core |
 |---|---|---|
-| Desktop (`npm start`) | `ui/electron.js` über `electron/preload.cjs` und `electron/main.cjs` | `worker/index.js` (über `pear-runtime`) |
-| Entwicklermodus (`npm run dev`) | `ui/dev.js` (HTTP, Server-Sent Events) | `worker/dev.js` (stdin/stdout), gestartet von `scripts/dev.js` |
-| Design-Vorschau (`npm run preview`) | `ui/mock.js` (simuliert) | – |
+| Desktop (`npm start`) | `ui/electron.js` via `electron/preload.cjs` and `electron/main.cjs` | `worker/index.js` (via `pear-runtime`) |
+| Developer mode (`npm run dev`) | `ui/dev.js` (HTTP, server-sent events) | `worker/dev.js` (stdin/stdout), started by `scripts/dev.js` |
+| Design preview (`npm run preview`) | `ui/mock.js` (simulated) | – |
 
-Neue Funktionen kommen also in `core/` und `ui/` und laufen auf allen Wegen. Siehe [DEV.md](DEV.md).
+New features therefore go into `core/` and `ui/` and run on every path. See [DEV.md](DEV.md).
 
-## Live-Updates
+## Live updates
 
-`RoundContract.watch()` abonniert alle Events der Runde (Bid, Invoiced, …) per `eth_getLogs`-Polling im Takt `pollMs` des Netzwerks (Arbitrum 1 s, Ethereum 4 s, lokal 0,1 s). Jedes Event löst `change` aus; die UI lädt den Status neu. Ein 15-s-Timer hält Countdowns aktuell. Auf Arbitrum sehen alle ein neues Gebot so etwa 1–3 s nach dem Absenden.
+`RoundContract.watch()` subscribes to all events of the round (Bid, Invoiced, …) via `eth_getLogs` polling at the network's `pollMs` (Arbitrum 1 s, Ethereum 4 s, local 0.1 s). Every event triggers `change`; the UI reloads the status. A 15 s timer keeps countdowns current. On Arbitrum, everyone sees a new pledge about 1–3 s after it is sent.
 
-## Belege prüfen
+## Verifying receipts
 
-Der Organisator öffnet „Beleg prüfen“: Kamera (getUserMedia + jsQR, `ui/scanner.js`, `ui/vendor/jsqr.js`) oder Code einfügen. Geprüft wird immer am Contract (`verifyReceipt`).
+The organiser opens "Verify receipt": camera (getUserMedia + jsQR, `ui/scanner.js`, `ui/vendor/jsqr.js`) or paste the code. The check always runs against the contract (`verifyReceipt`).
 
-## Bedienung: Aufladen, Bieten, Status, Benachrichtigungen
+## Using the app: top-up, pledge, status, notifications
 
-- **Aufladen** (`ui/views/fund.js`): Adresse mit QR-Code, Warnungen (nur USDT, richtiges Netzwerk, nie an eine Runde senden). Der Kern beobachtet `Transfer`-Events an die eigene Adresse (`Pomona._watchFunds`, Event `funds`), damit ein Eingang in Sekunden angezeigt wird. Nach dem Erstellen einer leeren Wallet öffnet sich das Aufladen automatisch.
-- **Bieten: Betrag → Prüfen → Fertig** (`ui/views/bid.js`): Der Schritt „Betrag“ füllt genau die Bildschirmhöhe: Fortschritt der Runde mit dem eigenen Gebot als Segment, die Zahl, eine Notiz, auf Touch-Geräten ein Ziffernblock, auf dem Desktop ein direkt fokussiertes Feld. Dann `quoteBid` (Hinterlegung bzw. Rechnungen, Gebühr, Guthaben), danach `bid`. Der Fortschritt kommt als `busyStep` (`prepare` → `sign` → `confirm`) aus `Account.execute(calls, { onStep })`.
-- **Bezahlen** (`ui/views/pay.js`, Runden „Per Rechnung“): Prüfen → Fertig; ohne genug USDT erscheint „Konto aufladen“ statt eines Knopfs, der scheitern würde.
-- **„Du“-Karte** (`ui/views/you.js`): Wo stehe ich, und was ist jetzt zu tun? In Phase 1 die Box „Dein Gebot“ mit einem Knopf, sonst ein Satz und genau eine Hauptaktion je Rolle und Phase („Rechnung 4 ist fällig – Rechnung stellen“, „900 USDT warten auf dich – Zurückholen“).
-- **Rundenansicht** (`ui/views/round.js`): jede Information nur einmal. Phase und Frist über dem Titel, Titel einzeilig mit Website und Einladen (QR-Code, Link), Zusagen darunter; Ring mit Bietenden, Durchschnitt und Median; die Raten als Zeitleiste (oben erhalten, unten ausstehend, bezahlte abgehakt, antippen für Beleg oder Bezahlen); Neuigkeiten, die neueste offen; Organisator-Werkzeuge als Liste („Verwalten“).
-- **Projektseite und Bietseite:** Bieten kann jeder mit Wallet, auch der Organisator. Seine Rundenansicht ist die Projektseite: Sie zeigt immer die ganze Runde (Summen, wer bezahlt hat, Verwalten). Sein eigenes Gebot liegt auf einer eigenen Bietseite (`ownPage`, erreichbar über „Verwalten“), die genau zeigt, was jeder Bietende sieht: „Dein Gebot“, die eigenen Raten, Belege und offene Rechnungen. Der Kern liefert dafür `invoices` (Plan der Rundenseite) und `myInvoices` (eigene Raten). Die eigene Rechnung des Organisators wird im Contract nur vermerkt, überwiesen wird nichts.
-- **Benachrichtigungen** (`ui/notify.js`): `changes(prev, next)` vergleicht zwei Status-Schnappschüsse (Eingang, Ziel erreicht/verfehlt, neue Rate mit Beleg, Rechnung fällig, neues Gebot, Phase 1 endet in 24 h, Neuigkeit). Bei aktivem Fenster als Toast, sonst als System-Benachrichtigung. Eigene Aktionen lösen keine Meldung aus. Getestet in `test/notify.test.js`.
+- **Top-up** (`ui/views/fund.js`): address with QR code, warnings (USDT only, correct network, never send to a round). The core watches `Transfer` events to the user's own address (`Pomona._watchFunds`, event `funds`), so an incoming payment shows up within seconds. After creating an empty wallet, the top-up page opens automatically.
+- **Pledge: amount → review → done** (`ui/views/bid.js`): the "amount" step fills exactly the screen height: progress of the round with the user's own pledge as a segment, the number, a note, a keypad on touch devices and a directly focused field on desktop. Then `quoteBid` (deposit or invoices, fee, balance), then `bid`. Progress comes as `busyStep` (`prepare` → `sign` → `confirm`) from `Account.execute(calls, { onStep })`.
+- **Pay** (`ui/views/pay.js`, "by invoice" rounds): review → done; without enough USDT, "Top up account" appears instead of a button that would fail.
+- **"You" card** (`ui/views/you.js`): where do I stand, and what should I do now? In Phase 1 the "Your pledge" box with one button, otherwise one sentence and exactly one main action per role and phase ("Invoice 4 is due – send invoice", "900 USDT are waiting for you – withdraw").
+- **Round view** (`ui/views/round.js`): every piece of information only once. Phase and deadline above the title, title on one line with website and invite (QR code, link), pledges below; ring with backers, average and median; the instalments as a timeline (received at the top, outstanding below, paid ones ticked, tap for receipt or payment); news, the latest one expanded; organiser tools as a list ("Manage").
+- **Project page and pledge page:** anyone with a wallet can pledge, including the organiser. The organiser's round view is the project page: it always shows the whole round (totals, who has paid, Manage). Their own pledge lives on a separate pledge page (`ownPage`, reachable via "Manage") that shows exactly what every backer sees: "Your pledge", their own instalments, receipts and open invoices. For this the core provides `invoices` (the plan of the round page) and `myInvoices` (own instalments). The organiser's own invoice is only recorded in the contract; nothing is transferred.
+- **Notifications** (`ui/notify.js`): `changes(prev, next)` compares two status snapshots (incoming funds, target reached/missed, new instalment with receipt, invoice due, new pledge, Phase 1 ends in 24 h, news). As a toast when the window is active, otherwise as a system notification. The user's own actions do not trigger a notification. Tested in `test/notify.test.js`.
 
-## Seiten statt Seitenleisten (one step, one page)
+## Pages instead of sidebars (one step, one page)
 
-Jeder Ablauf ist eine Folge ganzer Seiten mit Schrittleiste oben (`page()` in `ui/views/parts.js`):
+Every flow is a sequence of full pages with a step bar at the top (`page()` in `ui/views/parts.js`):
 
-| Ablauf | Schritte |
+| Flow | Steps |
 |---|---|
-| Konto anlegen | Passwort → Seedphrase → Aufladen |
-| Finanzierungsrunde starten | Projekt → Phase 1 → Raten → Prüfen |
-| Bieten | Betrag → Prüfen → Fertig |
-| Einzelseiten | Beitreten, Aufladen, Konto, Beleg, Rechnung, Beleg prüfen |
+| Create account | password → seed phrase → top-up |
+| Start a funding round | project → Phase 1 → instalments → review |
+| Pledge | amount → review → done |
+| Single pages | join, top-up, account, receipt, invoice, verify receipt |
 
-Eine offene Seite ersetzt die Rundenansicht (`ui.sheet`). Ihr „← Zurück“ setzt `render()` oben in die Kopfzeile, an die Stelle des Labels „Pomona“ und auf eine Linie mit Chat und Guthaben. Der Hauptknopf bleibt auf dem Handy unten erreichbar (`.actions.sticky`). Bildschirmfotos in `docs/mobile/`.
+An open page replaces the round view (`ui.sheet`). Its "← Back" is placed by `render()` at the top of the header, where the "Pomona" label would be, on one line with chat and balance. On phones the main button stays reachable at the bottom (`.actions.sticky`). Screenshots in `docs/mobile/`.
 
-## Oberfläche pflegen
+## Maintaining the UI
 
-- **Ein Weg für jede Seite:** `page()` in `ui/views/parts.js`; neue Seiten in `SHEETS` (`ui/app.js`) eintragen, Knöpfe bekommen ein `data-action`, die Aktion steht in `actions`.
-- **Neuzeichnen:** `render()` baut das HTML neu und gleicht es mit Idiomorph ab. Unveränderte Knoten bleiben erhalten, so behält ein Feld den Fokus und die Handy-Tastatur bleibt offen. Folge: Listener an Elementen innerhalb von `#app` nur einmal binden (`once()` in `ui/app.js`), sonst häufen sie sich bei jedem Statusupdate.
-- **Styles:** `ui/styles.css` ist nach Bereichen der Oberfläche gegliedert (Tokens, Basis, Kopfzeile und Seiten, Bedienelemente, Runde, Bieten, Bezahlen, Konto, Assistent, Startseite). Jeder Selektor steht einmal; Handy-Varianten im Block seines Abschnitts. Ändern statt anhängen.
-- **Grenze Renderer/Kern:** Die Oberfläche lädt keinen Kern-Code (der Dev-Server liefert nur `ui/` und `i18n/` aus). Kleine Helfer wie das Lesen deutscher Beträge gibt es deshalb zweimal: `core/decimal.js` und `ui/format.js` `num()` (nur für Vorschauen).
-- **Keine Texte im Code:** Alles, was Menschen lesen, kommt über `t('bereich.schlüssel')` aus `i18n/` (siehe „Sprachen“).
+- **One way for every page:** `page()` in `ui/views/parts.js`; register new pages in `SHEETS` (`ui/app.js`), buttons get a `data-action`, the action lives in `actions`.
+- **Re-rendering:** `render()` rebuilds the HTML and reconciles it with Idiomorph. Unchanged nodes are kept, so a field keeps its focus and the phone keyboard stays open. Consequence: bind listeners on elements inside `#app` only once (`once()` in `ui/app.js`), otherwise they pile up with every status update.
+- **Styles:** `ui/styles.css` is organised by area of the UI (tokens, base, header and pages, controls, round, pledge, pay, account, assistant, start page). Every selector exists once; phone variants sit in the block of their section. Change instead of append.
+- **Renderer/core boundary:** the UI loads no core code (the dev server only serves `ui/` and `i18n/`). Small helpers such as parsing German amounts therefore exist twice: `core/decimal.js` and `ui/format.js` `num()` (for previews only).
+- **No texts in code:** everything people read comes from `i18n/` via `t('area.key')` (see [Languages](#languages)).
 
-## Sprachen
+## Languages
 
-Deutsch, Englisch und Spanisch. Die Texte stehen in `app/i18n/<sprache>/`, eine Datei pro Bereich: `core.js` (Fehler, Belegprüfung, Netzwerke, Datum), `agent.js` (Assistent: Antworten, Befehlsmuster, Prompt, Werkzeuge), `ui.js` (Oberfläche). Deutsch ist die Referenz und der Rückfall für fehlende Schlüssel.
+German, English and Spanish. The texts live in `app/i18n/<language>/`, one file per area: `core.js` (errors, receipt check, networks, dates), `agent.js` (assistant: answers, command patterns, prompt, tools), `ui.js` (interface). German is the reference and the fallback for missing keys.
 
-- **Benutzen:** `t('wallet.title')`, mit Werten `t('bid.missing', { amount, symbol })`. Mehrzahl: `{ one, other }`, gewählt über `n`. Listen (Schritte, Monate, Stichwörter) mit `raw()`. Werte von außen (Titel, Adressen) escaped die Ansicht vor dem Einsetzen; die Katalogtexte selbst dürfen einfaches Markup (`<strong>`) enthalten.
-- **Auswahl:** gespeicherte Wahl (`localStorage` `pomona.lang`), sonst die Systemsprache, sonst Deutsch. Umschalten auf der Kontoseite und beim ersten Start. Die Oberfläche meldet die Sprache per RPC `setLanguage` an den Worker; der schreibt Fehler und Assistenten-Antworten dann in derselben Sprache.
-- **Zahlen** folgen der Sprache (`numbers` in `LANGUAGES`): Deutsch und Spanisch `1.234,5`, Englisch `1,234.5`. Anzeige (`fmt`, `num`) und Eingabe (`core/decimal.js`, `ui/format.js` `num()`, Befehle im Assistenten) lesen dieselbe Regel. Der Ziffernblock speichert intern immer einen Punkt und zeigt das Trennzeichen der Sprache. Datumsangaben folgen der Sprache.
-- **Begriffe (Englisch / Spanisch):** Finanzierungsrunde = *funding round* / *ronda de financiación*, Gebot = *pledge* / *compromiso*, bieten = *pledge* / *comprometerse*, Phase 1 / Phase 2 = *Phase 1 / Phase 2* / *fase 1 / fase 2*, Rate = *installment* / *cuota*, Rechnung = *invoice* / *factura*, Beleg = *receipt* / *comprobante*, Treuhandkonto = *escrow* / *cuenta de garantía*, Richtwert = *suggested amount* / *importe orientativo*, Seedphrase = *seed phrase* / *frase semilla*. Spanisch mit *tú*, ohne Landesvarianten.
-- **Neue Sprache:** `i18n/de/` nach `i18n/xx/` kopieren, Werte übersetzen (Schlüssel und `{platzhalter}` bleiben), in `i18n/index.js` unter `LANGUAGES` eintragen. Die Befehlsmuster (`agent.match`) und Stichwörter (`agent.topic.*.keywords`) sind sprachabhängig und brauchen eigene Wörter. `npm test` (`test/i18n.test.js`) meldet fehlende oder überzählige Schlüssel und abweichende Platzhalter.
+- **Usage:** `t('wallet.title')`, with values `t('bid.missing', { amount, symbol })`. Plurals: `{ one, other }`, chosen via `n`. Lists (steps, months, keywords) with `raw()`. Values from outside (titles, addresses) are escaped by the view before insertion; the catalogue texts themselves may contain simple markup (`<strong>`).
+- **Selection:** the saved choice (`localStorage` `pomona.lang`), otherwise the system language, otherwise German. Switch on the account page and on first start. The UI reports the language to the worker via the RPC `setLanguage`; the worker then writes errors and assistant answers in the same language.
+- **Numbers** follow the language (`numbers` in `LANGUAGES`): German and Spanish `1.234,5`, English `1,234.5`. Display (`fmt`, `num`) and input (`core/decimal.js`, `ui/format.js` `num()`, commands in the assistant) read the same rule. The keypad always stores a dot internally and shows the language's separator. Dates follow the language.
+- **Terms (German / English / Spanish):** Finanzierungsrunde = *funding round* / *ronda de financiación*, Gebot = *pledge* / *compromiso*, bieten = *pledge* / *comprometerse*, Phase 1 / Phase 2 = *Phase 1 / Phase 2* / *fase 1 / fase 2*, Rate = *installment* / *cuota*, Rechnung = *invoice* / *factura*, Beleg = *receipt* / *comprobante*, Treuhandkonto = *escrow* / *cuenta de garantía*, Richtwert = *suggested amount* / *importe orientativo*, Seedphrase = *seed phrase* / *frase semilla*. Spanish uses *tú*, without regional variants.
+- **New language:** copy `i18n/de/` to `i18n/xx/`, translate the values (keys and `{placeholders}` stay), register it in `i18n/index.js` under `LANGUAGES`. The command patterns (`agent.match`) and keywords (`agent.topic.*.keywords`) depend on the language and need their own words. `npm test` (`test/i18n.test.js`) reports missing or extra keys and mismatched placeholders.
 
-## Assistent „Frag Pomona“ (QVAC)
+## "Ask Pomona" assistant (QVAC)
 
-Details in [ASSISTANT.md](ASSISTANT.md). Kurz: `core/agent/` ist eine Schicht über dem Anwendungsdienst. Sie liest `status()`, rechnet mit `quoteBid()` und liefert Text plus *vorgeschlagene* Aktionen. Die UI setzt jede Aktion auf eine bestehende Seite um (Prüfseite beim Bieten, Bestätigung bei Rechnung und Zurückziehen). Das Sprachmodell läuft über `@qvac/inference` direkt im Bare-Worker.
+Details in [ASSISTANT.md](ASSISTANT.md). In short: `core/agent/` is a layer on top of the application service. It reads `status()`, calculates with `quoteBid()` and returns text plus *suggested* actions. The UI maps every action to an existing page (review page for pledges, confirmation for invoices and withdrawals). The language model runs via `@qvac/inference` directly in the Bare worker.

@@ -1,164 +1,162 @@
-# Konzept: Rundentypen, Wallet-Dienst, Swap-Dienst
+# Concept: round types, wallet service, swap service
 
-**Stand: Konzept, nicht umgesetzt.** Festgehalten im November 2026. Erst wird die
-aktuelle App in Pear gebaut, danach geht es hier weiter.
+**Status: concept, not implemented.** Written down in November 2026. First the
+current app is built in Pear; afterwards work continues here.
 
-## Ziel
+## Goal
 
-Pomona soll verschiedene Contracts laden können, die nach derselben Mechanik
-funktionieren (Phase 1 → Ziel → Raten oder Rechnungen → Belege → Abschluss
-oder Rückzahlung), aber unterschiedliche Oberflächen brauchen. Die Wallet wird
-aus der App gelöst und als eigener Dienst angeboten. Ein Swap-Dienst hilft der
-Wallet, mit den richtigen Coins zu bieten.
+Pomona should be able to load different contracts that follow the same
+mechanics (Phase 1 → target → instalments or invoices → receipts → completion
+or refund) but need different UIs. The wallet is separated from the app and
+offered as a service of its own. A swap service helps the wallet to pledge with
+the right coins.
 
 ```
-Pomona-App                         Wallet-Dienst                  Swap-Dienst
-Runden, P2P, Rundentypen,   ──►    Schlüssel, Signieren,    ──►   Tauschen, Bridgen,
-Oberfläche, Assistent              Regeln, Bestätigung,           Kaufen (On-Ramp)
-schlägt nur Aufrufe vor            „Aufladen“                     nie mit fremdem Geld
+Pomona app                         Wallet service                 Swap service
+rounds, P2P, round types,   ──►    keys, signing,           ──►   swap, bridge,
+UI, assistant                      rules, confirmation,           buy (on-ramp)
+only suggests calls                "top up"                       never with other people's money
 ```
 
-## 1. Rundentypen als Module
+## 1. Round types as modules
 
-Heute stecken die Unterschiede zwischen „Vorab hinterlegen“ und „Per Rechnung“
-in rund 47 Verzweigungen (`mode === 'invoice'`) über 13 Dateien in Kern,
-Oberfläche und Assistent. Jede weitere Art würde das vervielfachen.
+Today the differences between "deposit upfront" and "by invoice" sit in about
+47 branches (`mode === 'invoice'`) across 13 files in core, UI and assistant.
+Every further type would multiply this.
 
-Ein Rundentyp ist ein Paket aus vier Teilen:
+A round type is a package of four parts:
 
-1. **Contract:** erfüllt eine gemeinsame Schnittstelle (Phase, Gebote, Raten,
-   Belege, Rückzahlung), darf eigene Funktionen haben und meldet seinen Typ
-   (z. B. `pomona.rechnung/1`). Eine Factory je Typ, alle in einer Registry je Netz.
-2. **Kern-Adapter** (`core/types/<typ>/`): übersetzt den Contract ins gemeinsame
-   Statusformat (Phase, Ziel, Summen, `invoices`, `myInvoices`, …) plus
-   Typ-Eigenes; listet seine Aktionen mit Prüfung, Kostenvorschau und Aufrufen.
-   Daraus ergeben sich die Rechte, die die App bei der Wallet anfragt.
-3. **Oberfläche** (`ui/types/<typ>/`): setzt die Rundenseite aus Bausteinen
-   zusammen (Kopf, Ring, „Dein Gebot“, Zeitleiste, Neuigkeiten, Verwalten) und
-   liefert eigene Bausteine, Abläufe und Wörter („Rate“, „Rechnung“, „Anteil“).
-4. **Assistent-Wissen:** Themen und Befehle des Typs.
+1. **Contract:** implements a common interface (phase, pledges, instalments,
+   receipts, refund), may have its own functions and reports its type
+   (e.g. `pomona.rechnung/1`). One factory per type, all in one registry per network.
+2. **Core adapter** (`core/types/<type>/`): translates the contract into the
+   common status format (phase, target, totals, `invoices`, `myInvoices`, …) plus
+   type-specific data; lists its actions with checks, cost preview and calls.
+   This determines the permissions the app requests from the wallet.
+3. **UI** (`ui/types/<type>/`): assembles the round page from building blocks
+   (header, ring, "Your pledge", timeline, news, Manage) and provides its own
+   blocks, flows and words ("instalment", "invoice", "share").
+4. **Assistant knowledge:** topics and commands of the type.
 
-- **Typ erkennen:** über die Chain, nicht über das Manifest. Einladung →
-  Rundenadresse → Registry: von welcher Factory? → passendes Modul. Ein
-  unbekannter Typ führt zu „Diese Runde braucht eine neuere Pomona-Version.“
-- **Code statt Nachladen:** Typen sind Code, der mit der App ausgeliefert wird
-  (geprüft, versioniert, über Pear-Updates). Nie Oberflächen- oder Kern-Code von
-  Peers laden. Kleine Varianten eines Typs (Wörter, Standardwerte) dürfen als
-  Daten kommen.
-- **RPC:** `quote` und `act` mit dem Namen der Aktion statt einer Methode je
-  Aktion. Die erlaubten Aktionen bleiben eine geschlossene Liste, die vom Typ kommt.
-- **Tests:** eine gemeinsame Suite für die Schnittstelle gegen jeden Contract und
-  Adapter, dazu Tests je Typ und `npm run ui-check` mit Mock-Szenarien je Typ.
+- **Detecting the type:** via the chain, not via the manifest. Invitation →
+  round address → registry: which factory? → matching module. An unknown type
+  leads to "This round needs a newer version of Pomona."
+- **Code, not downloads:** types are code shipped with the app (reviewed,
+  versioned, via Pear updates). Never load UI or core code from peers. Small
+  variants of a type (words, default values) may come as data.
+- **RPC:** `quote` and `act` with the name of the action instead of one method
+  per action. The allowed actions remain a closed list that comes from the type.
+- **Tests:** a shared suite for the interface against every contract and
+  adapter, plus tests per type and `npm run ui-check` with mock scenarios per type.
 
-Reihenfolge:
+Order:
 
-1. Die beiden heutigen Arten als erste Typen herausziehen; Tests und ui-check
-   belegen, dass sich nichts ändert.
-2. Contract: Typ-Kennung, Factory je Typ, Registry.
-3. Typ-Register in der App, Update-Hinweis bei unbekannten Typen.
-4. Erster neuer Typ als Beweis.
+1. Extract the two current modes as the first types; tests and ui-check
+   prove that nothing changes.
+2. Contract: type identifier, factory per type, registry.
+3. Type registry in the app, update notice for unknown types.
+4. First new type as a proof.
 
-## 2. Wallet als eigener Dienst
+## 2. The wallet as a separate service
 
-Grundregel: **Die App unterschreibt nie selbst.** Sie schickt der Wallet
-vorbereitete Aufrufe (z. B. Freigabe 1.200 USDT an Runde 0x…, dann `bid(100)`).
-Die Wallet entschlüsselt sie selbst, zeigt sie verständlich an, und bestätigt
-wird dort. Alles, was in der App schiefgehen kann (manipulierte Peer-Daten, ein
-fehlerhafter Rundentyp, ein überredetes Sprachmodell), kommt nicht mehr an die
-Schlüssel.
+Ground rule: **the app never signs itself.** It sends the wallet prepared calls
+(e.g. approve 1,200 USDT to round 0x…, then `bid(100)`). The wallet decodes them
+itself, shows them in an understandable way, and the user confirms there.
+Everything that can go wrong in the app (manipulated peer data, a faulty round
+type, a talked-into language model) no longer reaches the keys.
 
-- **Ausgangslage:** Die Trennlinie gibt es schon: Der Kern bereitet Aufrufe vor
-  (`_prepareBid` → `calls`), `core/wallet/` führt sie aus.
-- **Produkt:** eigene Pear-App (Desktop und Handy) auf WDK, mit Smart Account,
-  Gebühren in der Währung selbst, Seedphrase, eigener Bestätigungsoberfläche.
-- **Verbindung:** peer-to-peer über HyperDHT mit verschlüsseltem Kanal, gekoppelt
-  per QR-Code, ohne Relay-Server. Etwa die Wallet auf dem Handy, Pomona auf dem Laptop.
-- **Sitzungen mit Rechten:** z. B. „Runde 0x…: bieten, bezahlen, zurückholen,
-  höchstens 100 USDT pro Rechnung“. Die Regeln (heute `core/wallet/policy.js`)
-  wandern in die Wallet. Jede Geldbewegung wird in der Wallet bestätigt.
-- **Standards:** EIP-1193, EIP-5792 (gebündelte Aufrufe), EIP-712 (signierte
-  Daten), damit die Pomona-Wallet auch mit anderen dApps und Pomona auch mit
-  anderen Wallets funktioniert.
-- **Bleibt in der App:** Runden, Einladungen (der Einladungsschlüssel ist kein
-  Geld), Belege prüfen (Chain-Abfrage), Kontostände lesen (Adresse ist öffentlich).
-- **Übergang:** zuerst im selben Paket mitliefern, aber getrennt (eigener
-  Bare-Prozess, eigener Speicher, eigene Bestätigung); Umzug aufs Handy später.
+- **Starting point:** the dividing line already exists: the core prepares calls
+  (`_prepareBid` → `calls`), `core/wallet/` executes them.
+- **Product:** a Pear app of its own (desktop and phone) on WDK, with smart
+  account, fees in the currency itself, seed phrase and its own confirmation UI.
+- **Connection:** peer-to-peer via HyperDHT with an encrypted channel, paired
+  via QR code, without relay servers. For example the wallet on the phone,
+  Pomona on the laptop.
+- **Sessions with permissions:** e.g. "Round 0x…: pledge, pay, withdraw, at most
+  100 USDT per invoice". The rules (today `core/wallet/policy.js`) move into the
+  wallet. Every movement of money is confirmed in the wallet.
+- **Standards:** EIP-1193, EIP-5792 (batched calls), EIP-712 (signed data), so
+  that the Pomona wallet also works with other dApps and Pomona also works with
+  other wallets.
+- **Stays in the app:** rounds, invitations (the invite key is not money),
+  verifying receipts (chain query), reading balances (the address is public).
+- **Transition:** first ship it in the same package, but separated (own Bare
+  process, own storage, own confirmation); move to the phone later.
 
-### Austauschbare Verbindungen
+### Interchangeable connections
 
-Die App spricht nie direkt mit einer bestimmten Wallet, sondern über
-Verbindungen, die dieselben vorbereiteten Aufrufe übergeben:
+The app never talks directly to one specific wallet, but through connections
+that hand over the same prepared calls:
 
-1. **Pomona-Wallet** (P2P-Kopplung).
-2. **tether.wallet** (seit 14. April 2026, WDK-basiert, USDT/XAUT auf Ethereum,
-   Polygon, Plasma, Arbitrum, USAT auf Ethereum, Bitcoin mit Lightning). Ob es
-   Anfragen von Apps annimmt (WalletConnect, Deep Link, eigenes Protokoll), ist
-   offen. **Bei Tether klären.**
-3. **WalletConnect** für andere Wallets.
-4. **Zahladresse** für jede Wallet ohne Verbindung (siehe unten).
+1. **Pomona wallet** (P2P pairing).
+2. **tether.wallet** (since 14 April 2026, WDK-based, USDT/XAUT on Ethereum,
+   Polygon, Plasma, Arbitrum, USAT on Ethereum, Bitcoin with Lightning). Whether
+   it accepts requests from apps (WalletConnect, deep link, own protocol) is
+   open. **To be clarified with Tether.**
+3. **WalletConnect** for other wallets.
+4. **Payment address** for any wallet without a connection (see below).
 
-Nicht empfohlen: dieselbe Seedphrase in zwei Apps eingeben.
+Not recommended: entering the same seed phrase in two apps.
 
-### Zahladresse (für Wallets ohne Verbindung)
+### Payment address (for wallets without a connection)
 
-Eine normale Überweisung läuft am Runden-Contract vorbei (kein Gebot, kein
-Beleg). Deshalb bekommt jede bietende Person pro Runde eine eigene Zahladresse:
-einen kleinen Weiterleitungs-Contract mit fester, vorher berechenbarer Adresse
-(CREATE2). Sie schickt aus ihrer Wallet einfach Geld dorthin, wie eine
-Überweisung mit Verwendungszweck. Ein Aufruf leitet es in die Runde weiter und
-vermerkt Gebot oder Zahlung auf ihren Namen, mit Beleg.
+A normal transfer bypasses the round contract (no pledge, no receipt). Therefore
+every backer gets their own payment address per round: a small forwarding
+contract with a fixed address that can be computed in advance (CREATE2). They
+simply send money there from their wallet, like a bank transfer with a payment
+reference. A call forwards it into the round and records the pledge or payment
+in their name, with a receipt.
 
-**Entschieden:**
+**Decided:**
 
-- **Gebühr zahlt immer der Sender.** Sie steckt im überwiesenen Betrag
-  („Sende 100,05 USDT: 100 Rechnung + 0,05 Weiterleitung“). Das Weiterleiten darf
-  jeder auslösen (App der Person, Organisator, Relayer) und erhält dafür die
-  Gebühr; im Contract gedeckelt. Zu viel gezahlt → Rest an die
-  Rückzahlungsadresse. Zu wenig → nichts vermerkt, das Geld wartet aufs Aufstocken.
-- **Rückzahlungen gehen an eine Change-Adresse derselben Wallet.** Die Wallet
-  liefert sie beim Anlegen der Zahladresse; sie wird fest eingetragen und kann
-  nicht umgelenkt werden. Nie die Absenderadresse nehmen (bei Börsen gehört sie
-  der Börse).
+- **The sender always pays the fee.** It is included in the amount transferred
+  ("Send 100.05 USDT: 100 invoice + 0.05 forwarding"). Anyone may trigger the
+  forwarding (the person's app, the organiser, a relayer) and receives the fee
+  for it; capped in the contract. Paid too much → the rest goes to the refund
+  address. Too little → nothing is recorded, the money waits for a top-up.
+- **Refunds go to a change address of the same wallet.** The wallet provides it
+  when the payment address is created; it is fixed and cannot be redirected.
+  Never use the sender address (with exchanges it belongs to the exchange).
 
-**Zu beachten:** Auf EVM gibt es keine Change-Adressen wie bei Bitcoin. Eine
-neu abgeleitete Adresse muss die Wallet auch anzeigen, sonst wirkt die
-Rückzahlung verloren.
+**To note:** EVM has no change addresses like Bitcoin. The wallet must also
+display a newly derived address, otherwise the refund looks lost.
 
-## 3. Währungen und Swap-Dienst
+## 3. Currencies and swap service
 
-**Entschieden:** Pomona nutzt nur **EURC, USDT und BTC** (niedrige Gebühren).
-Wer mit anderen Coins zahlt, kann tauschen, trägt aber die Gebühren.
+**Decided:** Pomona only uses **EURC, USDT and BTC** (low fees). Anyone paying
+with other coins can swap, but bears the fees.
 
-- **Eine Währung pro Runde,** beim Anlegen festgelegt (z. B. EURC für ein
-  Projekt im Euroraum). Keine Umrechnung innerhalb einer Runde.
-- **EURC und USDT** auf derselben EVM-Mechanik. Nötig ist eine Chain mit beiden;
-  Arbitrum hat EURC laut Sekundärquellen, an Circles Adressliste prüfen.
-- **BTC:** kein Runden-Contract auf Bitcoin. Wege:
-  1. Mit BTC bezahlen, Runde in USDT oder EURC (Tausch beim Zahlen). Zum Start.
-  2. Wrapped BTC auf der EVM-Chain (gleiche Mechanik, Vertrauen in den Wrapper).
-  3. Eigener Rundentyp über Lightning: jede Rechnung eine Lightning-Rechnung, der
-     Preimage ist der Beleg; die Buchführung liegt dann nicht in einem Contract.
-- **Swap-Dienst:** Die App meldet den Bedarf („1.200 USDT auf Arbitrum für diese
-  Aufrufe“). Die Wallet bietet an: tauschen auf derselben Chain (am besten
-  gebündelt: Tausch + Freigabe + Gebot mit einer Bestätigung), von einer anderen
-  Chain holen (z. B. USDT0), kaufen (On-Ramp). Bei „Per Rechnung“ auch „Tauschen
-  und bezahlen“. Feste Höchstwerte für Kursabweichung und Gebühren, exakter
-  Zielbetrag. Der Dienst rechnet Routen und baut Aufrufe; unterschreiben tut die
-  Wallet. WDK hat Module für Swaps und Bridges (prüfen).
-- **Regulierung:** Tauschen als Dienst (besonders gegen Gebühr) kann in der EU
-  unter MiCA eine Zulassung als Krypto-Dienstleister erfordern. Früh klären.
+- **One currency per round,** fixed at creation (e.g. EURC for a project in the
+  euro area). No conversion within a round.
+- **EURC and USDT** on the same EVM mechanics. A chain with both is needed;
+  according to secondary sources Arbitrum has EURC, to be checked against
+  Circle's address list.
+- **BTC:** no round contract on Bitcoin. Options:
+  1. Pay with BTC, round in USDT or EURC (swap when paying). For the start.
+  2. Wrapped BTC on the EVM chain (same mechanics, trust in the wrapper).
+  3. A round type of its own via Lightning: every invoice a Lightning invoice,
+     the preimage is the receipt; the bookkeeping then does not live in a contract.
+- **Swap service:** the app reports the need ("1,200 USDT on Arbitrum for these
+  calls"). The wallet offers: swap on the same chain (ideally batched: swap +
+  approval + pledge with one confirmation), bring it from another chain (e.g.
+  USDT0), buy (on-ramp). For "by invoice" also "swap and pay". Fixed maximums for
+  slippage and fees, exact target amount. The service computes routes and builds
+  calls; the wallet signs. WDK has modules for swaps and bridges (to check).
+- **Regulation:** swapping as a service (especially for a fee) may require
+  authorisation as a crypto-asset service provider under MiCA in the EU.
+  Clarify early.
 
-## Offene Fragen
+## Open questions
 
-1. Wallet zuerst mitgeliefert (getrennt) oder sofort eigene App?
-2. Soll Pomona mit fremden Wallets (MetaMask, Safe, …) funktionieren?
-3. tether.wallet: Wie nimmt es Anfragen von Apps an? (bei Tether klären)
-4. EVM-Rückzahlung: neue abgeleitete Adresse (Privatsphäre, nur mit passenden
-   Wallets) oder Hauptadresse (funktioniert überall)? Vorschlag: eigene Wallet
-   neue Adresse, fremde Wallets Hauptadresse.
-5. Überzahlung bei „Per Rechnung“: zurückzahlen oder als Guthaben für die
-   nächste Rechnung?
-6. Reicht für den Start „mit BTC bezahlen“ über Tausch?
-7. Welche zwei, drei Rundentypen kommen als Nächstes? Was gehört zur „selben
-   Mechanik“ (auch Einmalzahlung, ohne Ziel, feste Preise)?
-8. Sollen Dritte Rundentypen bauen können?
+1. Ship the wallet bundled first (separated) or as its own app right away?
+2. Should Pomona work with third-party wallets (MetaMask, Safe, …)?
+3. tether.wallet: how does it accept requests from apps? (to be clarified with Tether)
+4. EVM refund: a newly derived address (privacy, only with suitable wallets) or
+   the main address (works everywhere)? Proposal: own wallet new address,
+   third-party wallets main address.
+5. Overpayment with "by invoice": refund it or keep it as credit for the next
+   invoice?
+6. Is "pay with BTC" via swap enough for the start?
+7. Which two or three round types come next? What belongs to the "same
+   mechanics" (also one-off payment, without a target, fixed prices)?
+8. Should third parties be able to build round types?

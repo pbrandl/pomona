@@ -1,5 +1,7 @@
 # Pomona
 
+[![Tests](https://github.com/pbrandl/pomona/actions/workflows/test.yml/badge.svg)](https://github.com/pbrandl/pomona/actions/workflows/test.yml)
+
 **English** · [Deutsch](README.de.md)
 
 **A decentralised funding round on Tether's stack, in USDT only.**
@@ -19,6 +21,8 @@ There is no server and no account, and nobody needs to hold any token other than
 
 Pomona is the successor to [Contrib](https://github.com/pbrandl/contrib) (Flutter + Parse Server) and is meant as a technical showcase.
 
+**Authored by Claude, prompted by [Peter Brandl](https://github.com/pbrandl).** Code, tests and docs were written by [Claude Code](https://claude.com/claude-code); the idea, the requirements and the product decisions come from me. Decisions are logged in [POMONA_PROJECT_NOTES.md](POMONA_PROJECT_NOTES.md).
+
 ![A funding round from a backer's point of view](docs/bidder.png)
 
 | Organiser invoices | Instalment list | Receipt as QR code |
@@ -36,7 +40,7 @@ Pomona is the successor to [Contrib](https://github.com/pbrandl/contrib) (Flutte
 | Money | `PomonaRound`, `PomonaFactory` (Solidity) | Escrow, instalment settlement and receipts, without admin keys. |
 | Assistant | [QVAC](https://qvac.tether.io) (`@qvac/inference`, llama.cpp) | "Ask Pomona": explains the round and prepares steps. Runs locally; the model (Qwen3) is downloaded once, peer-to-peer. The user always has to confirm. |
 
-More detail (in German for now):
+More detail:
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): modules, flows and how to extend Pomona
 - [docs/CONTRACT.md](docs/CONTRACT.md): phases, functions and invariants of the contracts
 - [docs/SECURITY.md](docs/SECURITY.md): threat model, review findings and open risks
@@ -53,7 +57,7 @@ Requirements: Node.js 22. Since Pear 3 the app is a regular Electron app with `p
 # Build and test the contracts (20 tests)
 cd contracts && npm install && npm test
 
-# Test and start the app
+# Test and start the app (47 tests)
 cd ../app && npm install && npm test
 npm start                             # starts a local chain + contracts and opens the window
 npm run start:second                  # second instance with its own wallet (uses the same chain)
@@ -96,12 +100,13 @@ Scenarios: `onboarding`, `locked`, `start`, `bidder`, `organizer`, `invoice`, `r
 ## Quality
 
 - `npm test` in `contracts/` runs 20 tests: both payment modes (deposit upfront, by invoice), schedule, catch-up invoices, receipts, refunds on cancellation, expiry and missed target, invitations (including reuse in another round), fee tokens, factory registry and parameter checks.
-- `npm test` in `app/` covers:
+- `npm test` in `app/` runs 47 tests:
   - Unit tests: amounts, links, schedule, policy, vault, manifest sanitising, RPC validation, notifications
   - Assistant: commands, knowledge, role and phase checks for every action, prompt injection, no tools that move money
   - End-to-end with a real chain, WDK and Hyperswarm: "by invoice" round (payment, insufficient balance, open invoices), instalment round including joining while the organiser is offline, receipts, forged rounds, policy block, sending and locking
   - a test that runs the core **in Bare**, including QVAC
 - `npm run lint` in `app/` checks the code with [standard](https://standardjs.com).
+- [GitHub Actions](.github/workflows/test.yml) runs both test suites and the linter on every push.
 
 ## Status
 
@@ -113,7 +118,7 @@ Scenarios: `onboarding`, `locked`, `start`, `bidder`, `organizer`, `invoice`, `r
 - [ ] Sepolia: configure bundler and paymaster and test the full flow
 - [ ] Automatic lock on inactivity, stronger Argon2id parameters
 - [x] "Ask Pomona" assistant on QVAC (local, preparing steps only)
-- [x] German, English and Spanish, extensible (`app/i18n/`, see [ARCHITECTURE.md](docs/ARCHITECTURE.md#sprachen))
+- [x] German, English and Spanish, extensible (`app/i18n/`, see [ARCHITECTURE.md](docs/ARCHITECTURE.md#languages))
 - [ ] Test the assistant with a real model on a desktop (quality in German and Spanish, tool calls)
 - [ ] Have the Spanish texts proofread by native speakers
 - [ ] Telegram bot in the organiser's worker

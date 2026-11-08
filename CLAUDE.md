@@ -11,4 +11,4 @@ Start here: `POMONA_PROJECT_NOTES.md` (Stand, Entscheidungen, NEXT). `/pickup` s
 
 ## Projekt
 - `contracts/` Solidity (PomonaRound, PomonaFactory), `app/` Desktop-App (Electron + pear-runtime, Bare-Worker, UI), `docs/` Doku.
-- Commits auf `main`, Texte und UI auf Deutsch; Wortlaut des Nutzers genau übernehmen.
+- Commits auf `main`. README und `docs/` auf Englisch (`README.de.md` als deutsche Fassung mitpflegen); UI-Texte in `app/i18n/` (de, en, es). Wortlaut des Nutzers genau übernehmen.
