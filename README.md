@@ -21,7 +21,7 @@ There is no server and no account, and nobody needs to hold any token other than
 
 Pomona is the successor to [Contrib](https://github.com/pbrandl/contrib) (Flutter + Parse Server) and is meant as a technical showcase.
 
-Authored by Claude, prompted by [pbrandl](https://github.com/pbrandl).
+Coded by Claude, prompted by [pbrandl](https://github.com/pbrandl).
 
 <img src="docs/app.png" alt="Four phone screens: a funding round from a backer's point of view, entering a pledge on the keypad, the local QVAC assistant preparing a pledge, and a receipt with QR code in dark mode">
 
