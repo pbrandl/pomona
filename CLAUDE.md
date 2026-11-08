@@ -1,6 +1,6 @@
 # Pomona
 
-Start here: `POMONA_PROJECT_NOTES.md` (Stand, Entscheidungen, NEXT). `/pickup` setzt dort an, `/wrapup` schreibt den Stand zurück.
+Start here: `POMONA_PROJECT_NOTES.md` (Stand, Entscheidungen, NEXT; auf Englisch führen). `/pickup` setzt dort an, `/wrapup` schreibt den Stand zurück.
 
 ## Arbeitsweise (Tokens sparen)
 - Große Dateien nie ganz lesen: erst `grep -n` / `sed -n`, dann gezielt Read mit offset/limit.
@@ -11,4 +11,4 @@ Start here: `POMONA_PROJECT_NOTES.md` (Stand, Entscheidungen, NEXT). `/pickup` s
 
 ## Projekt
 - `contracts/` Solidity (PomonaRound, PomonaFactory), `app/` Desktop-App (Electron + pear-runtime, Bare-Worker, UI), `docs/` Doku.
-- Commits auf `main`. README und `docs/` auf Englisch (`README.de.md` als deutsche Fassung mitpflegen); UI-Texte in `app/i18n/` (de, en, es). Wortlaut des Nutzers genau übernehmen.
+- Commits auf `main`. README, `docs/` und Projektnotizen auf Englisch (`README.de.md` als deutsche Fassung mitpflegen); UI-Texte in `app/i18n/` (de, en, es). Wortlaut des Nutzers genau übernehmen.

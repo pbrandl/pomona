@@ -1,37 +1,42 @@
-# Pomona — Projektnotizen
+# Pomona — project notes
 
-Ziel: Dezentrale Bietrunde (Pear, WDK, QVAC), Zahlung nur in Stablecoins; Gebote pro Woche/Monat, Rechnungen, Belege.
-Systeme: Repo pbrandl/pomona (`main`). Lokal: `cd app && npm start` (startet Chain + Contracts, öffnet Electron). Browser ohne Pear: `npm run dev`. Vorschau: `npm run preview`; Artifact-Vorschau https://claude.ai/artifact/FhvanqfmnG655DGYAvTLjg (Kopie der UI im Scratchpad, bei UI-Änderungen mitpflegen). Nutzer: Mac hinter Zscaler (P2P/UDP oft blockiert), Node 25.
+Goal: a decentralised funding round (Pear, WDK, QVAC), paid in stablecoins only; pledges per week/month, invoices, receipts.
+Systems: repo pbrandl/pomona (`main`). Locally: `cd app && npm start` (starts chain + contracts, opens Electron). Browser without Pear: `npm run dev`. Preview: `npm run preview`; artifact preview https://claude.ai/artifact/FhvanqfmnG655DGYAvTLjg (a copy of the UI in the scratchpad; keep it in sync when the UI changes). User: Mac behind Zscaler (P2P/UDP often blocked), Node 25.
 
 ## NEXT
-- Nutzer testet am Mac: Modell über „Vorhandene Datei wählen“ (`Qwen3-1.7B-Q4_0.gguf`) einrichten, Zurück auf der Startseite, Startseite Desktop (Feld fokussiert, Text fliegt hoch). Rückmeldungen umsetzen.
-- Danach: Paketieren (electron-forge) und P2P-Updates mit `pear touch`/`pear stage` (Vorlage hello-pear-electron).
+- User tests on the Mac: set up the model via "Choose existing file" (`Qwen3-1.7B-Q4_0.gguf`), Back on the start page, desktop start page (field focused, text slides up). Act on the feedback.
+- Then: packaging (electron-forge) and P2P updates with `pear touch`/`pear stage` (template hello-pear-electron).
 
 ## Open
-- Inferenz über einen Peer (QVAC RPC-Provider) als ausdrückliche Option? Datenschutz/Zscaler, siehe Antwort vom 2026-11-03.
-- Sepolia/Arbitrum: Bundler + Paymaster eintragen, Contracts deployen.
-- Konzept `docs/CONCEPT.md` (Rundentypen, Wallet-Dienst, Swap, EURC/USDT/BTC): offene Fragen dort, noch nicht umsetzen.
+- Inference via a peer (QVAC RPC provider) as an explicit option? Privacy/Zscaler, see the answer from 2026-11-03.
+- Sepolia/Arbitrum: configure bundler + paymaster, deploy the contracts.
+- Concept `docs/CONCEPT.md` (round types, wallet service, swap, EURC/USDT/BTC): open questions there, not to be implemented yet.
 
 ## Decisions
-- 2026-11-03 Pear 3: App ist Electron + `pear-runtime` (`pear run` gibt es nicht mehr) — Vorgabe von Pear.
-- 2026-11-03 `npm start` startet Chain auf 8545 und deployt selbst; zweite Instanz `npm run start:second` nutzt dieselbe Chain.
-- 2026-11-03 Organisator: Projektseite zeigt immer die ganze Runde; eigenes Gebot auf eigener Bietseite. Eigene Rechnung wird im Contract nur vermerkt, nichts überwiesen.
-- 2026-11-03 Jeder mit Wallet kann bieten. Rundenbeschreibung entfernt. Untertitel „Common Financing“. Nur „Zurück“ als Rücklink, in der Kopfzeile.
-- 2026-11-03 Desktop-Start: Fragefeld unter dem Starttext, fokussiert; Chat öffnet mit der ersten Frage. Handy: öffnet beim Antippen.
-- 2026-11-03 Modell: lokal als Standard; Datei/Ordner wählbar (SHA-256-Prüfung).
-- 2026-11-03 Lange Checks nur gezielt/beim Versionieren.
+- 2026-11-03 Pear 3: the app is Electron + `pear-runtime` (`pear run` no longer exists) — required by Pear.
+- 2026-11-03 `npm start` starts the chain on 8545 and deploys by itself; a second instance `npm run start:second` uses the same chain.
+- 2026-11-03 Organiser: the project page always shows the whole round; the organiser's own pledge lives on a separate pledge page. The organiser's own invoice is only recorded in the contract, nothing is transferred.
+- 2026-11-03 Anyone with a wallet can pledge. Round description removed. Subtitle "Common Financing". Only "Back" as the way back, in the header.
+- 2026-11-03 Desktop start: question field below the start text, focused; the chat opens with the first question. Phone: opens on tap.
+- 2026-11-03 Model: local by default; file/folder can be chosen (SHA-256 check).
+- 2026-11-03 Long checks only when needed / when versioning.
+- 2026-11-07 README and `docs/` in English (`README.de.md` stays as the German version); the UI keeps de, en and es.
+- 2026-11-08 No browser tests: `npm run ui-check` and Playwright removed; a new design gets new assets anyway.
 
 ## Ruled out
-- `pear run` / `pear-electron` / `pear-pipe`: in Pear 3 entfernt.
-- QVAC-P2P-Download hinter Zscaler: REQUEST_TIMEOUT, bleibt bei 0 %.
-- `bare-sidecar` `end()` beendet den Worker nicht; stattdessen SIGTERM + `graceful-goodbye`.
+- `pear run` / `pear-electron` / `pear-pipe`: removed in Pear 3.
+- QVAC P2P download behind Zscaler: REQUEST_TIMEOUT, stays at 0 %.
+- `bare-sidecar` `end()` does not stop the worker; SIGTERM + `graceful-goodbye` instead.
 
 ## What happened
-- 2026-11-03 Redundanz-Aufräumen (styles.css 1181→700 Zeilen, tote UI-Zweige, Listener-Fehler Zeitleiste), `npm run ui-check` eingeführt.
-- 2026-11-03 Organisator-Bietseite, `myInvoices` im Status, Contract-Fix Eigenzahlung.
-- 2026-11-03 Umstieg auf Pear 3 (Electron), `npm start` mit Chain, Startseite Desktop, Modell-Dateiwahl.
+- 2026-11-03 Redundancy clean-up (styles.css 1181→700 lines, dead UI branches, timeline listener bug), `npm run ui-check` introduced.
+- 2026-11-03 Organiser pledge page, `myInvoices` in the status, contract fix for the organiser's own payment.
+- 2026-11-03 Switch to Pear 3 (Electron), `npm start` with chain, desktop start page, model file selection.
+- 2026-11-07 README and docs translated to English, GitHub Actions CI (contracts, lint, app tests) with badge, test counts corrected (20 + 47).
+- 2026-11-08 New screenshots of the current design (one image with four phone screens); model size and receipt title follow the UI language; `ui-check` and Playwright removed.
 
 ## Files
-- `docs/CONCEPT.md` — Konzept (nicht umgesetzt)
-- `app/electron/main.cjs`, `app/electron/preload.cjs`, `app/ui/electron.js`, `app/worker/index.js` — Desktop-Hülle
+- `docs/CONCEPT.md` — concept (not implemented)
+- `app/electron/main.cjs`, `app/electron/preload.cjs`, `app/ui/electron.js`, `app/worker/index.js` — desktop shell
 - `app/scripts/start.js` — `npm start`
+- `.github/workflows/test.yml` — CI
