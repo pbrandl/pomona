@@ -23,9 +23,9 @@ Pomona is the successor to [Contrib](https://github.com/pbrandl/contrib) (Flutte
 
 **Authored by Claude, prompted by [Peter Brandl](https://github.com/pbrandl).** Code, tests and docs were written by [Claude Code](https://claude.com/claude-code); the idea, the requirements and the product decisions come from me. Decisions are logged in [POMONA_PROJECT_NOTES.md](POMONA_PROJECT_NOTES.md).
 
-![A funding round from a backer's point of view](docs/bidder.png)
+<p align="center"><img src="docs/bidder.png" alt="A funding round from a backer's point of view" width="320"></p>
 
-| Organiser invoices | Instalment list | Receipt as QR code |
+| Organiser invoices | Instalment timeline | Receipt as QR code |
 |---|---|---|
 | ![](docs/organizer-invoice.png) | ![](docs/receipts.png) | ![](docs/receipt.png) |
 

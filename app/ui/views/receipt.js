@@ -13,6 +13,9 @@ import { esc, fmt, date, dayTime, short, per } from '../format.js'
 import { btn, field, page, spinner } from './parts.js'
 import { t } from '../../i18n/index.js'
 
+/** First letter upper case: label.receipt is lower case because it also sits inside sentences. */
+const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1)
+
 /** The verification line under a receipt. */
 function verdict (v) {
   if (!v) return `<p class="verify pending">${spinner} ${t('onboarding.checking')}</p>`
@@ -25,7 +28,7 @@ export function receiptSheet (ui) {
   const rc = ui.receipt
   const inv = r.myInvoices[rc.index]
   const p = per(r.intervalName)
-  return page(t('label.receipt'), `
+  return page(cap(t('label.receipt')), `
     <div class="receipt">
       <div class="receipt-head">
         <span class="small muted">${t('receipt.kind')}</span>

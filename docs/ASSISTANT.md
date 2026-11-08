@@ -2,7 +2,7 @@
 
 The assistant is a conversational layer on top of the app. It answers questions in plain words and prepares steps such as "Pledge 100 a month", "Show my receipt for instalment 2" or "Send invoice". **It never executes anything itself.** Every action opens an existing page of the app, and the user confirms there as usual.
 
-![Command without a language model](mobile/assistant-command.png)
+<img src="mobile/assistant-command.png" alt="Command without a language model" width="300">
 
 ## Where the answers come from
 

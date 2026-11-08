@@ -64,7 +64,7 @@ Amounts are strings in German or English notation, i.e. `"1.234,56"`, `"12,5"` o
   assistant: {                            // "Ask Pomona"
     state: 'none' | 'installed' | 'downloading' | 'loading' | 'ready' | 'error',
     model: 'small' | 'better' | null, progress: 0.34 | null, error: null,
-    models: [{ key, label, size, note, file, url }],
+    models: [{ key, label, size, note, file, url }],   // size in GB (number)
     manual: null | { dir },               // developer mode: model as a file from this folder
     missing: false,                       // true: the file is not in the folder yet
     suggestions: [{ topic, question }]    // matching role and phase

@@ -3,9 +3,12 @@
  * action cards open the matching page of the app, where the person confirms.
  * @module ui/views/assistant
  */
-import { esc } from '../format.js'
+import { esc, fmt } from '../format.js'
 import { spinner } from './parts.js'
 import { t } from '../../i18n/index.js'
+
+/** Model size in GB, with the decimal separator of the selected language. */
+const gb = (n) => `${fmt(n, 1)} GB`
 
 /** "Frag Pomona": a plain round speech bubble. */
 export const SPARK = `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -24,11 +27,11 @@ function manualCard (a, ui) {
       ? `<p class="warn-text small">${t('assistant.notFound')}</p>`
       : `<p class="warn-text small">${esc(a.error)}</p>`
   return `<div class="card-inset stack">
-    <p>${t('assistant.needModel', { size: esc(m.size) })}</p>
+    <p>${t('assistant.needModel', { size: gb(m.size) })}</p>
     <ol class="setup-steps">
       <li><span class="setup-n">1</span><div class="stack-sm">
         <strong>${t('assistant.download')}</strong>
-        <a class="btn ghost small" href="${esc(m.url)}" target="_blank" rel="noopener noreferrer">${esc(m.file)} · ${esc(m.size)}</a>
+        <a class="btn ghost small" href="${esc(m.url)}" target="_blank" rel="noopener noreferrer">${esc(m.file)} · ${gb(m.size)}</a>
       </div></li>
       <li><span class="setup-n">2</span><div class="stack-sm">
         <strong>${t('assistant.putInFolder')}</strong>
@@ -80,7 +83,7 @@ export function chatBody (ui) {
   } else if (a?.state === 'none' || a?.state === 'error') {
     const small = (a.models || []).find((m) => m.key === 'small')
     model = `<p class="model-line">${a.state === 'error' ? `<span class="warn-text">${esc(a.error)}</span>` : `<span>${t('assistant.local')}</span>`}
-      <button class="link" data-action="agent-install" data-model="small">${t('assistant.load')}${small ? ` (${esc(small.size)})` : ''}</button>${pick(ui, t('assistant.pick'))}</p>`
+      <button class="link" data-action="agent-install" data-model="small">${t('assistant.load')}${small ? ` (${gb(small.size)})` : ''}</button>${pick(ui, t('assistant.pick'))}</p>`
   }
   return `${model}
     <div class="chat" id="chat">

@@ -14,14 +14,14 @@
 export const MODELS = {
   small: {
     id: 'QWEN3_1_7B_INST_Q4',
-    size: '1,1 GB',
+    size: 1.1, // GB; the UI formats it in the user's language
     // Same file (same SHA-256) the QVAC catalog points to, for manual download.
     file: 'Qwen3-1.7B-Q4_0.gguf',
     url: 'https://huggingface.co/unsloth/Qwen3-1.7B-GGUF/resolve/d7f544eead698dbd1f15126ef60b45a1e1933222/Qwen3-1.7B-Q4_0.gguf'
   },
   better: {
     id: 'QWEN3_4B_INST_Q4_K_M',
-    size: '2,5 GB',
+    size: 2.5, // GB
     file: 'Qwen3-4B-Q4_K_M.gguf',
     url: null // only in QVAC's own storage, no public direct link
   }

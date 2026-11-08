@@ -154,8 +154,8 @@
     return agent
   }
   const MODELS = [
-    { key: 'small', label: 'Kompakt', size: '1,1 GB', note: '', file: 'Qwen3-1.7B-Q4_0.gguf', url: 'https://huggingface.co/unsloth/Qwen3-1.7B-GGUF/resolve/d7f544eead698dbd1f15126ef60b45a1e1933222/Qwen3-1.7B-Q4_0.gguf' },
-    { key: 'better', label: 'Genauer', size: '2,5 GB', note: '', file: 'Qwen3-4B-Q4_K_M.gguf', url: null }
+    { key: 'small', label: 'Kompakt', size: 1.1, note: '', file: 'Qwen3-1.7B-Q4_0.gguf', url: 'https://huggingface.co/unsloth/Qwen3-1.7B-GGUF/resolve/d7f544eead698dbd1f15126ef60b45a1e1933222/Qwen3-1.7B-Q4_0.gguf' },
+    { key: 'better', label: 'Genauer', size: 2.5, note: '', file: 'Qwen3-4B-Q4_K_M.gguf', url: null }
   ]
   const update = new URLSearchParams(window.location.search).get('update')
   const listeners = []
