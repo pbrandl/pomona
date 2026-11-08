@@ -34,4 +34,4 @@ Systeme: Repo pbrandl/pomona (`main`). Lokal: `cd app && npm start` (startet Cha
 ## Files
 - `docs/CONCEPT.md` — Konzept (nicht umgesetzt)
 - `app/electron/main.cjs`, `app/electron/preload.cjs`, `app/ui/electron.js`, `app/worker/index.js` — Desktop-Hülle
-- `app/scripts/start.js` — `npm start`; `app/scripts/ui-check.js` — UI-Prüfnetz
+- `app/scripts/start.js` — `npm start`

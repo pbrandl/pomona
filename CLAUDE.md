@@ -6,7 +6,7 @@ Start here: `POMONA_PROJECT_NOTES.md` (Stand, Entscheidungen, NEXT). `/pickup` s
 - Große Dateien nie ganz lesen: erst `grep -n` / `sed -n`, dann gezielt Read mit offset/limit.
 - Lange Ausgaben in eine Datei umleiten und darin suchen.
 - Knapp antworten, keine Zusammenfassung des gerade Getanen, eben bearbeitete Dateien nicht erneut lesen.
-- Lange Checks (`npm test`, `npm run ui-check`) nicht nach jedem Schritt, sondern gezielt oder beim Versionieren.
+- Lange Checks (`npm test`) nicht nach jedem Schritt, sondern gezielt oder beim Versionieren.
 - Sitzung lang oder Thema neu: `/wrapup`, dann neue Sitzung mit `/pickup`.
 
 ## Projekt

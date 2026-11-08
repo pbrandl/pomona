@@ -76,22 +76,6 @@ The **More accurate** model (`Qwen3-4B-Q4_K_M.gguf`, 2.5 GB) does not come from 
 
 A different folder works with `POMONA_MODELS=/path npm run dev`. To try QVAC's peer-to-peer download anyway (e.g. without a firewall): `POMONA_MODELS_P2P=1 npm run dev`.
 
-## Checking the UI (`npm run ui-check`)
-
-For changes to the UI, especially clean-ups and refactors without a visible change. The script goes through every view in the preview (mock): all scenarios, every page that can be opened from there, pledging and paying through to "Done", and the chat. It does this on four screens (iPhone 13, iPhone SE, dark, desktop). For every element it records position, size, text and computed style.
-
-```bash
-npm run ui-check                    # compares with the baseline (creates it the first time)
-npm run ui-check -- --baseline      # record a new baseline, e.g. after an intended change
-npm run ui-check -- --only phone    # one screen only: phone, small, dark or desk
-```
-
-Workflow: record the baseline before the refactor, then run `npm run ui-check`. The report separates "Moved or resized" and "Text", i.e. visible changes, from "Computed styles only". The latter are usually values without visible effect, such as `gap` on an element without gaps. Without differences the script exits with 0, otherwise with 1. Results are stored in `app/.ui-check/` (not in the repo). A run takes a little over four minutes.
-
-Playwright needs Chromium once: `npx playwright install chromium`. Behind a proxy such as Zscaler the download can fail. In that case point `PLAYWRIGHT_BROWSERS_PATH` to an existing Chromium folder.
-
-Not covered: hover, the phone keyboard and real devices. That remains manual work.
-
 ## Security
 
 The core holds the wallet, so the local server is locked down:

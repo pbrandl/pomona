@@ -4,5 +4,4 @@ contracts/artifacts/
 .hardhat-artifacts/
 *.log
 .DS_Store
-.ui-check/
 .instances/

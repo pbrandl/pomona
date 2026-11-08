@@ -47,12 +47,12 @@ A round type is a package of four parts:
 - **RPC:** `quote` and `act` with the name of the action instead of one method
   per action. The allowed actions remain a closed list that comes from the type.
 - **Tests:** a shared suite for the interface against every contract and
-  adapter, plus tests per type and `npm run ui-check` with mock scenarios per type.
+  adapter, plus tests per type and mock scenarios per type for the design preview.
 
 Order:
 
-1. Extract the two current modes as the first types; tests and ui-check
-   prove that nothing changes.
+1. Extract the two current modes as the first types; the tests prove that
+   nothing changes.
 2. Contract: type identifier, factory per type, registry.
 3. Type registry in the app, update notice for unknown types.
 4. First new type as a proof.
